@@ -10,6 +10,7 @@ USE_CUDA     = TRUE
 TINY_PROFILE = TRUE
 COMP         = gnu
 DIM          = 3
+BL_NO_FORT   = TRUE
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 
