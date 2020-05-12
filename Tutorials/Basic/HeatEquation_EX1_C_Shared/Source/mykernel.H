@@ -2,7 +2,6 @@
 #define MY_KERNEL_H_
 
 #include <AMReX_FArrayBox.H>
-#include "mylaunch.H"
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void init_phi (int i, int j, int k,
@@ -30,7 +29,7 @@ void compute_flux_x (int i, int j, int k,
 }
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-void compute_flux_x_shared (int i, int j, int k, Box gxbx, Box xbx,
+void compute_flux_x_shared (int i, int j, int k, Box xbx,
                             amrex::Array4<amrex::Real> const& fluxx,
                             amrex::Array4<amrex::Real const> const& phi, amrex::Real dxinv)
 {
