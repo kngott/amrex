@@ -1,3 +1,4 @@
+#if 0
 template <typename T, typename L, typename M=amrex::EnableIf_t<std::is_integral<T>::value> >
 amrex::EnableIf_t<MaybeDeviceRunnable<L>::value>
 ParallelForREFERENCE (T n, L&& f) noexcept
@@ -65,4 +66,4 @@ ParallelForREFERENCE (Box const& box, T ncomp, L&& f) noexcept
     });
     AMREX_GPU_ERROR_CHECK();
 }
-
+#endif

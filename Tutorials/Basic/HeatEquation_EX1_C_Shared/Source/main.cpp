@@ -34,7 +34,8 @@ void main_main ()
 
         // We need to get n_cell from the inputs file - this is the number of cells on each side of 
         //   a square (or cubic) domain.
-        pp.get("n_cell",n_cell);
+        n_cell = 0;
+        pp.query("n_cell",n_cell);
 
         // The domain is broken into boxes of size max_grid_size
         pp.get("max_grid_size",max_grid_size);
@@ -49,6 +50,8 @@ void main_main ()
         pp.query("nsteps",nsteps);
 
         // Allow for 3D variability 
+        for (auto& i : ncell_vec)
+            { i = 0; }
         pp.queryarr("ncell_vec", ncell_vec);
     }
 
@@ -56,11 +59,19 @@ void main_main ()
     BoxArray ba;
     Geometry geom;
     {
+        // If multi-dimensional domain not set in ncell_vec, use n_cell to set it.
         if (ncell_vec[0] == 0)
         {
-            for(int i=0; i<AMREX_SPACEDIM; ++i)
+            if (n_cell == 0)
             {
-                ncell_vec[i] = n_cell-1;
+                amrex::Abort("Size of problem not set. Set either n_cell or ncell_vec in the inputs file.");
+            }
+            else
+            {
+                for(int i=0; i<AMREX_SPACEDIM; ++i)
+                {
+                    ncell_vec[i] = n_cell-1;
+                }
             }        
         }
 
@@ -73,7 +84,7 @@ void main_main ()
         // Break up boxarray "ba" into chunks no larger than "max_grid_size" along a direction
         ba.maxSize(max_grid_size);
 
-       // This defines the physical box, [-1,1] in each direction.
+        // This defines the physical box, [-1,1] in each direction.
         RealBox real_box({AMREX_D_DECL(-1.0,-1.0,-1.0)},
                          {AMREX_D_DECL( 1.0, 1.0, 1.0)});
 
@@ -102,7 +113,8 @@ void main_main ()
     init_phi(phi_new, geom);
     // ========================================
 
-    Real dt = 0.9*dx[0]*dx[0] / (2.0*AMREX_SPACEDIM);
+    Real min_dx = Real( std::min({dx[0], dx[1], dx[2]}) );
+    Real dt = 0.9*min_dx*min_dx / (2.0*AMREX_SPACEDIM);
 
     // time = starting time in the simulation
     Real time = 0.0;

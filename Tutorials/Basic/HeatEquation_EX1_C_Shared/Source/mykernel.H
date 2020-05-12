@@ -2,6 +2,7 @@
 #define MY_KERNEL_H_
 
 #include <AMReX_FArrayBox.H>
+#include "mylaunch.H"
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void init_phi (int i, int j, int k,
@@ -29,6 +30,23 @@ void compute_flux_x (int i, int j, int k,
     fluxx(i,j,k) = (phi(i,j,k)-phi(i-1,j,k)) * dxinv;
 }
 
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+void compute_flux_x_shared (int i, int j, int k,
+                            amrex::Array4<amrex::Real> const& fluxx,
+                            amrex::Array4<amrex::Real const> const& phi, amrex::Real dxinv)
+{
+    __shared__ Real sm[AMREX_GPU_MAX_THREADS+1];
+    int btid = threadIdx.x; // Thread id within the block.
+
+    // Fill shared.
+    sm[btid+1] = phi(i,j,k);
+    if (btid == 0)
+    {
+        sm[0] = phi(i-1,j,k);
+    }
+
+    fluxx(i,j,k) = (sm[btid+1] - sm[btid]) * dxinv;
+}
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void compute_flux_y (int i, int j, int k,
