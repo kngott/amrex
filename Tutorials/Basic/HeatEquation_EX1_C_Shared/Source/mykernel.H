@@ -21,7 +21,6 @@ void init_phi (int i, int j, int k,
     phi(i,j,k) = 1. + std::exp(-r2);
 }
 
-
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void compute_flux_x (int i, int j, int k,
                      amrex::Array4<amrex::Real> const& fluxx,
@@ -31,21 +30,29 @@ void compute_flux_x (int i, int j, int k,
 }
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-void compute_flux_x_shared (int i, int j, int k,
+void compute_flux_x_shared (int i, int j, int k, Box gxbx, Box xbx,
                             amrex::Array4<amrex::Real> const& fluxx,
                             amrex::Array4<amrex::Real const> const& phi, amrex::Real dxinv)
 {
     __shared__ Real sm[AMREX_GPU_MAX_THREADS+1];
-    int btid = threadIdx.x; // Thread id within the block.
+    int btid = threadIdx.x + 1;  // Increment by one for convienence
+                                 // May need an additional cell at 0.
 
     // Fill shared.
-    sm[btid+1] = phi(i,j,k);
-    if (btid == 0)
+    sm[btid] = phi(i,j,k);
+    // If first cell is not a ghost cell, it will need the previous cell.
+    if ((btid == 1) && (xbx.contains({i,j,k})))
     {
         sm[0] = phi(i-1,j,k);
     }
 
-    fluxx(i,j,k) = (sm[btid+1] - sm[btid]) * dxinv;
+    __syncthreads();
+ 
+    // Only calculate for interior cells 
+    if (xbx.contains({i,j,k}))
+    {
+        fluxx(i,j,k) = (sm[btid] - sm[btid-1]) * dxinv;
+    }
 }
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE

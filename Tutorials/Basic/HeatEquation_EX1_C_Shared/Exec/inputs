@@ -1,9 +1,10 @@
 nsteps = 1000
-plot_int = 100
+plot_int = 1000
 #n_cell = 512 
-ncell_vec = 256 1024 1536 
-#n_cell = 512 512 512
-max_grid_size = 256 
+
+# ncell_vec = (1 box) x (boxes per rank) x (num ranks)
+ncell_vec = 16 16 96
+max_grid_size = 16
 
 amrex.v = 1
 amrex.async_out = 0  # If we use more than 64 processes, async_out will require MPI_MULTIPLE=TRUE
