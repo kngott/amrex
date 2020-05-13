@@ -29,7 +29,7 @@ void compute_flux_x (int i, int j, int k,
 }
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-void compute_flux_x_shared (int i, int j, int k, Box xbx,
+void compute_flux_x_shared (int i, int j, int k, const Box& xbx,
                             amrex::Array4<amrex::Real> const& fluxx,
                             amrex::Array4<amrex::Real const> const& phi, amrex::Real dxinv)
 {
@@ -62,6 +62,31 @@ void compute_flux_y (int i, int j, int k,
     fluxy(i,j,k) = (phi(i,j,k)-phi(i,j-1,k)) * dyinv;
 }
 
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+void compute_flux_y_shared (int i, int j, int k, const Box& ybx,
+                            amrex::Array4<amrex::Real> const& fluxy,
+                            amrex::Array4<amrex::Real const> const& phi, amrex::Real dyinv)
+{
+    __shared__ Real sm[AMREX_GPU_MAX_THREADS+1];
+    int btid = threadIdx.x + 1;  // Increment by one for convienence
+                                 // May need an additional cell at 0.
+
+    // Fill shared.
+    sm[btid] = phi(i,j,k);
+    // If first cell is not a ghost cell, it will need the previous cell.
+    if ((btid == 1) && (ybx.contains({i,j,k})))
+    {
+        sm[0] = phi(i,j-1,k);
+    }
+
+    __syncthreads();
+ 
+    // Only calculate for interior cells 
+    if (ybx.contains({i,j,k}))
+    {
+        fluxy(i,j,k) = (sm[btid] - sm[btid-1]) * dyinv;
+    }
+}
 
 #if (AMREX_SPACEDIM > 2)
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
@@ -71,6 +96,33 @@ void compute_flux_z (int i, int j, int k,
 {
     fluxz(i,j,k) = (phi(i,j,k)-phi(i,j,k-1)) * dzinv;
 }
+
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+void compute_flux_z_shared (int i, int j, int k, const Box& zbx,
+                            amrex::Array4<amrex::Real> const& fluxz,
+                            amrex::Array4<amrex::Real const> const& phi, amrex::Real dzinv)
+{
+    __shared__ Real sm[AMREX_GPU_MAX_THREADS+1];
+    int btid = threadIdx.x + 1;  // Increment by one for convienence
+                                 // May need an additional cell at 0.
+
+    // Fill shared.
+    sm[btid] = phi(i,j,k);
+    // If first cell is not a ghost cell, it will need the previous cell.
+    if ((btid == 1) && (zbx.contains({i,j,k})))
+    {
+        sm[0] = phi(i,j,k-1);
+    }
+
+    __syncthreads();
+ 
+    // Only calculate for interior cells 
+    if (zbx.contains({i,j,k}))
+    {
+        fluxz(i,j,k) = (sm[btid] - sm[btid-1]) * dzinv;
+    }
+}
+
 #endif
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE

@@ -12,7 +12,8 @@ void advance (amrex::MultiFab& phi_old,
               amrex::MultiFab& phi_new,
 	      amrex::Array<amrex::MultiFab, AMREX_SPACEDIM>& flux,
 	      amrex::Real dt,
-              amrex::Geometry const& geom);
+              amrex::Geometry const& geom,
+              bool use_shared);
 
 void init_phi (amrex::MultiFab& phi_new, amrex::Geometry const& geom);
 #endif
