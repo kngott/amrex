@@ -47,14 +47,14 @@ void advance (MultiFab& phi_old,
             amrex::ParallelFor(xbx,
             [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                compute_flux_x(i,j,k,fluxx,phi,dxinv);
+                compute_flux_x_shared(i,j,k,fluxx,phi,dxinv);
             });
         }
         else {
             amrex::ParallelFor(gxbx,
             [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                compute_flux_x_shared(i,j,k,xbx,fluxx,phi,dxinv);
+                compute_flux_x(i,j,k,xbx,fluxx,phi,dxinv);
 
             });
         }
