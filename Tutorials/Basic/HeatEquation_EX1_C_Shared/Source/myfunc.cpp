@@ -44,14 +44,14 @@ void advance (MultiFab& phi_old,
         auto const& gxbx = mfi.grownnodaltilebox(0);
 
         if (use_shared) {
-            amrex::ParallelFor(xbx,
+            amrex::ParallelFor(gxbx,
             [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
                 compute_flux_x_shared(i,j,k,xbx,fluxx,phi,dxinv);
             });
         }
         else {
-            amrex::ParallelFor(gxbx,
+            amrex::ParallelFor(xbx,
             [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
                 compute_flux_x(i,j,k,fluxx,phi,dxinv);
