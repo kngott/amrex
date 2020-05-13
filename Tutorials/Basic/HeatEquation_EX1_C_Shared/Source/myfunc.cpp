@@ -7,7 +7,8 @@ void advance (MultiFab& phi_old,
               MultiFab& phi_new,
 	      Array<MultiFab, AMREX_SPACEDIM>& flux,
 	      Real dt,
-              Geometry const& geom)
+              Geometry const& geom,
+              bool use_shared)
 {
     BL_PROFILE("advance()");
     // Fill the ghost cells of each grid from the other grids
@@ -40,22 +41,24 @@ void advance (MultiFab& phi_old,
         auto const& fluxz = flux[2].array(mfi);
 #endif
         auto const& phi = phi_old.const_array(mfi);
-
         auto const& gxbx = mfi.grownnodaltilebox(0);
 
-#if 1 
-        amrex::ParallelFor(xbx,
-        [=] AMREX_GPU_DEVICE (int i, int j, int k)
-        {
-            compute_flux_x(i,j,k,fluxx,phi,dxinv);
-        });
-#else
-        amrex::ParallelFor(gxbx,
-        [=] AMREX_GPU_DEVICE (int i, int j, int k)
-        {
-            compute_flux_x_shared(i,j,k,xbx,fluxx,phi,dxinv);
-        });
-#endif
+        if (use_shared) {
+            amrex::ParallelFor(xbx,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k)
+            {
+                compute_flux_x(i,j,k,fluxx,phi,dxinv);
+            });
+        }
+        else {
+            amrex::ParallelFor(gxbx,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k)
+            {
+                compute_flux_x_shared(i,j,k,xbx,fluxx,phi,dxinv);
+
+            });
+        }
+
         amrex::ParallelFor(ybx,
         [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {

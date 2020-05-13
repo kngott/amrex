@@ -24,7 +24,7 @@ void main_main ()
     Real strt_time = ParallelDescriptor::second();
 
     // AMREX_SPACEDIM: number of dimensions
-    int n_cell, max_grid_size, nsteps, plot_int;
+    int n_cell, max_grid_size, nsteps, plot_int, use_shared;
     Vector<int> ncell_vec(AMREX_SPACEDIM, 0);
 
     // inputs parameters
@@ -53,6 +53,9 @@ void main_main ()
         for (auto& i : ncell_vec)
             { i = 0; }
         pp.queryarr("ncell_vec", ncell_vec);
+
+        use_shared = 0;
+        pp.query("shared_mem", use_shared);
     }
 
     // make BoxArray and Geometry
@@ -143,7 +146,7 @@ void main_main ()
         MultiFab::Copy(phi_old, phi_new, 0, 0, 1, 0);
 
         // new_phi = old_phi + dt * (something)
-        advance(phi_old, phi_new, flux, dt, geom); 
+        advance(phi_old, phi_new, flux, dt, geom, use_shared); 
         time = time + dt;
         
         // Tell the I/O Processor to write out which step we're doing
