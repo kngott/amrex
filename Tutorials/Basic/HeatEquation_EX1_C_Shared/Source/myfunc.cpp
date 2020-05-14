@@ -53,6 +53,7 @@ void advance (MultiFab& phi_old,
                 compute_flux_x_shared(i,j,k,xbx,fluxx,phi,dxinv);
             });
 
+#if 0
             amrex::ParallelForSMjki(gybx,
             [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
@@ -68,27 +69,29 @@ void advance (MultiFab& phi_old,
                 compute_flux_z_shared(i,j,k,zbx,fluxz,phi,dzinv);
             });
 #endif
+#endif
         } else {
             amrex::ParallelFor(xbx,
             [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
                 compute_flux_x(i,j,k,fluxx,phi,dxinv);
             });
+        }
 
-            amrex::ParallelFor(ybx,
-            [=] AMREX_GPU_DEVICE (int i, int j, int k)
-            {
-                compute_flux_y(i,j,k,fluxy,phi,dyinv);
-            });
+        amrex::ParallelFor(ybx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k)
+        {
+            compute_flux_y(i,j,k,fluxy,phi,dyinv);
+        });
 
 #if (AMREX_SPACEDIM > 2)
-            amrex::ParallelFor(zbx,
-            [=] AMREX_GPU_DEVICE (int i, int j, int k)
-            {
-                compute_flux_z(i,j,k,fluxz,phi,dzinv);
-            });
+        amrex::ParallelFor(zbx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k)
+        {
+            compute_flux_z(i,j,k,fluxz,phi,dzinv);
+        });
 #endif
-        }
+
     }
 
     // Advance the solution one grid at a time

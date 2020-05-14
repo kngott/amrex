@@ -25,7 +25,16 @@ void compute_flux_x (int i, int j, int k,
                      amrex::Array4<amrex::Real> const& fluxx,
                      amrex::Array4<amrex::Real const> const& phi, amrex::Real dxinv)
 {
-    fluxx(i,j,k) = (phi(i,j,k)-phi(i-1,j,k)) * dxinv;
+//    fluxx(i,j,k) = (phi(i,j,k)-phi(i-1,j,k)) * dxinv;
+//    fluxx(i,j,k) = (phi(i+1,j,k)-2*phi(i,j,k)+phi(i-1,j,k)) * dxinv; 
+//    fluxx(i,j,k) = (phi(i+2,j,k)-phi(i+1,j,k)+phi(i,j,k)-phi(i-1,j,k)+phi(i-2,j,k)) * dxinv; 
+//    fluxx(i,j,k) = (phi(i+3,j,k)-phi(i+2,j,k)+phi(i+1,j,k)-phi(i,j,k)+phi(i-1,j,k)-phi(i-2,j,k)+phi(i-3,j,k)) * dxinv; 
+//    fluxx(i,j,k) = (phi(i+4,j,k)-phi(i+3,j,k)+phi(i+2,j,k)-phi(i+1,j,k)+
+//                    phi(i,j,k)-phi(i-1,j,k)+phi(i-2,j,k)-phi(i-3,j,k)+phi(i-4,j,k)) * dxinv; 
+//    fluxx(i,j,k) = (phi(i+5,j,k)-phi(i+4,j,k)+phi(i+3,j,k)-phi(i+2,j,k)+phi(i+1,j,k)-
+//                    phi(i,j,k)+phi(i-1,j,k)-phi(i-2,j,k)+phi(i-3,j,k)-phi(i-4,j,k)+phi(i-5,j,k)) * dxinv; 
+    fluxx(i,j,k) = (phi(i+6,j,k)-phi(i+5,j,k)+phi(i+4,j,k)-phi(i+3,j,k)+phi(i+2,j,k)-phi(i+1,j,k)+
+                    phi(i,j,k)-phi(i-1,j,k)+phi(i-2,j,k)-phi(i-3,j,k)+phi(i-4,j,k)-phi(i-5,j,k)+phi(i-6,j,k)) * dxinv; 
 }
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
@@ -33,6 +42,8 @@ void compute_flux_x_shared (int i, int j, int k, const Box& xbx,
                             amrex::Array4<amrex::Real> const& fluxx,
                             amrex::Array4<amrex::Real const> const& phi, amrex::Real dxinv)
 {
+/*  
+    // TWO POINT STENCIL
     __shared__ Real sm[AMREX_GPU_MAX_THREADS+1];
     int btid = threadIdx.x + 1;  // Increment by one for convienence
                                  // May need an additional cell at 0.
@@ -52,6 +63,188 @@ void compute_flux_x_shared (int i, int j, int k, const Box& xbx,
     {
         fluxx(i,j,k) = (sm[btid] - sm[btid-1]) * dxinv;
     }
+
+    // THREE POINT STENCIL
+    __shared__ Real sm[AMREX_GPU_MAX_THREADS+2];
+    int btid = threadIdx.x + 1;  // Increment by one for convienence
+                                 // May need an additional cell at 0.
+
+    // Fill shared.
+    sm[btid] = phi(i,j,k);
+
+    if ( (threadIdx.x == 0) && (xbx.contains({i,j,k})) )
+    {
+        sm[0] = phi(i-1,j,k);
+    }
+    if ((threadIdx.x == AMREX_GPU_MAX_THREADS-1) && (xbx.contains({i,j,k})))
+    {
+        sm[AMREX_GPU_MAX_THREADS+1] = phi(i+1,j,k);
+    }
+
+    __syncthreads();
+ 
+    // Only calculate for interior cells 
+    if (xbx.contains({i,j,k}))
+    {
+        fluxx(i,j,k) = (sm[btid+1] - 2*sm[btid] + sm[btid-1]) * dxinv;
+    }
+
+    // FIVE POINT STENCIL
+    __shared__ Real sm[AMREX_GPU_MAX_THREADS+4];
+    int btid = threadIdx.x + 2;
+
+    // Fill shared.
+    sm[btid] = phi(i,j,k);
+
+    if ( (threadIdx.x < 2) && (xbx.contains({i,j,k}) || xbx.contains({i-1,j,k})) )
+    {
+        sm[btid-2] = phi(i-2,j,k);
+    }
+    if ((threadIdx.x > AMREX_GPU_MAX_THREADS-3) && (xbx.contains({i,j,k}) || xbx.contains({i+1,j,k})) )
+    {
+        sm[btid+2] = phi(i+2,j,k);
+    }
+
+    __syncthreads();
+ 
+    // Only calculate for interior cells 
+    if (xbx.contains({i,j,k}))
+    {
+        fluxx(i,j,k) = (sm[btid+2] - sm[btid+1] + sm[btid] - sm[btid-1] + sm[btid-2]) * dxinv;
+    }
+
+    // SEVEN POINT STENCIL
+    __shared__ Real sm[AMREX_GPU_MAX_THREADS+6];
+    int btid = threadIdx.x + 3;
+
+    // Fill shared.
+    sm[btid] = phi(i,j,k);
+
+    if ( (threadIdx.x < 3) && ( xbx.contains({i,j,k}) 
+                             || xbx.contains({i-1,j,k})
+                             || xbx.contains({i-2,j,k})) )
+    {
+        sm[btid-3] = phi(i-3,j,k);
+    }
+    if ( (threadIdx.x > AMREX_GPU_MAX_THREADS-4) && ( xbx.contains({i,j,k})
+                                                   || xbx.contains({i+1,j,k})
+                                                   || xbx.contains({i+2,j,k})) )
+    {
+        sm[btid+3] = phi(i+3,j,k);
+    }
+
+    __syncthreads();
+ 
+    // Only calculate for interior cells 
+    if (xbx.contains({i,j,k}))
+    {
+        fluxx(i,j,k) = (sm[btid+3] - sm[btid+2] + sm[btid+1] - sm[btid] + 
+                        sm[btid-1] - sm[btid-2] + sm[btid-3]) * dxinv;
+    }
+
+    // NINE POINT STENCIL
+    __shared__ Real sm[AMREX_GPU_MAX_THREADS+8];
+    int btid = threadIdx.x + 4;
+
+    // Fill shared.
+    sm[btid] = phi(i,j,k);
+
+    if ( (threadIdx.x < 4) && ( xbx.contains({i,j,k}) 
+                             || xbx.contains({i-1,j,k})
+                             || xbx.contains({i-2,j,k})
+                             || xbx.contains({i-3,j,k})) )
+    {
+        sm[btid-4] = phi(i-4,j,k);
+    }
+    if ( (threadIdx.x > AMREX_GPU_MAX_THREADS-5) && ( xbx.contains({i,j,k})
+                                                   || xbx.contains({i+1,j,k})
+                                                   || xbx.contains({i+2,j,k})
+                                                   || xbx.contains({i+3,j,k})) )
+    {
+        sm[btid+4] = phi(i+4,j,k);
+    }
+
+    __syncthreads();
+ 
+    // Only calculate for interior cells 
+    if (xbx.contains({i,j,k}))
+    {
+        fluxx(i,j,k) = (sm[btid+4] - sm[btid+3] + sm[btid+2] - sm[btid+1] + sm[btid] - 
+                        sm[btid-1] + sm[btid-2] - sm[btid-3] + sm[btid-4) * dxinv;
+    }
+
+    // ELEVEN POINT STENCIL
+    __shared__ Real sm[AMREX_GPU_MAX_THREADS+10];
+    int btid = threadIdx.x + 5;
+
+    // Fill shared.
+    sm[btid] = phi(i,j,k);
+
+    if ( (threadIdx.x < 5) && ( xbx.contains({i,j,k}) 
+                             || xbx.contains({i-1,j,k})
+                             || xbx.contains({i-2,j,k})
+                             || xbx.contains({i-3,j,k})
+                             || xbx.contains({i-4,j,k})) )
+
+    {
+        sm[btid-5] = phi(i-5,j,k);
+    }
+    if ( (threadIdx.x > AMREX_GPU_MAX_THREADS-6) && ( xbx.contains({i,j,k})
+                                                   || xbx.contains({i+1,j,k})
+                                                   || xbx.contains({i+2,j,k})
+                                                   || xbx.contains({i+3,j,k})
+                                                   || xbx.contains({i+4,j,k})) )
+    {
+        sm[btid+5] = phi(i+5,j,k);
+    }
+
+    __syncthreads();
+ 
+    // Only calculate for interior cells 
+    if (xbx.contains({i,j,k}))
+    {
+        fluxx(i,j,k) = (sm[btid+5] - sm[btid+4] + sm[btid+3] - sm[btid+2] + sm[btid+1] - sm[btid] +
+                        sm[btid-1] - sm[btid-2] + sm[btid-3] - sm[btid-4] + sm[btid-5]) * dxinv;
+    }
+*/
+
+    // THIRTEEN POINT STENCIL
+    __shared__ Real sm[AMREX_GPU_MAX_THREADS+12];
+    int btid = threadIdx.x + 6;
+
+    // Fill shared.
+    sm[btid] = phi(i,j,k);
+
+    if ( (threadIdx.x < 6) && ( xbx.contains({i,j,k}) 
+                             || xbx.contains({i-1,j,k})
+                             || xbx.contains({i-2,j,k})
+                             || xbx.contains({i-3,j,k})
+                             || xbx.contains({i-4,j,k})
+                             || xbx.contains({i-5,j,k})) )
+
+    {
+        sm[btid-6] = phi(i-6,j,k);
+    }
+    if ( (threadIdx.x > AMREX_GPU_MAX_THREADS-7) && ( xbx.contains({i,j,k})
+                                                   || xbx.contains({i+1,j,k})
+                                                   || xbx.contains({i+2,j,k})
+                                                   || xbx.contains({i+3,j,k})
+                                                   || xbx.contains({i+4,j,k})
+                                                   || xbx.contains({i+5,j,k})) )
+    {
+        sm[btid+6] = phi(i+6,j,k);
+    }
+
+    __syncthreads();
+ 
+    // Only calculate for interior cells 
+    if (xbx.contains({i,j,k}))
+    {
+        fluxx(i,j,k) = (sm[btid+6] - sm[btid+5] + sm[btid+4] - sm[btid+3] + sm[btid+2] - sm[btid+1] + sm[btid] - 
+                        sm[btid-1] + sm[btid-2] - sm[btid-3] + sm[btid-4] - sm[btid-5] + sm[btid-6]) * dxinv;
+    }
+
+
 }
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE

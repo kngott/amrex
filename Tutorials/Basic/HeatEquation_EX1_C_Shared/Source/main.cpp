@@ -99,7 +99,7 @@ void main_main ()
     }
 
     // Nghost = number of ghost cells for each array 
-    int Nghost = 1;
+    int Nghost = 6; 
     
     // Ncomp = number of components for each array
     int Ncomp  = 1;
