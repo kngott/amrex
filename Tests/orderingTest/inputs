@@ -1,0 +1,6 @@
+# Use a very small size. Includes lots of GPU printing.
+ncell_vec = 5 5 5  
+max_grid_size = 5
+
+amrex.v = 1
+amrex.async_out = 0  # If we use more than 64 processes, async_out will require MPI_MULTIPLE=TRUE
