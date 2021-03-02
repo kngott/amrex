@@ -415,8 +415,9 @@ for conditional programming:
 * When compiled with ``USE_HIP=TRUE``, AMReX defines ``AMREX_USE_HIP``.
 * When compiled with ``USE_DPCPP=TRUE``, AMReX defines ``AMREX_USE_DPCPP``.
 * When compiled with ``USE_ACC=TRUE``, AMReX defines ``AMREX_USE_ACC``.
-* When compiled with ``USE_OMP_OFFLOAD=TRUE``, AMReX defines ``AMREX_USE_OMP_OFFLOAD``.
 * When compiled with any of the above, AMReX defines ``AMREX_USE_GPU``.
+
+* When compiled with ``USE_OMP_OFFLOAD=TRUE``, AMReX defines ``AMREX_USE_OMP_OFFLOAD``.
 
 The ``AMREX_DEVICE_COMPILE`` macro can be used to conditionally program
 code for the host and device separately. ``#if AMREX_DEVICE_COMPILE`` is
@@ -467,8 +468,8 @@ Memory Allocation
 To provide portability and improve memory allocation performance,
 AMReX provides a number of memory pools.  When compiled for 
 CPU, all :cpp:`Arena`\ s use standard :cpp:`new` and :cpp:`delete`
-operators. When building for GPUs, the :cpp:`Arena`\ s each
-allocate with a specific type of GPU memory:
+operators.  When building for GPUs, the :cpp:`Arena`\ s each
+allocate with a specific type of GPU memory. By default:
 
 .. raw:: latex
 
@@ -478,26 +479,26 @@ allocate with a specific type of GPU memory:
 
 .. table:: Memory Arenas
 
-    +---------------------+----------------------------+------------------+------------------+
-    | Arena               |  USE_CUDA                  |  USE_HIP         |  USE_DPCPP       |
-    +=====================+============================+==================+==================+
-    | The_Arena()         |  managed or device memory  |  device memory   |  device memory   |
-    +---------------------+----------------------------+------------------+------------------+
-    | The_Device_Arena()  |  device memory             |  device memory   |  device memory   |
-    +---------------------+----------------------------+------------------+------------------+
-    | The_Managed_Arena() |  managed memory            |  device memory   |  device memory   |
-    +---------------------+----------------------------+------------------+------------------+
-    | The_Pinned_Arena()  |  pinned memory             |  mlock pinned memory   |  mlock pinned memory   |
-    +---------------------+----------------------------+------------------+------------------+
-    | The_Cpu_Arena()     |  host memory               |  host memory     |  host memory     |
-    +---------------------+----------------------------+------------------+------------------+
+    +---------------------+-----------------+-------------------+-------------------+-----------------+
+    | Arena               |  CPU only       |  CUDA             |  HIP              |  DPC++          |
+    +=====================+=================+===================+===================+=================+
+    | The_Arena()         |  host memory    |  managed memory   |  device memory    |  device memory  |
+    +---------------------+-----------------+-------------------+-------------------+-----------------+
+    | The_Device_Arena()  |  host memory    |  device memory    |  device memory    |  device memory  |
+    +---------------------+-----------------+-------------------+-------------------+-----------------+
+    | The_Managed_Arena() |  host memory    |  managed memory   |  device memory    |  device memory  |
+    +---------------------+-----------------+-------------------+-------------------+-----------------+
+    | The_Pinned_Arena()  |  pinned memory  |  pinned memory    |  pinned memory    |  pinned memory  |
+    +---------------------+-----------------+-------------------+-------------------+-----------------+
+    | The_Cpu_Arena()     |  host memory    |  host memory      |  host memory      |  host memory    |
+    +---------------------+-----------------+-------------------+-------------------+-----------------+
 
 .. raw:: latex
 
     \end{center}
 
-The Arena object returned by these calls provides access
-to two functions:
+The Arena object returned by these calls provides users access
+to two functions that manage the memory within the pool:
 
 .. highlight:: c++
 
@@ -506,18 +507,27 @@ to two functions:
    void* alloc (std::size_t sz);
    void free (void* p);
 
-****CPU pinned
+By default, cpp:`The_Arena()` is used for memory allocation of data in
+:cpp:`BaseFab`.  When using CUDA, this means default constructed :cpp:`MultiFab` s
+are placed in managed memory and are accessible from both CPU and GPU.  When
+building with HIP or DPC++, cpp:`The_Arena()` uses device memory which is only accessible
+on the GPU.
 
-:cpp:`The_Arena()` is used for memory allocation of data in
-:cpp:`BaseFab`.  By default, it allocates managed memory.  This can be changed with
-a boolean runtime parameter ``amrex.the_arena_is_managed``.
-Therefore the data in a :cpp:`MultiFab` is placed in
-managed memory by default and is accessible from both CPU host and GPU device.
-This allows application codes to develop their GPU capability
-gradually.  :cpp:`The_Managed_Arena()` is a separate pool of
-managed memory, that is distinguished from :cpp:`The_Arena()` for
-performance reasons.  If you want to print out the current memory usage
-of the Arenas, you can call :cpp:`amrex::Arena::PrintUsage()`.
+When running with CUDA and HIP, the default cpp:`The_Arena()` memory space can be changed
+with the runtime variable ``amrex.the_arena_is_managed``.  It is only recommended to use
+HIP managed memory on AMD hardware with appropriate support.
+
+Individual :cpp:`MultiFabs` can also be allocated to a specific :cpp:`Arena` by constructing
+with an appropriate :cpp:`MFInfo` object, e.g.:
+
+.. highlight:: c++
+
+::
+
+   MultiFab mf_on_cpu( ba, dm, ncomp, ngrow, MFInfo.SetArena(The_Cpu_Arena()) );
+
+To print out the current memory usage of the :cpp:`Arena` s at runtime, call
+:cpp:`amrex::Arena::PrintUsage()`.
 
 .. ===================================================================
 
@@ -526,24 +536,28 @@ of the Arenas, you can call :cpp:`amrex::Arena::PrintUsage()`.
 GPU Safe Classes and Functions
 ==============================
 
-AMReX GPU work takes place inside of MFIter and particle loops.
+AMReX GPU work takes place primarily inside of MFIter and ParIter loops.
 Therefore, there are two ways classes and functions have been modified
 to interact with the GPU:
 
-1. A number of functions used within these loops are labelled using
+1. Made available on the device:
+A number of functions used within these loops are labelled using
 ``AMREX_GPU_HOST_DEVICE`` and can be called on the device. This includes member
 functions, such as :cpp:`IntVect::type()`, as well as non-member functions,
 such as :cpp:`amrex::min` and :cpp:`amrex::max`. In specialized cases,
 classes are labeled such that the object can be constructed, destructed
-and its functions can be implemented on the device, including ``IntVect``.
+and its functions can be implemented on the device, such as ``IntVect``.
 
-2. Functions that contain MFIter or particle loops have been rewritten
+2. Rewritten to use the device:
+Functions that contain MFIter or particle loops have been rewritten
 to contain device launches. For example, the :cpp:`FillBoundary`
 function cannot be called from device code, but calling it from
 CPU will launch GPU kernels if AMReX is compiled with GPU support.
 
 Necessary and convenient AMReX functions and objects have been given a device
-version and/or device access.
+version or implementation.  In some cases, new portable versions of objects
+and functions have been designed that are used  similarly, but are capable of
+being used on the device.
 
 In this section, we discuss some examples of AMReX device classes and functions
 that are important for programming GPUs.
@@ -580,15 +594,14 @@ scratch space on device.
 The call to delete the memory is added to the GPU stream as a callback
 function in the destructor of :cpp:`AsyncArray`. This guarantees the
 memory allocated in :cpp:`AsyncArray` continues to exist after the
-:cpp:`AsyncArray` object is deleted when going out of scope until
-after all GPU kernels in the stream are completed without forcing the
-code to synchronize. The resulting :cpp:`AsyncArray` class is
-"async-safe", meaning it can be safely used in asynchronous code
-regions that contain both CPU work and GPU launches, including
-:cpp:`MFIter` loops.
+:cpp:`AsyncArray` object is deleted. The memory is not freed until
+after all GPU kernels in the stream are completed. The resulting
+:cpp:`AsyncArray` class is "async-safe", meaning it can be safely
+constructed and used in asynchronous code regions that contain both
+CPU work and GPU launches, including :cpp:`MFIter` loops.
 
-:cpp:`AsyncArray` is also portable. When built without ``USE_CUDA``, the
-object only stores and handles the CPU version of the data.
+:cpp:`AsyncArray` is also portable. When built on CPU, the object only
+stores and handles the CPU version of the data.
 
 An example using :cpp:`AsyncArray` is given below,
 
@@ -663,7 +676,7 @@ These classes behave identically to an
 can only hold "plain-old-data" objects (e.g. Reals, integers, amrex Particles,
 etc... ).
 
-Note that, even if the data in the vector is  managed and available on GPUs,
+Note that, even if the data in the vector is managed and available on GPUs,
 the member functions of e.g. :cpp:`Gpu::ManagedVector` are not.
 To use the data on the GPU, it is necessary to pass the underlying data pointer
 in to the GPU kernels. The managed data pointer can be accessed using the :cpp:`data()`
@@ -740,10 +753,10 @@ that take either one, two or three ::cpp:`MultiFab`\ s.
 or two.
 
 
-Box, IntVect and IndexType
+Box, RealBox, IntVect and IndexType
 --------------------------
 
-In AMReX, :cpp:`Box`, :cpp:`IntVect` and :cpp:`IndexType`
+In AMReX, :cpp:`Box`, :cpp:`RealBox`, :cpp:`IntVect` and :cpp:`IndexType`
 are classes for representing indices.  These classes and most of
 their member functions, including constructors and destructors,
 have both host and device versions.  They can be used freely
@@ -755,8 +768,8 @@ Geometry
 
 AMReX's :cpp:`Geometry` class is not a GPU safe class.  However, we often need
 to use geometric information such as cell size and physical coordinates
-in GPU kernels.  We can use the following member functions and pass
-the returned values to GPU kernels:
+in GPU kernels.  We can use the following member functions and obtain
+device-safe copies of the unsafe information and capture them to GPU kernels:
 
 .. highlight:: c++
 
@@ -768,11 +781,10 @@ the returned values to GPU kernels:
     GpuArray<Real,AMREX_SPACEDIM> CellSizeArray () const noexcept;
     GpuArray<Real,AMREX_SPACEDIM> InvCellSizeArray () const noexcept;
 
-Alternatively, we can copy the data into a GPU safe class that can be
-passed by value to GPU kernels. This class is called
-:cpp:`GeometryData`, which is created by calling
-:cpp:`Geometry::data()`.  The accessor functions of
-:cpp:`GeometryData` are identical to :cpp:`Geometry`.
+Alternatively, :cpp:`Geometry` data can be copied into a GPU safe class that
+can be passed by value to GPU kernels. This class is called :cpp:`GeometryData`,
+which is created by calling :cpp:`Geometry::data()`.  The accessor functions
+of :cpp:`GeometryData` are identical to :cpp:`Geometry`.
 
 .. _sec:gpu:classes:basefab:
 
@@ -836,8 +848,9 @@ be used to extend the life of the data.  For example,
 Without :cpp:`Elixir`, the code above will likely cause memory errors
 because the temporary :cpp:`FArrayBox` is deleted on cpu before the
 gpu kernels use its memory.  With :cpp:`Elixir`, the ownership of the
-memory is transferred to :cpp:`Elixir` that is guaranteed to be
-async-safe.
+memory is transferred to :cpp:`Elixir` and will prevent deconstruction
+of the :cpp:`FArrayBox` until the GPU kernels are completed, guaranteeing
+the temporary object is async-safe.
 
 .. _sec:gpu:launch:
 
