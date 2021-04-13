@@ -4,11 +4,27 @@
 
 #include <AMReX_Gpu.H>
 #include <AMReX_Arena.H>
+
+#if defined(AMREX_USE_CUDA) && defined(__CUDACC__) && (__CUDACC_VER_MAJOR__ >= 11)
+#  include <cub/cub.cuh>
+#elif defined(AMREX_USE_HIP)
+#  include <rocprim/rocprim.hpp>
+#endif
+
 #include <cstdint>
 #include <type_traits>
 
 namespace amrex {
 namespace Scan {
+
+struct RetSum {
+    bool flag = true;
+    explicit operator bool() const noexcept { return flag; }
+};
+static constexpr RetSum   retSum{true};
+static constexpr RetSum noRetSum{false};
+
+enum class Type { inclusive, exclusive };
 
 #if defined(AMREX_USE_GPU)
 
@@ -156,13 +172,11 @@ struct BlockStatus<T, false>
 
 }
 
-enum class Type { inclusive, exclusive };
-
 #if defined(AMREX_USE_DPCPP)
 
 template <typename T, typename N, typename FIN, typename FOUT,
-          typename M=amrex::EnableIf_t<std::is_integral<N>::value> >
-T PrefixSum (N n, FIN && fin, FOUT && fout, Type type)
+          typename M=std::enable_if_t<std::is_integral<N>::value> >
+T PrefixSum (N n, FIN && fin, FOUT && fout, Type type, RetSum a_ret_sum = retSum)
 {
     if (n <= 0) return 0;
     constexpr int nwarps_per_block = 8;
@@ -180,7 +194,7 @@ T PrefixSum (N n, FIN && fin, FOUT && fout, Type type)
     std::size_t nbytes_blockstatus = Arena::align(sizeof(BlockStatusT)*nblocks);
     std::size_t nbytes_blockid = Arena::align(sizeof(unsigned int));
     std::size_t nbytes_totalsum = Arena::align(sizeof(T));
-    auto dp = (char*)(The_Device_Arena()->alloc(  nbytes_blockstatus
+    auto dp = (char*)(The_Arena()->alloc(  nbytes_blockstatus
                                                 + nbytes_blockid
                                                 + nbytes_totalsum));
     BlockStatusT* AMREX_RESTRICT block_status_p = (BlockStatusT*)dp;
@@ -282,7 +296,7 @@ T PrefixSum (N n, FIN && fin, FOUT && fout, Type type)
             gh.item->barrier(sycl::access::fence_space::local_space);
 
             // shared[0:nwarps) holds the inclusive sum of warp sums.
-            
+
             // Also note x still holds the inclusive sum within the
             // warp.  Given these two, we can compute the inclusive
             // sum within this chunk.
@@ -375,11 +389,12 @@ T PrefixSum (N n, FIN && fin, FOUT && fout, Type type)
         }
     });
 
-    T totalsum;
-    Gpu::dtoh_memcpy_async(&totalsum, totalsum_p, sizeof(T));
+    T totalsum = 0;
+    if (a_ret_sum) {
+        Gpu::dtoh_memcpy_async(&totalsum, totalsum_p, sizeof(T));
+    }
     Gpu::streamSynchronize();
-
-    The_Device_Arena()->free(dp);
+    The_Arena()->free(dp);
 
     AMREX_GPU_ERROR_CHECK();
 
@@ -389,8 +404,8 @@ T PrefixSum (N n, FIN && fin, FOUT && fout, Type type)
 #else
 
 template <typename T, typename N, typename FIN, typename FOUT,
-          typename M=amrex::EnableIf_t<std::is_integral<N>::value> >
-T PrefixSum (N n, FIN && fin, FOUT && fout, Type type)
+          typename M=std::enable_if_t<std::is_integral<N>::value> >
+T PrefixSum (N n, FIN && fin, FOUT && fout, Type type, RetSum a_ret_sum = retSum)
 {
     if (n <= 0) return 0;
     constexpr int nwarps_per_block = 4;
@@ -408,7 +423,7 @@ T PrefixSum (N n, FIN && fin, FOUT && fout, Type type)
     std::size_t nbytes_blockstatus = Arena::align(sizeof(BlockStatusT)*nblocks);
     std::size_t nbytes_blockid = Arena::align(sizeof(unsigned int));
     std::size_t nbytes_totalsum = Arena::align(sizeof(T));
-    auto dp = (char*)(The_Device_Arena()->alloc(  nbytes_blockstatus
+    auto dp = (char*)(The_Arena()->alloc(  nbytes_blockstatus
                                                 + nbytes_blockid
                                                 + nbytes_totalsum));
     BlockStatusT* AMREX_RESTRICT block_status_p = (BlockStatusT*)dp;
@@ -523,7 +538,7 @@ T PrefixSum (N n, FIN && fin, FOUT && fout, Type type)
             __syncthreads();
 
             // shared[0:nwarps) holds the inclusive sum of warp sums.
-            
+
             // Also note x still holds the inclusive sum within the
             // warp.  Given these two, we can compute the inclusive
             // sum within this chunk.
@@ -614,11 +629,12 @@ T PrefixSum (N n, FIN && fin, FOUT && fout, Type type)
         }
     });
 
-    T totalsum;
-    Gpu::dtoh_memcpy_async(&totalsum, totalsum_p, sizeof(T));
+    T totalsum = 0;
+    if (a_ret_sum) {
+        Gpu::dtoh_memcpy_async(&totalsum, totalsum_p, sizeof(T));
+    }
     Gpu::streamSynchronize();
-
-    The_Device_Arena()->free(dp);
+    The_Arena()->free(dp);
 
     AMREX_GPU_ERROR_CHECK();
 
@@ -627,53 +643,141 @@ T PrefixSum (N n, FIN && fin, FOUT && fout, Type type)
 
 #endif
 
-// The return value is the total sum.
-template <typename N, typename T, typename M=amrex::EnableIf_t<std::is_integral<N>::value> >
-T InclusiveSum (N n, T const* in, T * out)
+// The return value is the total sum if a_ret_sum is true.
+template <typename N, typename T, typename M=std::enable_if_t<std::is_integral<N>::value> >
+T InclusiveSum (N n, T const* in, T * out, RetSum a_ret_sum = retSum)
 {
+#if defined(AMREX_USE_CUDA) && defined(__CUDACC__) && (__CUDACC_VER_MAJOR__ >= 11)
+    void* d_temp = nullptr;
+    std::size_t temp_bytes = 0;
+    AMREX_GPU_SAFE_CALL(cub::DeviceScan::InclusiveSum(d_temp, temp_bytes, in, out, n,
+                                                      Gpu::gpuStream()));
+    d_temp = The_Arena()->alloc(temp_bytes);
+    AMREX_GPU_SAFE_CALL(cub::DeviceScan::InclusiveSum(d_temp, temp_bytes, in, out, n,
+                                                      Gpu::gpuStream()));
+    T totalsum = 0;
+    if (a_ret_sum) {
+        Gpu::dtoh_memcpy_async(&totalsum, out+(n-1), sizeof(T));
+    }
+    Gpu::streamSynchronize();
+    The_Arena()->free(d_temp);
+    AMREX_GPU_ERROR_CHECK();
+    return totalsum;
+#elif defined(AMREX_USE_HIP)
+    void* d_temp = nullptr;
+    std::size_t temp_bytes = 0;
+    AMREX_GPU_SAFE_CALL(rocprim::inclusive_scan(d_temp, temp_bytes, in, out, n,
+                                                rocprim::plus<T>(), Gpu::gpuStream()));
+    d_temp = The_Arena()->alloc(temp_bytes);
+    AMREX_GPU_SAFE_CALL(rocprim::inclusive_scan(d_temp, temp_bytes, in, out, n,
+                                                rocprim::plus<T>(), Gpu::gpuStream()));
+    T totalsum = 0;
+    if (a_ret_sum) {
+        Gpu::dtoh_memcpy_async(&totalsum, out+(n-1), sizeof(T));
+    }
+    Gpu::streamSynchronize();
+    The_Arena()->free(d_temp);
+    AMREX_GPU_ERROR_CHECK();
+    return totalsum;
+#else
     if (static_cast<Long>(n) <= static_cast<Long>(std::numeric_limits<int>::max())) {
         return PrefixSum<T>(static_cast<int>(n),
                             [=] AMREX_GPU_DEVICE (N i) -> T { return in[i]; },
                             [=] AMREX_GPU_DEVICE (N i, T const& x) { out[i] = x; },
-                            Type::inclusive);
+                            Type::inclusive, a_ret_sum);
     } else {
         return PrefixSum<T>(n,
                             [=] AMREX_GPU_DEVICE (N i) -> T { return in[i]; },
                             [=] AMREX_GPU_DEVICE (N i, T const& x) { out[i] = x; },
-                            Type::inclusive);
+                            Type::inclusive, a_ret_sum);
     }
+#endif
 }
 
-// The return value is the total sum.
-template <typename N, typename T, typename M=amrex::EnableIf_t<std::is_integral<N>::value> >
-T ExclusiveSum (N n, T const* in, T * out)
+// The return value is the total sum if a_ret_sum is true.
+template <typename N, typename T, typename M=std::enable_if_t<std::is_integral<N>::value> >
+T ExclusiveSum (N n, T const* in, T * out, RetSum a_ret_sum = retSum)
 {
+#if defined(AMREX_USE_CUDA) && defined(__CUDACC__) && (__CUDACC_VER_MAJOR__ >= 11)
+    void* d_temp = nullptr;
+    std::size_t temp_bytes = 0;
+    AMREX_GPU_SAFE_CALL(cub::DeviceScan::ExclusiveSum(d_temp, temp_bytes, in, out, n,
+                                                      Gpu::gpuStream()));
+    d_temp = The_Arena()->alloc(temp_bytes);
+    AMREX_GPU_SAFE_CALL(cub::DeviceScan::ExclusiveSum(d_temp, temp_bytes, in, out, n,
+                                                      Gpu::gpuStream()));
+    T in_last = 0, out_last = 0;
+    if (a_ret_sum) {
+        Gpu::dtoh_memcpy_async(&in_last, in+(n-1), sizeof(T));
+        Gpu::dtoh_memcpy_async(&out_last, out+(n-1), sizeof(T));
+    }
+    Gpu::streamSynchronize();
+    The_Arena()->free(d_temp);
+    AMREX_GPU_ERROR_CHECK();
+    return in_last+out_last;
+#elif defined(AMREX_USE_HIP)
+    void* d_temp = nullptr;
+    std::size_t temp_bytes = 0;
+    AMREX_GPU_SAFE_CALL(rocprim::exclusive_scan(d_temp, temp_bytes, in, out, T{0}, n,
+                                                rocprim::plus<T>(), Gpu::gpuStream()));
+    d_temp = The_Arena()->alloc(temp_bytes);
+    AMREX_GPU_SAFE_CALL(rocprim::exclusive_scan(d_temp, temp_bytes, in, out, T{0}, n,
+                                                rocprim::plus<T>(), Gpu::gpuStream()));
+    T in_last = 0, out_last = 0;
+    if (a_ret_sum) {
+        Gpu::dtoh_memcpy_async(&in_last, in+(n-1), sizeof(T));
+        Gpu::dtoh_memcpy_async(&out_last, out+(n-1), sizeof(T));
+    }
+    Gpu::streamSynchronize();
+    The_Arena()->free(d_temp);
+    AMREX_GPU_ERROR_CHECK();
+    return in_last+out_last;
+#else
     if (static_cast<Long>(n) <= static_cast<Long>(std::numeric_limits<int>::max())) {
         return PrefixSum<T>(static_cast<int>(n),
-                 [=] AMREX_GPU_DEVICE (N i) -> T { return in[i]; },
-                 [=] AMREX_GPU_DEVICE (N i, T const& x) { out[i] = x; },
-                 Type::exclusive);
+                            [=] AMREX_GPU_DEVICE (N i) -> T { return in[i]; },
+                            [=] AMREX_GPU_DEVICE (N i, T const& x) { out[i] = x; },
+                            Type::exclusive, a_ret_sum);
     } else {
         return PrefixSum<T>(n,
                             [=] AMREX_GPU_DEVICE (N i) -> T { return in[i]; },
                             [=] AMREX_GPU_DEVICE (N i, T const& x) { out[i] = x; },
-                            Type::exclusive);
+                            Type::exclusive, a_ret_sum);
     }
+#endif
 }
 
 #else
+//  !defined(AMREX_USE_GPU)
+template <typename T, typename N, typename FIN, typename FOUT,
+          typename M=std::enable_if_t<std::is_integral<N>::value> >
+T PrefixSum (N n, FIN && fin, FOUT && fout, Type type)
+{
+    if (n <= 0) return 0;
+    T totalsum = 0;
+    for (N i = 0; i < n; ++i) {
+        T x = fin(i);
+        T y = totalsum;
+        totalsum += x;
+        if (type == Type::inclusive) {
+            y += x;
+        }
+        fout(i, y);
+    }
+    return totalsum;
+}
 
 // The return value is the total sum.
-template <typename N, typename T, typename M=amrex::EnableIf_t<std::is_integral<N>::value> >
-T InclusiveSum (N n, T const* in, T * out)
+template <typename N, typename T, typename M=std::enable_if_t<std::is_integral<N>::value> >
+T InclusiveSum (N n, T const* in, T * out, RetSum /*a_ret_sum*/ = retSum)
 {
     std::partial_sum(in, in+n, out);
     return (n > 0) ? out[n-1] : T(0);
 }
 
 // The return value is the total sum.
-template <typename N, typename T, typename M=amrex::EnableIf_t<std::is_integral<N>::value> >
-T ExclusiveSum (N n, T const* in, T * out)
+template <typename N, typename T, typename M=std::enable_if_t<std::is_integral<N>::value> >
+T ExclusiveSum (N n, T const* in, T * out, RetSum /*a_ret_sum*/ = retSum)
 {
     if (n > 0) {
         out[0] = 0;
@@ -695,7 +799,7 @@ namespace Gpu
     {
 #if defined(AMREX_USE_GPU)
         auto N = std::distance(begin, end);
-        Scan::InclusiveSum(N, &(*begin), &(*result));
+        Scan::InclusiveSum(N, &(*begin), &(*result), Scan::noRetSum);
         OutIter result_end = result;
         std::advance(result_end, N);
         return result_end;
@@ -709,16 +813,16 @@ namespace Gpu
     {
 #if defined(AMREX_USE_GPU)
         auto N = std::distance(begin, end);
-        Scan::ExclusiveSum(N, &(*begin), &(*result));
+        Scan::ExclusiveSum(N, &(*begin), &(*result), Scan::noRetSum);
         OutIter result_end = result;
         std::advance(result_end, N);
         return result_end;
 #else
         if (begin == end) return result;
-        
+
         typename std::iterator_traits<InIter>::value_type sum = *begin;
         *result++ = sum - *begin;
-        
+
         while (++begin != end) {
             sum = std::move(sum) + *begin;
             *result++ = sum - *begin;

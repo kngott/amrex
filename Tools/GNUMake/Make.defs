@@ -349,6 +349,12 @@ else
   GPU_ERROR_CROSS_EXECUTION_SPACE_CALL := TRUE
 endif
 
+ifdef AMREX_NO_PROBINIT
+  AMREX_NO_PROBINIT := $(strip $(AMREX_NO_PROBINIT))
+else
+  AMREX_NO_PROBINIT := FALSE
+endif
+
 ALLOW_DIFFERENT_COMP ?= TRUE
 SKIP_LINKING ?= FALSE
 USE_COMPILE_PIC ?= FALSE
@@ -800,6 +806,10 @@ ifneq ($(USE_ASSERTION),TRUE)
 endif
 endif
 
+ifeq ($(AMREX_NO_PROBINIT),TRUE)
+  DEFINES += -DAMREX_NO_PROBINIT
+endif
+
 CPPFLAGS	+= $(DEFINES)
 
 libraries	= $(XTRAOBJS) $(LIBRARIES) $(XTRALIBS)
@@ -822,7 +832,7 @@ objEXETempDir   = $(TmpBuildDir)/o/$(optionsSuffix).EXE
 f77EXETempDir	= $(TmpBuildDir)/f/$(optionsSuffix).EXE
 tmpEXETempDir	= $(TmpBuildDir)/t/$(optionsSuffix).EXE
 
-includes	= -I$(srcTempDir) -I. $(addprefix -I, $(INCLUDE_LOCATIONS))
+includes	= -I$(srcTempDir) -I. $(addprefix -I, $(INCLUDE_LOCATIONS)) $(addprefix -isystem , $(SYSTEM_INCLUDE_LOCATIONS))
 fincludes	= $(includes)
 fmoddir         = $(objEXETempDir)
 
@@ -973,7 +983,7 @@ else ifeq ($(USE_CUDA),TRUE)
 
     ifneq ($(MAKE_CUDA_PATH),)
         LIBRARY_LOCATIONS += $(MAKE_CUDA_PATH)/lib64
-        INCLUDE_LOCATIONS += $(MAKE_CUDA_PATH)/include
+        SYSTEM_INCLUDE_LOCATIONS += $(MAKE_CUDA_PATH)/include
 
         ifeq ($(PROFILE),TRUE)
             LIBRARIES += -lnvToolsExt
