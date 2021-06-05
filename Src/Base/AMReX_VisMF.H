@@ -336,6 +336,9 @@ private:
     static void AsyncWriteDoit (const FabArray<FArrayBox>& mf, const std::string& mf_name,
                                 bool is_rvalue, bool valid_cells_only);
 
+    static void NItemsPerBin (int totalItems, Vector<int> &binCounts);
+
+
     //! Name of the FabArray<FArrayBox>.
     std::string m_fafabname;
     //! The VisMF header as read from disk.

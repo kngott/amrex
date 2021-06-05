@@ -6,7 +6,7 @@
 #include <AMReX_BLProfiler.H>
 //#include <AMReX_BLFort.H>
 #include <AMReX_Utility.H>
-#include <AMReX_Random.H>
+//#include <AMReX_Random.H>
 #include <AMReX_Print.H>
 #include <AMReX_Arena.H>
 #include <AMReX_BLBackTrace.H>
@@ -209,7 +209,7 @@ amrex::Error_host (const char * msg)
     if (system::error_handler) {
         system::error_handler(msg);
     } else if (system::throw_exception) {
-        throw RuntimeError(msg);
+        throw std::runtime_error(msg);
     } else {
         write_lib_id("Error");
         write_to_stderr_without_buffering(msg);
@@ -234,7 +234,7 @@ amrex::Abort_host (const char * msg)
     if (system::error_handler) {
         system::error_handler(msg);
     } else if (system::throw_exception) {
-        throw RuntimeError(msg);
+        throw std::runtime_error(msg);
     } else {
        write_lib_id("Abort");
        write_to_stderr_without_buffering(msg);
@@ -272,7 +272,7 @@ amrex::Assert_host (const char* EX, const char* file, int line, const char* msg)
     if (system::error_handler) {
         system::error_handler(buf);
     } else if (system::throw_exception) {
-        throw RuntimeError(buf);
+        throw std::runtime_error(buf);
     } else {
        write_to_stderr_without_buffering(buf);
 #ifdef AMREX_USE_OMP
@@ -493,7 +493,7 @@ amrex::Initialize (int& argc, char**& argv, bool build_parm_parse,
     //
     // Initialize random seed after we're running in parallel.
     //
-    amrex::InitRandom(ParallelDescriptor::MyProc()+1, ParallelDescriptor::NProcs());
+//    amrex::InitRandom(ParallelDescriptor::MyProc()+1, ParallelDescriptor::NProcs());
 
     // For thread safety, we should do these initializations here.
     BaseFab_Initialize();
@@ -586,7 +586,7 @@ amrex::Finalize (amrex::AMReX* pamrex)
     BL_PROFILE_FINALIZE();
 
 #ifdef AMREX_USE_CUDA
-    amrex::DeallocateRandomSeedDevArray();
+//    amrex::DeallocateRandomSeedDevArray();
 #endif
 
 #ifdef BL_LAZY

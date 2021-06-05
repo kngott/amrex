@@ -1132,6 +1132,21 @@ VisMF::Write (const FabArray<FArrayBox>&    mf,
     return bytesWritten;
 }
 
+void
+VisMF::NItemsPerBin (int totalItems, Vector<int> &binCounts)
+{
+  if(binCounts.size() == 0) {
+    return;
+  }
+  int countForAll(totalItems / binCounts.size());
+  int remainder(totalItems % binCounts.size());
+  for(int i(0); i < binCounts.size(); ++i) {
+    binCounts[i] = countForAll;
+  }
+  for(int i(0); i < remainder; ++i) {
+    ++binCounts[i];
+  }
+}
 
 Long
 VisMF::WriteOnlyHeader (const FabArray<FArrayBox> & mf,
@@ -1605,7 +1620,7 @@ VisMF::Read (FabArray<FArrayBox> &mf,
     Vector<int> ranksFileOrder(mf.DistributionMap().size(), -1);
 
     Vector<int> nRanksPerFile(FileReadChains.size());
-    amrex::NItemsPerBin(nProcs, nRanksPerFile);
+    NItemsPerBin(nProcs, nRanksPerFile);
     int currentFileIndex(0);
 
     for(frcIter = FileReadChains.begin(); frcIter != FileReadChains.end(); ++frcIter) {
@@ -1616,7 +1631,7 @@ VisMF::Read (FabArray<FArrayBox> &mf,
                                               { return a.fileOffset < b.fileOffset; } );
 
       Vector<int> nBoxesPerRank(nRanksPerFile[currentFileIndex]);
-      amrex::NItemsPerBin(frc.size(), nBoxesPerRank);
+      NItemsPerBin(frc.size(), nBoxesPerRank);
       int frcIndex(0);
 
       for(int nbpr(0); nbpr < nBoxesPerRank.size(); ++nbpr) {

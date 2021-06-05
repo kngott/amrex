@@ -11,7 +11,7 @@
 #include <AMReX_BoxArray.H>
 #include <AMReX_DistributionMapping.H>
 #include <AMReX_ParallelDescriptor.H>
-#include <AMReX_Random.H>
+//#include <AMReX_Random.H>
 #include <AMReX_GpuQualifiers.H>
 #include <AMReX_FileSystem.H>
 

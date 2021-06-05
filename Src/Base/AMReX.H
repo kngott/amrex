@@ -7,7 +7,7 @@
 #include <AMReX_GpuPrint.H>
 #include <AMReX_GpuAssert.H>
 #include <AMReX_ccse-mpi.H>
-#include <AMReX_Exception.H>
+//#include <AMReX_Exception.H>
 #include <AMReX_Extension.H>
 
 #include <functional>

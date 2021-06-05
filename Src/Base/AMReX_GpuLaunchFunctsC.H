@@ -579,40 +579,6 @@ void HostDeviceFor (Gpu::KernelInfo const&,
         box3,ncomp3,std::forward<L3>(f3));
 }
 
-template <typename T, typename L, typename M=std::enable_if_t<std::is_integral<T>::value> >
-void ParallelForRNG (T n, L&& f) noexcept
-{
-    for (T i = 0; i < n; ++i) {
-        f(i,RandomEngine{});
-    }
-}
-
-template <typename L>
-void ParallelForRNG (Box const& box, L&& f) noexcept
-{
-    const auto lo = amrex::lbound(box);
-    const auto hi = amrex::ubound(box);
-    for (int k = lo.z; k <= hi.z; ++k) {
-    for (int j = lo.y; j <= hi.y; ++j) {
-    for (int i = lo.x; i <= hi.x; ++i) {
-        f(i,j,k,RandomEngine{});
-    }}}
-}
-
-template <typename T, typename L, typename M=std::enable_if_t<std::is_integral<T>::value> >
-void ParallelForRNG (Box const& box, T ncomp, L&& f) noexcept
-{
-    const auto lo = amrex::lbound(box);
-    const auto hi = amrex::ubound(box);
-    for (T n = 0; n < ncomp; ++n) {
-        for (int k = lo.z; k <= hi.z; ++k) {
-        for (int j = lo.y; j <= hi.y; ++j) {
-        for (int i = lo.x; i <= hi.x; ++i) {
-            f(i,j,k,n,RandomEngine{});
-        }}}
-    }
-}
-
 template <typename L>
 void single_task (L&& f) noexcept
 {

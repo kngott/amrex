@@ -19,7 +19,7 @@
 #include <AMReX_BLassert.H>
 #include <AMReX_TypeTraits.H>
 #include <AMReX_GpuLaunchGlobal.H>
-#include <AMReX_RandomEngine.H>
+//#include <AMReX_RandomEngine.H>
 #include <AMReX_Algorithm.H>
 #include <cstddef>
 #include <limits>
