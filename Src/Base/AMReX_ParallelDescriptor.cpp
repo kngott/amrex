@@ -2,7 +2,11 @@
 #include <AMReX.H>
 #include <AMReX_Utility.H>
 #include <AMReX_BLProfiler.H>
+
+#ifndef BL_NO_FORT
 #include <AMReX_BLFort.H>
+#endif
+
 #include <AMReX_ParallelDescriptor.H>
 #include <AMReX_Print.H>
 #include <AMReX_TypeTraits.H>

@@ -1,4 +1,7 @@
+#ifndef BL_NO_FORT
 #include <AMReX_BLFort.H>
+#endif
+
 #include <AMReX_REAL.H>
 #include <AMReX.H>
 #include <AMReX_Utility.H>

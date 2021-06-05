@@ -1,4 +1,8 @@
+#ifndef BL_NO_FORT
+
 #include <AMReX_BLFort.H>
+
+#endif
 
 #ifdef BL_PROFILING
 

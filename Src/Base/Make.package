@@ -10,15 +10,11 @@ C$(AMREX_BASE)_headers += AMReX.H AMReX_Exception.H
 C$(AMREX_BASE)_sources += AMReX.cpp #AMReX_error_fi.cpp
 
 C$(AMREX_BASE)_headers += AMReX_Extension.H
-
 C$(AMREX_BASE)_headers += AMReX_GpuComplex.H
-
 C$(AMREX_BASE)_headers += AMReX_PODVector.H
 
-#C$(AMREX_BASE)_headers += AMReX_BlockMutex.H
-#C$(AMREX_BASE)_sources += AMReX_BlockMutex.cpp
 
-C$(AMREX_BASE)_sources += AMReX_ParmParse.cpp AMReX_parmparse_fi.cpp AMReX_Utility.cpp
+C$(AMREX_BASE)_sources += AMReX_ParmParse.cpp AMReX_Utility.cpp
 C$(AMREX_BASE)_headers += AMReX_ParmParse.H AMReX_Utility.H AMReX_BLassert.H AMReX_ArrayLim.H
 C$(AMREX_BASE)_headers += AMReX_Functional.H AMReX_Reduce.H AMReX_Scan.H AMReX_Partition.H
 
@@ -54,15 +50,10 @@ C$(AMREX_BASE)_headers += AMReX_BLProfiler.H
 
 C$(AMREX_BASE)_headers += AMReX_BLBackTrace.H
 
-C$(AMREX_BASE)_headers += AMReX_BLFort.H
-
 C$(AMREX_BASE)_sources += AMReX_NFiles.cpp
 C$(AMREX_BASE)_headers += AMReX_NFiles.H
 
 C$(AMREX_BASE)_headers += AMReX_Morton.H
-
-C$(AMREX_BASE)_headers += AMReX_parstream.H
-C$(AMREX_BASE)_sources += AMReX_parstream.cpp
 
 C$(AMREX_BASE)_headers += AMReX_Gpu.H AMReX_GpuQualifiers.H AMReX_GpuPrint.H AMReX_GpuAssert.H AMReX_GpuTypes.H AMReX_GpuError.H
 C$(AMREX_BASE)_headers += AMReX_GpuKernelInfo.H
@@ -102,8 +93,8 @@ C$(AMREX_BASE)_headers += AMReX_MFParallelForG.H
 #
 # I/O stuff.
 #
-C${AMREX_BASE}_headers += AMReX_FabConv.H AMReX_FPC.H AMReX_Print.H AMReX_IntConv.H AMReX_VectorIO.H
-C${AMREX_BASE}_sources += AMReX_FabConv.cpp AMReX_FPC.cpp AMReX_IntConv.cpp AMReX_VectorIO.cpp
+C${AMREX_BASE}_headers += AMReX_FabConv.H AMReX_FPC.H AMReX_Print.H #AMReX_IntConv.H #AMReX_VectorIO.H
+C${AMREX_BASE}_sources += AMReX_FabConv.cpp AMReX_FPC.cpp #AMReX_IntConv.cpp AMReX_VectorIO.cpp
 
 #
 # Index space.
@@ -167,18 +158,6 @@ C$(AMREX_BASE)_sources += AMReX_MultiFabUtil.cpp
 C$(AMREX_BASE)_headers += AMReX_MultiFabUtilI.H
 
 #
-# Boundary-related 
-#
-#C$(AMREX_BASE)_sources += AMReX_BCRec.cpp
-#C$(AMREX_BASE)_headers += AMReX_BCRec.H AMReX_BC_TYPES.H
-#C$(AMREX_BASE)_sources += AMReX_PhysBCFunct.cpp AMReX_BCUtil.cpp
-#C$(AMREX_BASE)_headers += AMReX_PhysBCFunct.H AMReX_BCUtil.H
-#C$(AMREX_BASE)_sources += AMReX_FilCC_C.cpp
-#C$(AMREX_BASE)_headers += AMReX_FilCC_C.H AMReX_FilCC_$(DIM)D_C.H
-#C$(AMREX_BASE)_sources += AMReX_FilND_C.cpp
-#C$(AMREX_BASE)_headers += AMReX_FilND_C.H
-
-#
 # Non-Local BC
 #
 C$(AMREX_BASE)_headers += AMReX_NonLocalBC.H AMReX_NonLocalBCImpl.H
@@ -195,39 +174,9 @@ C$(AMREX_BASE)_headers += AMReX_PlotFileUtil.H AMReX_PlotFileDataImpl.H
 #
 C$(AMREX_BASE)_headers += AMReX_BaseUmap.H
 
-#
-# Fortran interface routines.
-#
-ifneq ($(BL_NO_FORT),TRUE)
-  F90$(AMREX_BASE)_sources += AMReX_FILCC_${DIM}D.F90
-  F90$(AMREX_BASE)_headers += AMReX_filcc_f.H
-
-  F90$(AMREX_BASE)_sources += AMReX_BLutil_F.F90
-  F90$(AMREX_BASE)_sources += AMReX_BLProfiler_F.F90
-
-  f90$(AMREX_BASE)_sources +=  AMReX_constants_mod.f90
-
-  F90$(AMREX_BASE)_sources += AMReX_filcc_mod.F90
-
-  F90$(AMREX_BASE)_sources += AMReX_omp_mod.F90 AMReX_acc_mod.F90
-  F90$(AMREX_BASE)_sources += AMReX_fort_mod.F90 AMReX_error_mod.F90
-  F90$(AMREX_BASE)_sources += AMReX_parmparse_mod.F90 AMReX_string_mod.F90
-
-  F90$(AMREX_BASE)_sources += AMReX_bc_types_mod.F90
-  F90$(AMREX_BASE)_sources += AMReX_io_mod.F90
-
-  F90$(AMREX_BASE)_sources += AMReX_ParallelDescriptor_F.F90
-
-endif
-
 C$(AMREX_BASE)_sources += AMReX_BLProfiler.cpp
 C$(AMREX_BASE)_sources += AMReX_BLBackTrace.cpp
-C$(AMREX_BASE)_headers += AMReX_ThirdPartyProfiling.H
-
-ifeq ($(LAZY),TRUE)
-  C$(AMREX_BASE)_sources += AMReX_Lazy.cpp
-  C$(AMREX_BASE)_headers += AMReX_Lazy.H
-endif
+#C$(AMREX_BASE)_headers += AMReX_ThirdPartyProfiling.H
 
 # Memory pool
 C$(AMREX_BASE)_headers += AMReX_MemPool.H
@@ -236,27 +185,11 @@ ifneq ($(BL_NO_FORT),TRUE)
   F90$(AMREX_BASE)_sources += AMReX_mempool_mod.F90
 endif
 
-# Memory Profiler
-ifeq ($(MEM_PROFILE),TRUE)
-  C$(AMREX_BASE)_sources += AMReX_MemProfiler.cpp
-  C$(AMREX_BASE)_headers += AMReX_MemProfiler.H
-endif
-
 # Basic Profiler
 ifeq ($(TINY_PROFILE),TRUE)
   C$(AMREX_BASE)_headers += AMReX_TinyProfiler.H
   C$(AMREX_BASE)_sources += AMReX_TinyProfiler.cpp
 endif
-
-# CUPTI Trace
-ifeq ($(USE_CUPTI),TRUE)
-  C$(AMREX_BASE)_headers += AMReX_CuptiTrace.H
-  C$(AMREX_BASE)_sources += AMReX_CuptiTrace.cpp
-endif
-
-# Machine model
-CEXE_headers += AMReX_Machine.H
-CEXE_sources += AMReX_Machine.cpp
 
 VPATH_LOCATIONS += $(AMREX_HOME)/Src/Base
 INCLUDE_LOCATIONS += $(AMREX_HOME)/Src/Base

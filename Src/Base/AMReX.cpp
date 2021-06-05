@@ -4,7 +4,7 @@
 #include <AMReX_BaseFab.H>
 #include <AMReX_Box.H>
 #include <AMReX_BLProfiler.H>
-#include <AMReX_BLFort.H>
+//#include <AMReX_BLFort.H>
 #include <AMReX_Utility.H>
 #include <AMReX_Random.H>
 #include <AMReX_Print.H>
@@ -29,7 +29,7 @@
 #include <AMReX_CuptiTrace.H>
 #endif
 
-#include <AMReX_Machine.H>
+//#include <AMReX_Machine.H>
 
 #ifdef AMREX_USE_EB
 #include <AMReX_EB2.H>
@@ -514,7 +514,7 @@ amrex::Initialize (int& argc, char**& argv, bool build_parm_parse,
     BL_PROFILE_INITPARAMS();
 #endif // ifndef BL_AMRPROF
 
-    machine::Initialize();
+//    machine::Initialize();
 
 #ifdef AMREX_USE_GPU
     Gpu::Fuser::Initialize();
