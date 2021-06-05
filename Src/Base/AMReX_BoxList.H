@@ -53,7 +53,7 @@ class BoxList
 {
 public:
 
-    friend class BoxDomain;
+//    friend class BoxDomain;
 
     typedef Vector<Box>::iterator       iterator;
     typedef Vector<Box>::const_iterator const_iterator;

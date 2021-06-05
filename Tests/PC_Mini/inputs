@@ -1,0 +1,5 @@
+ncell = 64 
+ncomp = 1
+nghost = 2
+
+amrex.v = 1
