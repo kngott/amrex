@@ -1,8 +1,7 @@
 #include <AMReX_BLBackTrace.H>
 #include <AMReX_ParallelDescriptor.H>
 #include <AMReX_Print.H>
-#include <AMReX_VisMF.H>
-#include <AMReX_AsyncOut.H>
+//#include <AMReX_VisMF.H>
 #include <AMReX.H>
 #include <AMReX_Utility.H>
 
@@ -45,8 +44,6 @@ BLBackTrace::handler(int s)
 {
 
     signal(s, SIG_DFL);
-
-    AsyncOut::Finalize();
 
     switch (s) {
     case SIGSEGV:

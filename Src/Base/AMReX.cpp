@@ -40,7 +40,7 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_iMultiFab.H>
 #include <AMReX_VisMF.H>
-#include <AMReX_AsyncOut.H>
+//#include <AMReX_AsyncOut.H>
 #endif
 
 #ifdef BL_LAZY
@@ -505,7 +505,7 @@ amrex::Initialize (int& argc, char**& argv, bool build_parm_parse,
     MultiFab::Initialize();
     iMultiFab::Initialize();
     VisMF::Initialize();
-    AsyncOut::Initialize();
+//    AsyncOut::Initialize();
 
 #ifdef AMREX_USE_EB
     EB2::Initialize();

@@ -8,7 +8,6 @@
 #include <AMReX_FabArray.H>
 #include <AMReX_FArrayBox.H>
 #include <AMReX_FabConv.H>
-#include <AMReX_AsyncOut.H>
 
 #include <cstdint>
 #include <iosfwd>
@@ -189,12 +188,6 @@ public:
                        const std::string& name,
                        VisMF::How         how = NFiles,
                        bool               set_ghost = false);
-
-    static void AsyncWrite (const FabArray<FArrayBox>& mf, const std::string& mf_name,
-                            bool valid_cells_only = false);
-    static void AsyncWrite (FabArray<FArrayBox>&& mf, const std::string& mf_name,
-                            bool valid_cells_only = false);
-
     /**
     * \brief Write only the header-file corresponding to FabArray<FArrayBox> to
     * disk without the corresponding FAB data. This writes BoxArray information
@@ -332,9 +325,6 @@ private:
     static std::string DirName (const std::string& filename);
 
     static std::string BaseName (const std::string& filename);
-
-    static void AsyncWriteDoit (const FabArray<FArrayBox>& mf, const std::string& mf_name,
-                                bool is_rvalue, bool valid_cells_only);
 
     static void NItemsPerBin (int totalItems, Vector<int> &binCounts);
 

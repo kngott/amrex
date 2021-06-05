@@ -35,12 +35,6 @@ C$(AMREX_BASE)_sources += AMReX_ParallelContext.cpp
 C$(AMREX_BASE)_sources += AMReX_VisMF.cpp AMReX_Arena.cpp AMReX_BArena.cpp AMReX_CArena.cpp AMReX_DArena.cpp AMReX_EArena.cpp AMReX_PArena.cpp
 C$(AMREX_BASE)_headers += AMReX_VisMF.H AMReX_Arena.H AMReX_BArena.H AMReX_CArena.H AMReX_DArena.H AMReX_EArena.H AMReX_PArena.H
 
-C$(AMREX_BASE)_sources += AMReX_AsyncOut.cpp
-C$(AMREX_BASE)_headers += AMReX_AsyncOut.H
-
-C$(AMREX_BASE)_sources += AMReX_BackgroundThread.cpp
-C$(AMREX_BASE)_headers += AMReX_BackgroundThread.H
-
 C$(AMREX_BASE)_headers += AMReX_BLProfiler.H
 
 C$(AMREX_BASE)_headers += AMReX_BLBackTrace.H
@@ -147,12 +141,6 @@ C$(AMREX_BASE)_headers += AMReX_LayoutData.H
 #
 C$(AMREX_BASE)_sources += AMReX_CoordSys.cpp AMReX_Geometry.cpp
 C$(AMREX_BASE)_headers += AMReX_CoordSys.H AMReX_Geometry.H AMReX_COORDSYS_C.H AMReX_COORDSYS_$(DIM)D_C.H
-
-#
-# Plotfile
-#
-C$(AMREX_BASE)_sources += AMReX_PlotFileUtil.cpp AMReX_PlotFileDataImpl.cpp
-C$(AMREX_BASE)_headers += AMReX_PlotFileUtil.H AMReX_PlotFileDataImpl.H
 
 #
 # Misc
