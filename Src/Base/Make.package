@@ -149,12 +149,6 @@ C$(AMREX_BASE)_sources += AMReX_CoordSys.cpp AMReX_Geometry.cpp
 C$(AMREX_BASE)_headers += AMReX_CoordSys.H AMReX_Geometry.H AMReX_COORDSYS_C.H AMReX_COORDSYS_$(DIM)D_C.H
 
 #
-# Non-Local BC
-#
-C$(AMREX_BASE)_headers += AMReX_NonLocalBC.H AMReX_NonLocalBCImpl.H
-C$(AMREX_BASE)_sources += AMReX_NonLocalBC.cpp
-
-#
 # Plotfile
 #
 C$(AMREX_BASE)_sources += AMReX_PlotFileUtil.cpp AMReX_PlotFileDataImpl.cpp
@@ -163,8 +157,6 @@ C$(AMREX_BASE)_headers += AMReX_PlotFileUtil.H AMReX_PlotFileDataImpl.H
 #
 # Misc
 #
-C$(AMREX_BASE)_headers += AMReX_BaseUmap.H
-
 C$(AMREX_BASE)_sources += AMReX_BLProfiler.cpp
 C$(AMREX_BASE)_sources += AMReX_BLBackTrace.cpp
 #C$(AMREX_BASE)_headers += AMReX_ThirdPartyProfiling.H
