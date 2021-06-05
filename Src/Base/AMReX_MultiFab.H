@@ -18,7 +18,7 @@
 namespace amrex
 {
 
-class iMultiFab;
+//class iMultiFab;
 
 /**
  * \brief
@@ -165,12 +165,12 @@ public:
     Real norminf (int comp = 0, int nghost = 0, bool local = false, bool ignore_covered = false ) const {
         return norm0(comp,nghost,local,ignore_covered);
     }
-
+/*
     Real norm0 (const iMultiFab& mask, int comp = 0, int nghost = 0, bool local = false) const;
     Real norminf (const iMultiFab& mask, int comp = 0, int nghost = 0, bool local = false) const {
         return norm0(mask,comp,nghost,local);
     }
-
+*/
     /**
     * \brief Returns the maximum *absolute* values contained in
     * each component of "comps" of the MultiFab.  No ghost cells are used.
@@ -429,11 +429,12 @@ public:
     */
     static Real Dot (const MultiFab& x, int xcomp,
                      int num_comp, int nghost, bool local = false);
-
+/*
     static Real Dot (const iMultiFab& mask,
                      const MultiFab& x, int xcomp,
                      const MultiFab& y, int ycomp,
                      int num_comp, int nghost, bool local = false);
+*/
     /**
     * \brief Add src to dst including nghost ghost cells.
     * The two MultiFabs MUST have the same underlying BoxArray.
@@ -670,15 +671,15 @@ public:
      */
     std::unique_ptr<MultiFab> OverlapMask (const Periodicity& period = Periodicity::NonPeriodic()) const;
     //! Owner is the grid with the lowest grid number containing the data.
-    std::unique_ptr<iMultiFab> OwnerMask (const Periodicity& period = Periodicity::NonPeriodic()) const;
+//    std::unique_ptr<iMultiFab> OwnerMask (const Periodicity& period = Periodicity::NonPeriodic()) const;
 
     //! Sync up nodal data via averaging
     void AverageSync (const Periodicity& period = Periodicity::NonPeriodic());
     //! Sync up nodal data with weights
     void WeightedSync (const MultiFab& wgt, const Periodicity& period = Periodicity::NonPeriodic());
     //! Sync up nodal data with owners overriding non-owners
-    void OverrideSync (const Periodicity& period = Periodicity::NonPeriodic());
-    void OverrideSync (const iMultiFab& msk, const Periodicity& period = Periodicity::NonPeriodic());
+//    void OverrideSync (const Periodicity& period = Periodicity::NonPeriodic());
+//    void OverrideSync (const iMultiFab& msk, const Periodicity& period = Periodicity::NonPeriodic());
 
     static void Initialize ();
     static void Finalize ();

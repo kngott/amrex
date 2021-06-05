@@ -111,9 +111,6 @@ C$(AMREX_BASE)_headers += AMReX_BoxList.H AMReX_BoxArray.H AMReX_BoxDomain.H
 C$(AMREX_BASE)_sources += AMReX_FArrayBox.cpp
 C$(AMREX_BASE)_headers += AMReX_FArrayBox.H
 
-C$(AMREX_BASE)_sources += AMReX_IArrayBox.cpp
-C$(AMREX_BASE)_headers += AMReX_IArrayBox.H
-
 C$(AMREX_BASE)_headers += AMReX_MakeType.H
 C$(AMREX_BASE)_headers += AMReX_TypeTraits.H
 
@@ -127,9 +124,6 @@ C$(AMREX_BASE)_headers += AMReX_FabFactory.H
 #
 C$(AMREX_BASE)_sources += AMReX_MultiFab.cpp
 C$(AMREX_BASE)_headers += AMReX_MultiFab.H
-
-C$(AMREX_BASE)_sources += AMReX_iMultiFab.cpp
-C$(AMREX_BASE)_headers += AMReX_iMultiFab.H
 
 C$(AMREX_BASE)_sources += AMReX_FabArrayBase.cpp AMReX_MFIter.cpp
 C$(AMREX_BASE)_headers += AMReX_FabArray.H

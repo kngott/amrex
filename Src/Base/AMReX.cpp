@@ -38,7 +38,7 @@
 #ifndef BL_AMRPROF
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
-#include <AMReX_iMultiFab.H>
+//#include <AMReX_iMultiFab.H>
 #include <AMReX_VisMF.H>
 //#include <AMReX_AsyncOut.H>
 #endif
@@ -500,10 +500,10 @@ amrex::Initialize (int& argc, char**& argv, bool build_parm_parse,
     BoxArray::Initialize();
     DistributionMapping::Initialize();
     FArrayBox::Initialize();
-    IArrayBox::Initialize();
+//    IArrayBox::Initialize();
     FabArrayBase::Initialize();
     MultiFab::Initialize();
-    iMultiFab::Initialize();
+//    iMultiFab::Initialize();
     VisMF::Initialize();
 //    AsyncOut::Initialize();
 

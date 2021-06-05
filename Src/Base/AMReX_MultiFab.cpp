@@ -3,7 +3,7 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_ParallelDescriptor.H>
 #include <AMReX_BLProfiler.H>
-#include <AMReX_iMultiFab.H>
+//#include <AMReX_iMultiFab.H>
 #include <AMReX_FabArrayUtility.H>
 
 #ifdef AMREX_MEM_PROFILING
@@ -101,7 +101,7 @@ MultiFab::Dot (const MultiFab& x, int xcomp, int numcomp, int nghost, bool local
     return sm;
 }
 
-
+/*
 Real
 MultiFab::Dot (const iMultiFab& mask,
                const MultiFab& x, int xcomp,
@@ -134,7 +134,7 @@ MultiFab::Dot (const iMultiFab& mask,
 
     return sm;
 }
-
+*/
 void
 MultiFab::Add (MultiFab& dst, const MultiFab& src,
                int srccomp, int dstcomp, int numcomp, int nghost)
@@ -878,7 +878,7 @@ MultiFab::maxIndex (int comp, int nghost) const
     Real mx = this->max(comp, nghost, true);
     return indexFromValue(*this, comp, nghost, mx, MPI_MAXLOC);
 }
-
+/*
 Real
 MultiFab::norm0 (const iMultiFab& mask, int comp, int nghost, bool local) const
 {
@@ -898,7 +898,7 @@ MultiFab::norm0 (const iMultiFab& mask, int comp, int nghost, bool local) const
 
     return nm0;
 }
-
+*/
 Real
 MultiFab::norm0 (int comp, int nghost, bool local, bool ignore_covered ) const
 {
@@ -1310,13 +1310,13 @@ MultiFab::OverlapMask (const Periodicity& period) const
 
     return p;
 }
-
+/*
 std::unique_ptr<iMultiFab>
 MultiFab::OwnerMask (const Periodicity& period) const
 {
     return amrex::OwnerMask(*this, period);
 }
-
+*/
 void
 MultiFab::AverageSync (const Periodicity& period)
 {
@@ -1347,7 +1347,7 @@ MultiFab::WeightedSync (const MultiFab& wgt, const Periodicity& period)
 
     MultiFab::Copy(*this, tmpmf, 0, 0, ncomp, 0);
 }
-
+/*
 void
 MultiFab::OverrideSync (const Periodicity& period)
 {
@@ -1361,5 +1361,5 @@ MultiFab::OverrideSync (const iMultiFab& msk, const Periodicity& period)
 {
     amrex::OverrideSync(*this, msk, period);
 }
-
+*/
 }
