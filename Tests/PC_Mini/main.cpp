@@ -17,10 +17,10 @@ Real MFdiff(const amrex::MultiFab& lhs, const amrex::MultiFab& rhs,
     amrex::MultiFab temp(rhs.boxArray(), rhs.DistributionMap(), rhs.nComp(), nghost);
     temp.ParallelCopy(lhs);
     temp.minus(rhs, strt_comp, num_comp, nghost);
-
+/*
     if (name != "")
         { amrex::VisMF::Write(temp, std::string("pltfiles/" + name)); }
-
+*/
     Real max_diff = 0;
     for (int i=0; i<num_comp; ++i)
     {
@@ -98,12 +98,12 @@ void main_main ()
 
         mf_dst.define(ba, dm_dst, ncomp, ghosts);
         mf_dst.setVal(val++);
-
+/*
         amrex::UtilCreateDirectoryDestructive("./pltfiles");
 
         amrex::VisMF::Write(mf_src, std::string("pltfiles/src_B"));
         amrex::VisMF::Write(mf_dst, std::string("pltfiles/dst_B"));
-
+*/
         amrex::Print() << "dm = " << dm_src << std::endl;
         amrex::Vector<int> count(nboxes, 0);
         for (int& p: dst_map)
@@ -126,11 +126,11 @@ void main_main ()
                      ghosts, ghosts, amrex::Periodicity::NonPeriodic(),
                      COPY, c_pattern);
     }
-*/
+
     amrex::VisMF::Write(mf_src, std::string("pltfiles/src_after"));
     amrex::VisMF::Write(mf_dst, std::string("pltfiles/dst_after"));
+*/
 
     amrex::Print() << "Error in old PC: " 
                    << MFdiff(mf_src, mf_dst, 0, ncomp, nghost) << std::endl;
-
 }
