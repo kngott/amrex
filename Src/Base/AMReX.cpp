@@ -11,7 +11,7 @@
 #include <AMReX_Arena.H>
 #include <AMReX_BLBackTrace.H>
 #include <AMReX_MemPool.H>
-#include <AMReX_Geometry.H>
+//#include <AMReX_Geometry.H>
 #include <AMReX_Gpu.H>
 
 #ifdef AMREX_USE_HYPRE
@@ -733,13 +733,13 @@ namespace amrex
 {
 
 AMReX::AMReX ()
-    : m_geom(new Geometry())
+//   : m_geom(new Geometry())
 {
 }
 
 AMReX::~AMReX ()
 {
-    delete m_geom;
+//    delete m_geom;
 }
 
 void

@@ -2,7 +2,7 @@
 #include <AMReX_FabArrayBase.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_Utility.H>
-#include <AMReX_Geometry.H>
+//#include <AMReX_Geometry.H>
 #include <AMReX_FArrayBox.H>
 //#include <AMReX_NonLocalBC.H>
 
@@ -64,8 +64,8 @@ IntVect FabArrayBase::mfghostiter_tile_size(AMREX_D_DECL(1024000, 8, 8));
 FabArrayBase::TACache              FabArrayBase::m_TheTileArrayCache;
 FabArrayBase::FBCache              FabArrayBase::m_TheFBCache;
 FabArrayBase::CPCache              FabArrayBase::m_TheCPCache;
-FabArrayBase::FPinfoCache          FabArrayBase::m_TheFillPatchCache;
-FabArrayBase::CFinfoCache          FabArrayBase::m_TheCrseFineCache;
+//FabArrayBase::FPinfoCache          FabArrayBase::m_TheFillPatchCache;
+//FabArrayBase::CFinfoCache          FabArrayBase::m_TheCrseFineCache;
 
 #ifdef AMREX_USE_GPU
 std::multimap<FabArrayBase::BDKey,FabArrayBase::ParForInfo*> FabArrayBase::m_TheParForCache;
@@ -74,8 +74,8 @@ std::multimap<FabArrayBase::BDKey,FabArrayBase::ParForInfo*> FabArrayBase::m_The
 FabArrayBase::CacheStats           FabArrayBase::m_TAC_stats("TileArrayCache");
 FabArrayBase::CacheStats           FabArrayBase::m_FBC_stats("FBCache");
 FabArrayBase::CacheStats           FabArrayBase::m_CPC_stats("CopyCache");
-FabArrayBase::CacheStats           FabArrayBase::m_FPinfo_stats("FillPatchCache");
-FabArrayBase::CacheStats           FabArrayBase::m_CFinfo_stats("CrseFineCache");
+//FabArrayBase::CacheStats           FabArrayBase::m_FPinfo_stats("FillPatchCache");
+//FabArrayBase::CacheStats           FabArrayBase::m_CFinfo_stats("CrseFineCache");
 
 std::map<FabArrayBase::BDKey, int> FabArrayBase::m_BD_count;
 
@@ -151,6 +151,7 @@ FabArrayBase::Initialize ()
                      ([] () -> MemProfiler::MemInfo {
                          return {m_CPC_stats.bytes, m_CPC_stats.bytes_hwm};
                      }));
+/*
     MemProfiler::add(m_FPinfo_stats.name, std::function<MemProfiler::MemInfo()>
                      ([] () -> MemProfiler::MemInfo {
                          return {m_FPinfo_stats.bytes, m_FPinfo_stats.bytes_hwm};
@@ -159,6 +160,7 @@ FabArrayBase::Initialize ()
                      ([] () -> MemProfiler::MemInfo {
                          return {m_CFinfo_stats.bytes, m_CFinfo_stats.bytes_hwm};
                      }));
+*/
 #endif
 }
 
@@ -1121,7 +1123,7 @@ FabArrayBase::getFB (const IntVect& nghost, const Periodicity& period,
 
     return *new_fb;
 }
-
+/*
 FabArrayBase::FPinfo::FPinfo (const FabArrayBase& srcfa,
                               const FabArrayBase& dstfa,
                               const Box&          dstdomain,
@@ -1538,7 +1540,7 @@ FabArrayBase::flushCFinfo (bool no_assertion)
     }
     m_TheCrseFineCache.erase(er_it.first, er_it.second);
 }
-
+*/
 void
 FabArrayBase::Finalize ()
 {
@@ -1555,8 +1557,8 @@ FabArrayBase::Finalize ()
         m_TAC_stats.print();
         m_FBC_stats.print();
         m_CPC_stats.print();
-        m_FPinfo_stats.print();
-        m_CFinfo_stats.print();
+//        m_FPinfo_stats.print();
+//        m_CFinfo_stats.print();
     }
 
     if (amrex::system::verbose > 1) {
@@ -1567,8 +1569,8 @@ FabArrayBase::Finalize ()
     m_TAC_stats = CacheStats("TileArrayCache");
     m_FBC_stats = CacheStats("FBCache");
     m_CPC_stats = CacheStats("CopyCache");
-    m_FPinfo_stats = CacheStats("FillPatchCache");
-    m_CFinfo_stats = CacheStats("CrseFineCache");
+//    m_FPinfo_stats = CacheStats("FillPatchCache");
+//    m_CFinfo_stats = CacheStats("CrseFineCache");
 
     m_BD_count.clear();
 
@@ -1779,8 +1781,8 @@ FabArrayBase::clearThisBD (bool no_assertion)
             // Since this is the last one built with these BoxArray
             // and DistributionMapping, erase it from caches.
             flushTileArray(IntVect::TheZeroVector(), no_assertion);
-            flushFPinfo(no_assertion);
-            flushCFinfo(no_assertion);
+//            flushFPinfo(no_assertion);
+//            flushCFinfo(no_assertion);
             flushFB(no_assertion);
             flushCPC(no_assertion);
 #ifdef AMREX_USE_GPU

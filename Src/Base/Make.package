@@ -82,8 +82,8 @@ C$(AMREX_BASE)_headers += AMReX_MFParallelForG.H
 #
 # I/O stuff.
 #
-C${AMREX_BASE}_headers += AMReX_FabConv.H AMReX_FPC.H AMReX_Print.H #AMReX_IntConv.H #AMReX_VectorIO.H
-C${AMREX_BASE}_sources += AMReX_FabConv.cpp AMReX_FPC.cpp #AMReX_IntConv.cpp AMReX_VectorIO.cpp
+C${AMREX_BASE}_headers += AMReX_FabConv.H AMReX_FPC.H AMReX_Print.H
+C${AMREX_BASE}_sources += AMReX_FabConv.cpp AMReX_FPC.cpp
 
 #
 # Index space.
@@ -92,12 +92,6 @@ C$(AMREX_BASE)_sources += AMReX_Box.cpp AMReX_BoxIterator.cpp AMReX_IntVect.cpp 
 C$(AMREX_BASE)_headers += AMReX_Box.H AMReX_BoxIterator.H AMReX_IntVect.H AMReX_IndexType.H AMReX_Orientation.H AMReX_Periodicity.H
 
 C$(AMREX_BASE)_headers += AMReX_Dim3.H AMReX_Loop.H
-
-#
-# Real space.
-#
-C$(AMREX_BASE)_sources += AMReX_RealBox.cpp AMReX_RealVect.cpp
-C$(AMREX_BASE)_headers += AMReX_RealBox.H   AMReX_RealVect.H
 
 #
 # Unions of rectangles.
@@ -134,8 +128,6 @@ C$(AMREX_BASE)_headers += AMReX_LayoutData.H
 #
 # Geometry / Coordinate system routines.
 #
-C$(AMREX_BASE)_sources += AMReX_CoordSys.cpp AMReX_Geometry.cpp
-C$(AMREX_BASE)_headers += AMReX_CoordSys.H AMReX_Geometry.H AMReX_COORDSYS_C.H AMReX_COORDSYS_$(DIM)D_C.H
 
 #
 # Misc

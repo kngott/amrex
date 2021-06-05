@@ -12,7 +12,7 @@
 #include <AMReX_BoxDomain.H>
 #include <AMReX_FabFactory.H>
 #include <AMReX_DistributionMapping.H>
-#include <AMReX_Geometry.H>
+//#include <AMReX_Geometry.H>
 #include <AMReX_ParallelDescriptor.H>
 #include <AMReX_Utility.H>
 #include <AMReX_ccse-mpi.H>
@@ -553,7 +553,7 @@ public:
     //! Set ncomp values in the boundary region, starting at start_comp to val.
     template <class F=FAB, typename std::enable_if<IsBaseFab<F>::value,int>::type = 0>
     void setBndry (value_type val, int strt_comp, int ncomp);
-
+/*
    //! Set all values outside the Geometry domain to val.
     template <class F=FAB, typename std::enable_if<IsBaseFab<F>::value,int>::type = 0>
     void setDomainBndry (value_type val, const Geometry& goem);
@@ -561,7 +561,7 @@ public:
     //! Set ncomp values outside the Geometry domain to val, starting at start_comp.
     template <class F=FAB, typename std::enable_if<IsBaseFab<F>::value,int>::type = 0>
     void setDomainBndry (value_type val, int strt_comp, int ncomp, const Geometry& goem);
-
+*/
     /**
     * \brief This function copies data from fa to this FabArray.  Each FAB
     * in fa is intersected with all FABs in this FabArray and a copy
@@ -1832,7 +1832,7 @@ FabArray<FAB>::setBndry (value_type val,
         }
     }
 }
-
+/*
 template <class FAB>
 template <class F, typename std::enable_if<IsBaseFab<F>::value,int>::type>
 void
@@ -1869,7 +1869,7 @@ FabArray<FAB>::setDomainBndry (value_type val,
         }
     }
 }
-
+*/
 //
 // Copies to FABs, note that destination is first arg.
 //

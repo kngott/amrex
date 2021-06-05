@@ -222,7 +222,7 @@ namespace amrex
     }
 #endif
 
-    class Geometry;
+//    class Geometry;
 
     class AMReX
     {
@@ -245,13 +245,13 @@ namespace amrex
         // This erases `pamrex` from the stack.
         static void erase (AMReX* pamrex);
 
-        Geometry* getDefaultGeometry () noexcept { return m_geom; }
+//        Geometry* getDefaultGeometry () noexcept { return m_geom; }
 
     private:
 
         static std::vector<std::unique_ptr<AMReX> > m_instance;
 
-        Geometry* m_geom = nullptr;
+//        Geometry* m_geom = nullptr;
     };
 }
 

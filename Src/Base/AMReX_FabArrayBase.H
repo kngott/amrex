@@ -22,7 +22,7 @@ namespace amrex {
 
 class MFIter;
 class MFGhostIter;
-class Geometry;
+//class Geometry;
 class FArrayBox;
 template <typename FAB> class FabFactory;
 template <typename FAB> class FabArray;
@@ -310,7 +310,7 @@ public:
     * their maximum size.
     */
     static AMREX_EXPORT IntVect comm_tile_size;  //!< communication tile size
-
+/*
     struct FPinfo
     {
         FPinfo (const FabArrayBase& srcfa,
@@ -400,7 +400,7 @@ public:
                                     bool                include_physbndry);
 
     void flushCFinfo (bool no_assertion=false);
-
+*/
     //
     //! parallel copy or add
     enum CpOp { COPY = 0, ADD = 1 };
