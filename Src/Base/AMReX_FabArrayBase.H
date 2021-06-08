@@ -653,6 +653,11 @@ public:
 
 };
 
+    template <typename T> Long bytesOf (const std::vector<T>& v);
+    template <typename Key, typename T, class Compare> Long bytesOf (const std::map<Key,T,Compare>& m);
+
+
+
 #ifdef BL_USE_MPI
 bool CheckRcvStats (Vector<MPI_Status>& recv_stats, const Vector<std::size_t>& recv_size, int tag);
 #endif

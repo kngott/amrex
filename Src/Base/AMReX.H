@@ -253,6 +253,14 @@ namespace amrex
 
 //        Geometry* m_geom = nullptr;
     };
+
+    /**
+    * \brief Aborts after printing message indicating out-of-memory;
+    * i.e. operator new has failed. This is the "supported"
+    * set_new_handler() function for AMReX applications.
+    */
+    void OutOfMemory ();
+
 }
 
 #endif /*BL_AMREX_H*/

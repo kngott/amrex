@@ -14,12 +14,9 @@ C$(AMREX_BASE)_headers += AMReX_GpuComplex.H
 C$(AMREX_BASE)_headers += AMReX_PODVector.H
 
 
-C$(AMREX_BASE)_sources += AMReX_ParmParse.cpp AMReX_Utility.cpp
-C$(AMREX_BASE)_headers += AMReX_ParmParse.H AMReX_Utility.H AMReX_BLassert.H AMReX_ArrayLim.H
+C$(AMREX_BASE)_sources += AMReX_ParmParse.cpp
+C$(AMREX_BASE)_headers += AMReX_ParmParse.H AMReX_BLassert.H
 C$(AMREX_BASE)_headers += AMReX_Functional.H AMReX_Reduce.H
-
-C$(AMREX_BASE)_headers += AMReX_FileSystem.H
-C$(AMREX_BASE)_sources += AMReX_FileSystem.cpp
 
 C$(AMREX_BASE)_headers += AMReX_REAL.H AMReX_INT.H AMReX_CONSTANTS.H AMReX_SPACE.H
 

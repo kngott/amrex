@@ -2,7 +2,6 @@
 #include <AMReX_BLassert.H>
 #include <AMReX_BoxArray.H>
 #include <AMReX_ParallelDescriptor.H>
-#include <AMReX_Utility.H>
 #include <AMReX_MFIter.H>
 #include <AMReX_BaseFab.H>
 
@@ -114,7 +113,7 @@ BARef::define (std::istream& is, int& ndims)
             is >> std::ws;
             int ic = is.peek();
             if (ic == static_cast<int>(',')) {
-                is.ignore(BL_IGNORE_MAX, ',');
+                is.ignore(100000, ',');
                 is >> itmp;
                 ++ndims;
 #if (AMREX_SPACEDIM == 3)

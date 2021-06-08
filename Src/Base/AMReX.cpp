@@ -1,9 +1,7 @@
-#include <AMReX_FileSystem.H>
 #include <AMReX_ParallelDescriptor.H>
 #include <AMReX.H>
 #include <AMReX_BaseFab.H>
 #include <AMReX_Box.H>
-#include <AMReX_Utility.H>
 #include <AMReX_Print.H>
 #include <AMReX_Arena.H>
 #include <AMReX_BLBackTrace.H>
@@ -65,6 +63,12 @@
 #include <limits>
 #include <vector>
 #include <algorithm>
+
+#if defined(_WIN32) // || __cplusplus >= 201703L
+#include <filesystem>
+#else
+#include <unistd.h>
+#endif
 
 namespace amrex {
 
@@ -335,7 +339,24 @@ amrex::Initialize (int& argc, char**& argv, bool build_parm_parse,
     if (argc > 0)
     {
         if (argv[0][0] != '/') {
-            system::exename = FileSystem::CurrentPath();
+#if defined(_WIN32)
+            std::error_code ec;
+            auto path = std::filesystem::current_path(ec);
+            if (ec && amrex::Verbose() > 0) {
+                amrex::AllPrint() << "amrex::FileSystem::CurrentPath failed. "
+                                  << ec.message() << std::endl;
+            }
+            system::exename += path.string();
+#else
+            constexpr int bufSize = 1024;
+            char temp[bufSize];
+            char *rCheck = getcwd(temp, bufSize);
+            if(rCheck == 0) {
+                amrex::Abort("**** Error:  getcwd buffer too small.");
+            }
+            system::exename += std::string(rCheck);
+#endif            
+
             system::exename += "/";
         }
         system::exename += argv[0];
@@ -743,5 +764,11 @@ AMReX::erase (AMReX* pamrex)
         m_instance.erase(r);
     }
 }
+
+void OutOfMemory ()
+{
+    amrex::Error("Sorry, out of memory, bye ...");
+}
+
 
 }

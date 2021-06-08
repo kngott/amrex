@@ -4,7 +4,6 @@
 
 #include <AMReX_BLassert.H>
 #include <AMReX.H>
-#include <AMReX_Utility.H>
 #include <AMReX_MemPool.H>
 
 #include <cstdint>
@@ -178,10 +177,5 @@ FArrayBox::Finalize ()
 {
     initialized = false;
 }
-
-//
-// Copied from Utility.H.
-//
-#define BL_IGNORE_MAX 100000
 
 }

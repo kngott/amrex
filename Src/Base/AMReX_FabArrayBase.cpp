@@ -1,10 +1,7 @@
 
 #include <AMReX_FabArrayBase.H>
 #include <AMReX_ParmParse.H>
-#include <AMReX_Utility.H>
-//#include <AMReX_Geometry.H>
 #include <AMReX_FArrayBox.H>
-//#include <AMReX_NonLocalBC.H>
 
 #include <AMReX_BArena.H>
 #include <AMReX_CArena.H>
@@ -246,7 +243,7 @@ FabArrayBase::bytesOfMapOfCopyComTagContainers (const FabArrayBase::MapOfCopyCom
     Long r = sizeof(MapOfCopyComTagContainers);
     for (MapOfCopyComTagContainers::const_iterator it = m.begin(); it != m.end(); ++it) {
         r += sizeof(it->first) + amrex::bytesOf(it->second)
-            + amrex::gcc_map_node_extra_bytes;
+            + 32L; 
     }
     return r;
 }
@@ -2002,5 +1999,17 @@ FabArrayBase::flushParForCache ()
 }
 
 #endif
+
+template <typename T>
+Long bytesOf (const std::vector<T>& v)
+{
+    return sizeof(v) + v.capacity()*sizeof(T);
+}
+
+template <typename Key, typename T, class Compare>
+Long bytesOf (const std::map<Key,T,Compare>& m)
+{
+    return sizeof(m) + m.size()*(sizeof(Key)+sizeof(T)+32L);
+}
 
 }

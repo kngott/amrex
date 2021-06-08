@@ -3,7 +3,7 @@
 #include <AMReX_Config.H>
 
 #include <AMReX.H>
-#include <AMReX_Utility.H>
+//#include <AMReX_Utility.H>
 #include <AMReX_GpuTypes.H>
 #include <AMReX_GpuError.H>
 #include <AMReX_GpuControl.H>

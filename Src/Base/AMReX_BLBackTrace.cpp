@@ -1,9 +1,7 @@
 #include <AMReX_BLBackTrace.H>
 #include <AMReX_ParallelDescriptor.H>
 #include <AMReX_Print.H>
-//#include <AMReX_VisMF.H>
 #include <AMReX.H>
-#include <AMReX_Utility.H>
 
 #include <iostream>
 #include <sstream>
@@ -11,6 +9,7 @@
 #include <cstring>
 #include <cstdio>
 #include <csignal>
+#include <thread>
 
 #if !(defined(_MSC_VER) && defined(__CUDACC__))
 //MSVC can't pre-processor cfenv with `Zc:preprocessor`
@@ -95,7 +94,7 @@ BLBackTrace::handler(int s)
     }
 
     if (ParallelDescriptor::NProcs() > 1) {
-        amrex::Sleep(3);
+        std::this_thread::sleep_for(std::chrono::duration<double>(3));
     }
 
 #endif

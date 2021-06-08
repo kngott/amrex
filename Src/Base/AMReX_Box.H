@@ -4,7 +4,7 @@
 #include <AMReX_Config.H>
 
 #include <AMReX_Algorithm.H>
-#include <AMReX_ArrayLim.H>
+//#include <AMReX_ArrayLim.H>
 #include <AMReX_ccse-mpi.H>
 #include <AMReX_IntVect.H>
 #include <AMReX_IndexType.H>

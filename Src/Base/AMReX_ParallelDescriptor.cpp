@@ -1,6 +1,5 @@
 
 #include <AMReX.H>
-#include <AMReX_Utility.H>
 
 #ifndef BL_NO_FORT
 #include <AMReX_BLFort.H>
@@ -1374,7 +1373,7 @@ ReadAndBcastFile (const std::string& filename, Vector<char>& charBuf,
         iss.open(filename.c_str(), std::ios::in);
         if ( ! iss.good()) {
           if(bExitOnError) {
-            amrex::FileOpenFailed(filename);
+            amrex::Error("Couldn't open file: " + filename);
           } else {
             fileLength = -1;
           }

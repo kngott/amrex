@@ -100,9 +100,8 @@ void main_main ()
 
     }
 
-    {   
-        mf_dst.ParallelCopy(mf_src);
-    }
+    mf_dst.ParallelCopy(mf_src);
+//    mf_dst.FillBoundary();
 
     amrex::Print() << "Error in old PC: " 
                    << MFdiff(mf_src, mf_dst, 0, ncomp, nghost) << std::endl;

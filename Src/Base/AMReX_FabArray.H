@@ -12,7 +12,6 @@
 #include <AMReX_FabFactory.H>
 #include <AMReX_DistributionMapping.H>
 #include <AMReX_ParallelDescriptor.H>
-#include <AMReX_Utility.H>
 #include <AMReX_ccse-mpi.H>
 #include <AMReX_Periodicity.H>
 #include <AMReX_Print.H>

@@ -30,9 +30,6 @@ operator<< (std::ostream& os,
     return os;
 }
 
-//
-// Moved out of Utility.H
-//
 #define BL_IGNORE_MAX 100000
 
 std::istream&
