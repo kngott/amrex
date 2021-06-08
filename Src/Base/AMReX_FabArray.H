@@ -9,10 +9,8 @@
 #include <AMReX_Box.H>
 #include <AMReX.H>
 #include <AMReX_BoxArray.H>
-#include <AMReX_BoxDomain.H>
 #include <AMReX_FabFactory.H>
 #include <AMReX_DistributionMapping.H>
-//#include <AMReX_Geometry.H>
 #include <AMReX_ParallelDescriptor.H>
 #include <AMReX_Utility.H>
 #include <AMReX_ccse-mpi.H>
@@ -23,7 +21,7 @@
 #include <AMReX_MakeType.H>
 #include <AMReX_TypeTraits.H>
 #include <AMReX_LayoutData.H>
-#include <AMReX_BaseFabUtility.H>
+#include <AMReX_BaseFab.H>
 #ifdef AMREX_USE_GPU
 #include <AMReX_MFParallelForG.H>
 #else
@@ -31,10 +29,6 @@
 #endif
 
 #include <AMReX_Gpu.H>
-
-#ifdef AMREX_USE_EB
-#include <AMReX_EBFabFactory.H>
-#endif
 
 #ifdef AMREX_USE_OMP
 #include <omp.h>

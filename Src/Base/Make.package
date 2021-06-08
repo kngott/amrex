@@ -83,16 +83,16 @@ C${AMREX_BASE}_headers += AMReX_Print.H
 #
 # Index space.
 #
-C$(AMREX_BASE)_sources += AMReX_Box.cpp AMReX_BoxIterator.cpp AMReX_IntVect.cpp AMReX_IndexType.cpp AMReX_Orientation.cpp AMReX_Periodicity.cpp
-C$(AMREX_BASE)_headers += AMReX_Box.H AMReX_BoxIterator.H AMReX_IntVect.H AMReX_IndexType.H AMReX_Orientation.H AMReX_Periodicity.H
+C$(AMREX_BASE)_sources += AMReX_Box.cpp AMReX_IntVect.cpp AMReX_IndexType.cpp AMReX_Orientation.cpp AMReX_Periodicity.cpp
+C$(AMREX_BASE)_headers += AMReX_Box.H AMReX_IntVect.H AMReX_IndexType.H AMReX_Orientation.H AMReX_Periodicity.H
 
 C$(AMREX_BASE)_headers += AMReX_Dim3.H AMReX_Loop.H
 
 #
 # Unions of rectangles.
 #
-C$(AMREX_BASE)_sources += AMReX_BoxList.cpp AMReX_BoxArray.cpp AMReX_BoxDomain.cpp
-C$(AMREX_BASE)_headers += AMReX_BoxList.H AMReX_BoxArray.H AMReX_BoxDomain.H
+C$(AMREX_BASE)_sources += AMReX_BoxList.cpp AMReX_BoxArray.cpp
+C$(AMREX_BASE)_headers += AMReX_BoxList.H AMReX_BoxArray.H
 
 #
 # FORTRAN array data.
@@ -105,7 +105,7 @@ C$(AMREX_BASE)_headers += AMReX_TypeTraits.H
 
 C$(AMREX_BASE)_headers += AMReX_Array4.H
 C$(AMREX_BASE)_sources += AMReX_BaseFab.cpp
-C$(AMREX_BASE)_headers += AMReX_BaseFab.H AMReX_BaseFabUtility.H
+C$(AMREX_BASE)_headers += AMReX_BaseFab.H
 C$(AMREX_BASE)_headers += AMReX_FabFactory.H
 
 #
