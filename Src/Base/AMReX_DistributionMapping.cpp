@@ -3,7 +3,6 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_DistributionMapping.H>
 #include <AMReX_ParmParse.H>
-#include <AMReX_BLProfiler.H>
 #include <AMReX_FArrayBox.H>
 //#include <AMReX_Geometry.H>
 //#include <AMReX_VisMF.H>
@@ -194,7 +193,6 @@ DistributionMapping::LeastUsedCPUs (int         nprocs,
     result.resize(nprocs);
 
 #ifdef BL_USE_MPI
-    BL_PROFILE("DistributionMapping::LeastUsedCPUs()");
 
     AMREX_ASSERT(nprocs <= ParallelContext::NProcsSub());
 
@@ -241,7 +239,6 @@ DistributionMapping::LeastUsedTeams (Vector<int>        & rteam,
                                      int                 nworkers)
 {
 #ifdef BL_USE_MPI
-    BL_PROFILE("DistributionMapping::LeastUsedTeams()");
 
     AMREX_ALWAYS_ASSERT(ParallelContext::CommunicatorSub() == ParallelDescriptor::Communicator());
 
@@ -580,7 +577,6 @@ knapsack (const std::vector<Long>&         wgts,
           bool                             do_full_knapsack,
           int                              nmax)
 {
-    BL_PROFILE("knapsack()");
 
     //
     // Sort balls by size largest first.
@@ -651,7 +647,6 @@ knapsack (const std::vector<Long>&         wgts,
     if (efficiency < max_efficiency && do_full_knapsack
         && wblv.size() > 1 && wblv.begin()->size() > 1)
     {
-        BL_PROFILE_VAR("knapsack()swap", swap);
 top: ;
 
         if (efficiency < max_efficiency && wblv.begin()->size() > 1)
@@ -726,7 +721,6 @@ DistributionMapping::KnapSackDoIt (const std::vector<Long>& wgts,
         Print() << "DM: KnapSackDoIt called..." << std::endl;
     }
 
-    BL_PROFILE("DistributionMapping::KnapSackDoIt()");
 
     int nprocs = ParallelContext::NProcsSub();
 
@@ -1006,7 +1000,6 @@ Distribute (const std::vector<SFCToken>&     tokens,
             std::vector< std::vector<int> >& v)
 
 {
-    BL_PROFILE("DistributionMapping::Distribute()");
 
     if (flag_verbose_mapper) {
         Print() << "Distribute:" << std::endl;
@@ -1092,7 +1085,6 @@ DistributionMapping::SFCProcessorMapDoIt (const BoxArray&          boxes,
         Print() << "DM: SFCProcessorMapDoIt called..." << std::endl;
     }
 
-    BL_PROFILE("DistributionMapping::SFCProcessorMapDoIt()");
 
     int nprocs = ParallelContext::NProcsSub();
 
@@ -1356,7 +1348,6 @@ void
 DistributionMapping::RRSFCDoIt (const BoxArray&          boxes,
                                 int                      nprocs)
 {
-    BL_PROFILE("DistributionMapping::RRSFCDoIt()");
 
 #if defined (BL_USE_TEAM)
     amrex::Abort("Team support is not implemented yet in RRSFC");
@@ -1400,7 +1391,6 @@ DistributionMapping::RRSFCProcessorMap (const BoxArray&          boxes,
 DistributionMapping
 DistributionMapping::makeKnapSack (const Vector<Real>& rcost, int nmax)
 {
-    BL_PROFILE("makeKnapSack");
 
     DistributionMapping r;
 
@@ -1424,7 +1414,6 @@ DistributionMapping::makeKnapSack (const Vector<Real>& rcost, int nmax)
 DistributionMapping
 DistributionMapping::makeKnapSack (const Vector<Real>& rcost, Real& eff, int nmax, bool sort)
 {
-    BL_PROFILE("makeKnapSack");
 
     DistributionMapping r;
 
@@ -1449,7 +1438,6 @@ DistributionMapping::makeKnapSack (const LayoutData<Real>& rcost_local,
                                    Real& currentEfficiency, Real& proposedEfficiency,
                                    int nmax, bool broadcastToAll, int root)
 {
-    BL_PROFILE("makeKnapSack");
 
     // Proposed distribution mapping is computed from global vector of costs on root;
     // required information is gathered on root from the layoutData information
@@ -1589,7 +1577,6 @@ gather_weights (const MultiFab& weight)
 DistributionMapping
 DistributionMapping::makeKnapSack (const MultiFab& weight, int nmax)
 {
-    BL_PROFILE("makeKnapSack");
     Vector<Long> cost = gather_weights(weight);
     int nprocs = ParallelContext::NProcsSub();
     Real eff;
@@ -1601,7 +1588,6 @@ DistributionMapping::makeKnapSack (const MultiFab& weight, int nmax)
 DistributionMapping
 DistributionMapping::makeKnapSack (const MultiFab& weight, Real& eff, int nmax)
 {
-    BL_PROFILE("makeKnapSack");
     Vector<Long> cost = gather_weights(weight);
     int nprocs = ParallelContext::NProcsSub();
     DistributionMapping r;
@@ -1612,7 +1598,6 @@ DistributionMapping::makeKnapSack (const MultiFab& weight, Real& eff, int nmax)
 DistributionMapping
 DistributionMapping::makeRoundRobin (const MultiFab& weight)
 {
-    BL_PROFILE("makeRoundRobin");
     Vector<Long> cost = gather_weights(weight);
     int nprocs = ParallelContext::NProcsSub();
     DistributionMapping r;
@@ -1623,7 +1608,6 @@ DistributionMapping::makeRoundRobin (const MultiFab& weight)
 DistributionMapping
 DistributionMapping::makeSFC (const MultiFab& weight, bool sort)
 {
-    BL_PROFILE("makeSFC");
     Vector<Long> cost = gather_weights(weight);
     int nprocs = ParallelContext::NProcsSub();
     DistributionMapping r;
@@ -1634,7 +1618,6 @@ DistributionMapping::makeSFC (const MultiFab& weight, bool sort)
 DistributionMapping
 DistributionMapping::makeSFC (const MultiFab& weight, Real& eff, bool sort)
 {
-    BL_PROFILE("makeSFC");
     Vector<Long> cost = gather_weights(weight);
     int nprocs = ParallelContext::NProcsSub();
     DistributionMapping r;
@@ -1645,7 +1628,6 @@ DistributionMapping::makeSFC (const MultiFab& weight, Real& eff, bool sort)
 DistributionMapping
 DistributionMapping::makeSFC (const Vector<Real>& rcost, const BoxArray& ba, bool sort)
 {
-    BL_PROFILE("makeSFC");
 
     DistributionMapping r;
 
@@ -1668,7 +1650,6 @@ DistributionMapping::makeSFC (const Vector<Real>& rcost, const BoxArray& ba, boo
 DistributionMapping
 DistributionMapping::makeSFC (const Vector<Real>& rcost, const BoxArray& ba, Real& eff, bool sort)
 {
-    BL_PROFILE("makeSFC");
 
     DistributionMapping r;
 
@@ -1693,7 +1674,6 @@ DistributionMapping::makeSFC (const LayoutData<Real>& rcost_local,
                               Real& currentEfficiency, Real& proposedEfficiency,
                               bool broadcastToAll, int root)
 {
-    BL_PROFILE("makeSFC");
 
     // Proposed distribution mapping is computed from global vector of costs on root;
     // required information is gathered on root from the layoutData information
@@ -1757,7 +1737,6 @@ DistributionMapping::makeSFC (const LayoutData<Real>& rcost_local,
 std::vector<std::vector<int> >
 DistributionMapping::makeSFC (const BoxArray& ba, bool use_box_vol, const int nprocs)
 {
-    BL_PROFILE("makeSFC");
 
     const int N = ba.size();
     std::vector<SFCToken> tokens;

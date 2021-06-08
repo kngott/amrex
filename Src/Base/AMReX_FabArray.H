@@ -16,7 +16,6 @@
 #include <AMReX_ParallelDescriptor.H>
 #include <AMReX_Utility.H>
 #include <AMReX_ccse-mpi.H>
-#include <AMReX_BLProfiler.H>
 #include <AMReX_Periodicity.H>
 #include <AMReX_Print.H>
 #include <AMReX_FabArrayBase.H>
@@ -1940,7 +1939,6 @@ FabArray<FAB>::setVal (value_type val,
     BL_ASSERT(nghost.allGE(IntVect::TheZeroVector()) && nghost.allLE(n_grow));
     BL_ASSERT(comp+ncomp <= n_comp);
 
-    BL_PROFILE("FabArray::setVal()");
 
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
@@ -1980,7 +1978,6 @@ FabArray<FAB>::setVal (value_type val,
     BL_ASSERT(nghost.allGE(IntVect::TheZeroVector()) && nghost.allLE(n_grow));
     BL_ASSERT(comp+ncomp <= n_comp);
 
-    BL_PROFILE("FabArray::setVal(val,region,comp,ncomp,nghost)");
 
 #ifdef AMREX_USE_OMP
     AMREX_ALWAYS_ASSERT(!omp_in_parallel());
@@ -2172,7 +2169,6 @@ template <class FAB>
 void
 FabArray<FAB>::FillBoundary (bool cross)
 {
-    BL_PROFILE("FabArray::FillBoundary()");
     if ( n_grow.max() > 0 ) {
         FillBoundary_nowait(0, nComp(), n_grow, Periodicity::NonPeriodic(), cross);
         FillBoundary_finish();
@@ -2183,7 +2179,6 @@ template <class FAB>
 void
 FabArray<FAB>::FillBoundary (const Periodicity& period, bool cross)
 {
-    BL_PROFILE("FabArray::FillBoundary()");
     if ( n_grow.max() > 0 ) {
         FillBoundary_nowait(0, nComp(), n_grow, period, cross);
         FillBoundary_finish();
@@ -2194,7 +2189,6 @@ template <class FAB>
 void
 FabArray<FAB>::FillBoundary (const IntVect& nghost, const Periodicity& period, bool cross)
 {
-    BL_PROFILE("FabArray::FillBoundary()");
     AMREX_ALWAYS_ASSERT_WITH_MESSAGE(nghost.allLE(nGrowVect()),
                                      "FillBoundary: asked to fill more ghost cells than we have");
     if ( nghost.max() > 0 ) {
@@ -2207,7 +2201,6 @@ template <class FAB>
 void
 FabArray<FAB>::FillBoundary (int scomp, int ncomp, bool cross)
 {
-    BL_PROFILE("FabArray::FillBoundary()");
     if ( n_grow.max() > 0 ) {
         FillBoundary_nowait(scomp, ncomp, n_grow, Periodicity::NonPeriodic(), cross);
         FillBoundary_finish();
@@ -2218,7 +2211,6 @@ template <class FAB>
 void
 FabArray<FAB>::FillBoundary (int scomp, int ncomp, const Periodicity& period, bool cross)
 {
-    BL_PROFILE("FabArray::FillBoundary()");
     if ( n_grow.max() > 0 ) {
         FillBoundary_nowait(scomp, ncomp, n_grow, period, cross);
         FillBoundary_finish();
@@ -2230,7 +2222,6 @@ void
 FabArray<FAB>::FillBoundary (int scomp, int ncomp, const IntVect& nghost,
                              const Periodicity& period, bool cross)
 {
-    BL_PROFILE("FabArray::FillBoundary()");
     AMREX_ALWAYS_ASSERT_WITH_MESSAGE(nghost.allLE(nGrowVect()),
                                      "FillBoundary: asked to fill more ghost cells than we have");
     if ( nghost.max() > 0 ) {
@@ -2264,7 +2255,6 @@ template <class FAB>
 void
 FabArray<FAB>::EnforcePeriodicity (const Periodicity& period)
 {
-    BL_PROFILE("FabArray::EnforcePeriodicity");
     if (period.isAnyPeriodic()) {
         FBEP_nowait(0, nComp(), nGrowVect(), period, false, true);
         FillBoundary_finish(); // unsafe unless isAnyPeriodic()
@@ -2275,7 +2265,6 @@ template <class FAB>
 void
 FabArray<FAB>::EnforcePeriodicity (int scomp, int ncomp, const Periodicity& period)
 {
-    BL_PROFILE("FabArray::EnforcePeriodicity");
     if (period.isAnyPeriodic()) {
         FBEP_nowait(scomp, ncomp, nGrowVect(), period, false, true);
         FillBoundary_finish(); // unsafe unless isAnyPeriodic()
@@ -2287,7 +2276,6 @@ void
 FabArray<FAB>::EnforcePeriodicity (int scomp, int ncomp, const IntVect& nghost,
                                    const Periodicity& period)
 {
-    BL_PROFILE("FabArray::EnforcePeriodicity");
     if (period.isAnyPeriodic()) {
         FBEP_nowait(scomp, ncomp, nghost, period, false, true);
         FillBoundary_finish(); // unsafe unless isAnyPeriodic()
@@ -2298,7 +2286,6 @@ template <class FAB>
 void
 FabArray<FAB>::FillBoundary_nowait (int scomp, int ncomp, const Periodicity& period, bool cross)
 {
-    BL_PROFILE("FillBoundary_nowait()");
     FBEP_nowait(scomp, ncomp, nGrowVect(), period, cross);
 }
 
@@ -2307,7 +2294,6 @@ void
 FabArray<FAB>::FillBoundary_nowait (int scomp, int ncomp, const IntVect& nghost,
                                     const Periodicity& period, bool cross)
 {
-    BL_PROFILE("FillBoundary_nowait()");
     FBEP_nowait(scomp, ncomp, nghost, period, cross);
 }
 

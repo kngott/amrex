@@ -6,7 +6,6 @@
 #include <AMReX.H>
 #include <AMReX_Utility.H>
 #include <AMReX_BLassert.H>
-#include <AMReX_BLProfiler.H>
 #include <AMReX_FileSystem.H>
 #include <AMReX_ParallelDescriptor.H>
 #include <AMReX_BoxArray.H>

@@ -154,7 +154,6 @@ ReduceSum_device (FabArray<FAB1> const& fa1, FabArray<FAB2> const& fa2,
     using value_type = typename FAB1::value_type;
     value_type sm = 0;
 
-    BL_PROFILE("ReduceSum_device");
 
     {
         ReduceOps<ReduceOpSum> reduce_op;
@@ -1671,7 +1670,6 @@ template <class FAB, class IFAB, class bar = std::enable_if_t<IsBaseFab<FAB>::va
 void
 OverrideSync (FabArray<FAB> & fa, FabArray<IFAB> const& msk, const Periodicity& period)
 {
-    BL_PROFILE("OverrideSync()");
 
     if (fa.ixType().cellCentered()) return;
 

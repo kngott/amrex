@@ -2,7 +2,6 @@
 #include <AMReX_BLassert.H>
 #include <AMReX_MultiFab.H>
 #include <AMReX_ParallelDescriptor.H>
-#include <AMReX_BLProfiler.H>
 //#include <AMReX_iMultiFab.H>
 #include <AMReX_FabArrayUtility.H>
 
@@ -41,7 +40,6 @@ MultiFab::Dot (const MultiFab& x, int xcomp,
     BL_ASSERT(x.DistributionMap() == y.DistributionMap());
     BL_ASSERT(x.nGrow() >= nghost && y.nGrow() >= nghost);
 
-    BL_PROFILE("MultiFab::Dot()");
 
     Real sm = 0.0;
 #ifdef AMREX_USE_GPU
@@ -150,7 +148,6 @@ MultiFab::Add (MultiFab& dst, const MultiFab& src,
     BL_ASSERT(dst.distributionMap == src.distributionMap);
     BL_ASSERT(dst.nGrowVect().allGE(nghost) && src.nGrowVect().allGE(nghost));
 
-    BL_PROFILE("MultiFab::Add()");
 
     amrex::Add(dst, src, srccomp, dstcomp, numcomp, nghost);
 }
@@ -170,7 +167,6 @@ MultiFab::Copy (MultiFab& dst, const MultiFab& src,
     BL_ASSERT(dst.distributionMap == src.distributionMap);
     BL_ASSERT(dst.nGrowVect().allGE(nghost));
 
-    BL_PROFILE("MultiFab::Copy()");
 
     amrex::Copy(dst,src,srccomp,dstcomp,numcomp,nghost);
 }
@@ -190,7 +186,6 @@ MultiFab::Swap (MultiFab& dst, MultiFab& src,
     BL_ASSERT(dst.distributionMap == src.distributionMap);
     BL_ASSERT(dst.nGrowVect().allGE(nghost) && src.nGrowVect().allGE(nghost));
 
-    BL_PROFILE("MultiFab::Swap()");
 
     // We can take a shortcut and do a std::swap if we're swapping all of the data
     // and they are allocated in the same Arena.
@@ -246,7 +241,6 @@ MultiFab::Subtract (MultiFab& dst, const MultiFab& src,
     BL_ASSERT(dst.distributionMap == src.distributionMap);
     BL_ASSERT(dst.nGrowVect().allGE(nghost) && src.nGrowVect().allGE(nghost));
 
-    BL_PROFILE("MultiFab::Subtract()");
 
     amrex::Subtract(dst,src,srccomp,dstcomp,numcomp,nghost);
 }
@@ -266,7 +260,6 @@ MultiFab::Multiply (MultiFab& dst, const MultiFab& src,
     BL_ASSERT(dst.distributionMap == src.distributionMap);
     BL_ASSERT(dst.nGrowVect().allGE(nghost) && src.nGrowVect().allGE(nghost));
 
-    BL_PROFILE("MultiFab::Multiply()");
 
     amrex::Multiply(dst,src,srccomp,dstcomp,numcomp,nghost);
 }
@@ -286,7 +279,6 @@ MultiFab::Divide (MultiFab& dst, const MultiFab& src,
     BL_ASSERT(dst.distributionMap == src.distributionMap);
     BL_ASSERT(dst.nGrowVect().allGE(nghost) && src.nGrowVect().allGE(nghost));
 
-    BL_PROFILE("MultiFab::Divide()");
 
     amrex::Divide(dst,src,srccomp,dstcomp,numcomp,nghost);
 }
@@ -306,7 +298,6 @@ MultiFab::Saxpy (MultiFab& dst, Real a, const MultiFab& src,
     BL_ASSERT(dst.distributionMap == src.distributionMap);
     BL_ASSERT(dst.nGrowVect().allGE(nghost) && src.nGrowVect().allGE(nghost));
 
-    BL_PROFILE("MultiFab::Saxpy()");
 
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
@@ -341,7 +332,6 @@ MultiFab::Xpay (MultiFab& dst, Real a, const MultiFab& src,
     BL_ASSERT(dst.distributionMap == src.distributionMap);
     BL_ASSERT(dst.nGrowVect().allGE(nghost) && src.nGrowVect().allGE(nghost));
 
-    BL_PROFILE("MultiFab::Xpay()");
 
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
@@ -381,7 +371,6 @@ MultiFab::LinComb (MultiFab& dst,
     BL_ASSERT(dst.distributionMap == y.distributionMap);
     BL_ASSERT(dst.nGrowVect().allGE(nghost) && x.nGrowVect().allGE(nghost) && y.nGrowVect().allGE(nghost));
 
-    BL_PROFILE("MultiFab::LinComb()");
 
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
@@ -423,7 +412,6 @@ MultiFab::AddProduct (MultiFab& dst,
     BL_ASSERT(dst.distributionMap == src2.distributionMap);
     BL_ASSERT(dst.nGrowVect().allGE(nghost) && src1.nGrowVect().allGE(nghost) && src2.nGrowVect().allGE(nghost));
 
-    BL_PROFILE("MultiFab::AddProduct()");
 
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
@@ -1202,7 +1190,6 @@ MultiFab::SumBoundary (int scomp, int ncomp, const Periodicity& period)
 void
 MultiFab::SumBoundary (int scomp, int ncomp, IntVect const& nghost, const Periodicity& period)
 {
-    BL_PROFILE("MultiFab::SumBoundary()");
 
     SumBoundary_nowait(scomp, ncomp, nghost, period);
     SumBoundary_finish();
@@ -1223,7 +1210,6 @@ MultiFab::SumBoundary_nowait (int scomp, int ncomp, const Periodicity& period)
 void
 MultiFab::SumBoundary_nowait (int scomp, int ncomp, IntVect const& nghost, const Periodicity& period)
 {
-    BL_PROFILE("MultiFab::SumBoundary_nowait()");
 
     if ( n_grow == IntVect::TheZeroVector() && boxArray().ixType().cellCentered()) return;
 
@@ -1239,7 +1225,6 @@ MultiFab::SumBoundary_nowait (int scomp, int ncomp, IntVect const& nghost, const
 void
 MultiFab::SumBoundary_finish ()
 {
-    BL_PROFILE("MultiFab::SumBoundary_finish()");
 
     // If pcd doesn't exist, ParallelCopy was all local and operation was fully completed in "SumBoundary_nowait".
     if ( (n_grow == IntVect::TheZeroVector() && boxArray().ixType().cellCentered()) || !(this->pcd) ) return;
@@ -1252,7 +1237,6 @@ MultiFab::SumBoundary_finish ()
 std::unique_ptr<MultiFab>
 MultiFab::OverlapMask (const Periodicity& period) const
 {
-    BL_PROFILE("MultiFab::OverlapMask()");
 
     const BoxArray& ba = boxArray();
     const DistributionMapping& dm = DistributionMap();
@@ -1320,7 +1304,6 @@ MultiFab::OwnerMask (const Periodicity& period) const
 void
 MultiFab::AverageSync (const Periodicity& period)
 {
-    BL_PROFILE("MultiFab::AverageSync()");
 
     if (ixType().cellCentered()) return;
     auto wgt = this->OverlapMask(period);
@@ -1331,7 +1314,6 @@ MultiFab::AverageSync (const Periodicity& period)
 void
 MultiFab::WeightedSync (const MultiFab& wgt, const Periodicity& period)
 {
-    BL_PROFILE("MultiFab::WeightedSync()");
 
     if (ixType().cellCentered()) return;
 

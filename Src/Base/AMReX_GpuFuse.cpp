@@ -1,6 +1,5 @@
 #include <AMReX_Gpu.H>
 #include <AMReX_ParmParse.H>
-#include <AMReX_BLProfiler.H>
 #include <AMReX_OpenMP.H>
 #include <limits>
 
@@ -47,7 +46,6 @@ Fuser::~Fuser ()
 
 void Fuser::Launch ()
 {
-    BL_PROFILE("Fuser::Launch()");
 
     int nlambdas = m_nlambdas;
     if (nlambdas > 0) {

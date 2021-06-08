@@ -96,7 +96,6 @@ namespace {
 
 #if ( defined(__CUDACC__) && (__CUDACC_VER_MAJOR__ >= 10) )
 
-        BL_PROFILE("InitGraph");
 
         int streams = Gpu::Device::numGpuStreams();
         cudaGraphExec_t graphExec{};

@@ -32,15 +32,11 @@ C$(AMREX_BASE)_headers += AMReX_ParallelReduce.H
 C$(AMREX_BASE)_headers += AMReX_ParallelContext.H
 C$(AMREX_BASE)_sources += AMReX_ParallelContext.cpp
 
-C$(AMREX_BASE)_sources += AMReX_VisMF.cpp AMReX_Arena.cpp AMReX_BArena.cpp AMReX_CArena.cpp AMReX_DArena.cpp AMReX_EArena.cpp AMReX_PArena.cpp
-C$(AMREX_BASE)_headers += AMReX_VisMF.H AMReX_Arena.H AMReX_BArena.H AMReX_CArena.H AMReX_DArena.H AMReX_EArena.H AMReX_PArena.H
+C$(AMREX_BASE)_sources += AMReX_Arena.cpp AMReX_BArena.cpp AMReX_CArena.cpp AMReX_DArena.cpp AMReX_EArena.cpp AMReX_PArena.cpp
+C$(AMREX_BASE)_headers += AMReX_Arena.H AMReX_BArena.H AMReX_CArena.H AMReX_DArena.H AMReX_EArena.H AMReX_PArena.H
 
-C$(AMREX_BASE)_headers += AMReX_BLProfiler.H
 
 C$(AMREX_BASE)_headers += AMReX_BLBackTrace.H
-
-C$(AMREX_BASE)_sources += AMReX_NFiles.cpp
-C$(AMREX_BASE)_headers += AMReX_NFiles.H
 
 C$(AMREX_BASE)_headers += AMReX_Morton.H
 
@@ -82,8 +78,7 @@ C$(AMREX_BASE)_headers += AMReX_MFParallelForG.H
 #
 # I/O stuff.
 #
-C${AMREX_BASE}_headers += AMReX_FabConv.H AMReX_FPC.H AMReX_Print.H
-C${AMREX_BASE}_sources += AMReX_FabConv.cpp AMReX_FPC.cpp
+C${AMREX_BASE}_headers += AMReX_Print.H
 
 #
 # Index space.
@@ -132,7 +127,6 @@ C$(AMREX_BASE)_headers += AMReX_LayoutData.H
 #
 # Misc
 #
-C$(AMREX_BASE)_sources += AMReX_BLProfiler.cpp
 C$(AMREX_BASE)_sources += AMReX_BLBackTrace.cpp
 #C$(AMREX_BASE)_headers += AMReX_ThirdPartyProfiling.H
 
@@ -141,12 +135,6 @@ C$(AMREX_BASE)_headers += AMReX_MemPool.H
 C$(AMREX_BASE)_sources += AMReX_MemPool.cpp
 ifneq ($(BL_NO_FORT),TRUE)
   F90$(AMREX_BASE)_sources += AMReX_mempool_mod.F90
-endif
-
-# Basic Profiler
-ifeq ($(TINY_PROFILE),TRUE)
-  C$(AMREX_BASE)_headers += AMReX_TinyProfiler.H
-  C$(AMREX_BASE)_sources += AMReX_TinyProfiler.cpp
 endif
 
 VPATH_LOCATIONS += $(AMREX_HOME)/Src/Base

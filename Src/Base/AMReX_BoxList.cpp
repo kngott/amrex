@@ -2,7 +2,6 @@
 #include <AMReX_Print.H>
 #include <AMReX_BoxArray.H>
 #include <AMReX_BoxList.H>
-#include <AMReX_BLProfiler.H>
 #include <AMReX_ParallelDescriptor.H>
 
 #ifdef AMREX_USE_OMP
@@ -325,7 +324,6 @@ BoxList::complementIn (const Box& b, BoxList&& bl)
 BoxList&
 BoxList::complementIn (const Box& b, const BoxArray& ba)
 {
-    BL_PROFILE("BoxList::complementIn");
 
     if (ba.size() == 0)
     {
@@ -415,7 +413,6 @@ BoxList::parallelComplementIn (const Box& b, BoxList&& bl)
 BoxList&
 BoxList::parallelComplementIn (const Box& b, BoxArray const& ba)
 {
-    BL_PROFILE("BoxList::parallelComplementIn()");
 #ifndef AMREX_USE_MPI
     return complementIn(b,ba);
 #else
@@ -425,7 +422,6 @@ BoxList::parallelComplementIn (const Box& b, BoxArray const& ba)
     }
     else
     {
-        BL_PROFILE_VAR("BoxList::pci", boxlistpci);
 
         Long npts_avgbox;
         Box mbox = ba.minimalBox(npts_avgbox);

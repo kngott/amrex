@@ -343,7 +343,6 @@ FabArrayBase::CPC::define (const BoxArray& ba_dst, const DistributionMapping& dm
                            const Vector<int>& imap_src,
                            int MyProc)
 {
-    BL_PROFILE("FabArrayBase::CPC::define()");
 
     BL_ASSERT(ba_dst.size() > 0 && ba_src.size() > 0);
     BL_ASSERT(ba_dst.ixType() == ba_src.ixType());
@@ -586,7 +585,6 @@ FabArrayBase::flushCPCache ()
 const FabArrayBase::CPC&
 FabArrayBase::getCPC (const IntVect& dstng, const FabArrayBase& src, const IntVect& srcng, const Periodicity& period) const
 {
-    BL_PROFILE("FabArrayBase::getCPC()");
 
     BL_ASSERT(getBDKey() == m_bdkey);
     BL_ASSERT(src.getBDKey() == src.m_bdkey);
@@ -645,7 +643,6 @@ FabArrayBase::FB::FB (const FabArrayBase& fa, const IntVect& nghost,
       m_epo(enforce_periodicity_only), m_period(period),
       m_nuse(0), m_multi_ghost(multi_ghost)
 {
-    BL_PROFILE("FabArrayBase::FB::FB()");
 
     m_LocTags = std::make_unique<CopyComTag::CopyComTagsContainer>();
     m_SndTags = std::make_unique<CopyComTag::MapOfCopyComTagContainers>();
@@ -1087,7 +1084,6 @@ const FabArrayBase::FB&
 FabArrayBase::getFB (const IntVect& nghost, const Periodicity& period,
                      bool cross, bool enforce_periodicity_only) const
 {
-    BL_PROFILE("FabArrayBase::getFB()");
 
     BL_ASSERT(getBDKey() == m_bdkey);
     std::pair<FBCacheIter,FBCacheIter> er_it = m_TheFBCache.equal_range(m_bdkey);
@@ -1140,7 +1136,6 @@ FabArrayBase::FPinfo::FPinfo (const FabArrayBase& srcfa,
       m_nuse     (0)
 {
     amrex::ignore_unused(fdomain,cdomain,index_space);
-    BL_PROFILE("FPinfo::FPinfo()");
 
     const BoxArray& srcba = srcfa.boxArray();
     const BoxArray& dstba = dstfa.boxArray();
@@ -1314,7 +1309,6 @@ FabArrayBase::TheFPinfo (const FabArrayBase& srcfa,
                          const Geometry&     cgeom,
                          const EB2::IndexSpace* index_space)
 {
-    BL_PROFILE("FabArrayBase::TheFPinfo()");
 
     Box dstdomain = fgeom.Domain();
     dstdomain.convert(dstfa.boxArray().ixType());
@@ -1420,7 +1414,6 @@ FabArrayBase::CFinfo::CFinfo (const FabArrayBase& finefa,
       m_include_physbndry(include_physbndry),
       m_nuse     (0)
 {
-    BL_PROFILE("CFinfo::CFinfo()");
 
     m_fine_domain = Domain(finegm, ng, include_periodic, include_physbndry);
 
@@ -1489,7 +1482,6 @@ FabArrayBase::TheCFinfo (const FabArrayBase& finefa,
                          bool                include_periodic,
                          bool                include_physbndry)
 {
-    BL_PROFILE("FabArrayBase::TheCFinfo()");
 
     const BDKey& key = finefa.getBDKey();
     auto er_it = m_TheCrseFineCache.equal_range(key);

@@ -166,7 +166,6 @@ FabArray<FAB>::FillBoundary_finish ()
 {
 #ifdef AMREX_USE_MPI
 
-    BL_PROFILE("FillBoundary_finish()");
 
     if (!fbd) { n_filled = IntVect::TheZeroVector(); return; }
 
@@ -254,7 +253,6 @@ FabArray<FAB>::ParallelCopy (const FabArray<FAB>& src,
                              CpOp                 op,
                              const FabArrayBase::CPC * a_cpc)
 {
-    BL_PROFILE("FabArray::ParallelCopy()");
 
     ParallelCopy_nowait(src, scomp, dcomp, ncomp, snghost, dnghost, period, op, a_cpc);
     ParallelCopy_finish();
@@ -272,7 +270,6 @@ FabArray<FAB>::ParallelCopy_nowait (const FabArray<FAB>& src,
                                     CpOp                 op,
                                     const FabArrayBase::CPC * a_cpc)
 {
-    BL_PROFILE("FabArray::ParallelCopy_nowait()");
 
     AMREX_ASSERT_WITH_MESSAGE(!pcd, "ParallelCopy_nowait() called when comm operation already in progress.");
 
@@ -473,7 +470,6 @@ FabArray<FAB>::ParallelCopy_finish ()
 
 #ifdef BL_USE_MPI
 
-    BL_PROFILE("FabArray::ParallelCopy_finish()");
 
     if (!pcd) { return; }
 
@@ -551,7 +547,6 @@ FabArray<FAB>::copyTo (FAB&       dest,
                        int        ncomp,
                        int        nghost) const
 {
-    BL_PROFILE("FabArray::copy(fab)");
 
     BL_ASSERT(dcomp + ncomp <= dest.nComp());
     BL_ASSERT(nghost <= nGrow());
@@ -888,7 +883,6 @@ FillBoundary (Vector<MF*> const& mf, Vector<int> const& scomp,
               Vector<int> const& ncomp, Vector<IntVect> const& nghost,
               Vector<Periodicity> const& period, Vector<int> const& cross = {})
 {
-    BL_PROFILE("FillBoundary(Vector)");
 #if 1
     const int N = mf.size();
     for (int i = 0; i < N; ++i) {

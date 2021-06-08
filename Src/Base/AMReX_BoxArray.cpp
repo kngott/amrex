@@ -1183,7 +1183,6 @@ BoxArray::intersections (const Box&                         bx,
                          bool                               first_only,
                          const IntVect&                     ng) const
 {
-    // This is called too many times BL_PROFILE("BoxArray::intersections()");
 
     BARef::HashType& BoxHashMap = getHashMap();
 

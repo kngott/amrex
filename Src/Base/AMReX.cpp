@@ -3,15 +3,11 @@
 #include <AMReX.H>
 #include <AMReX_BaseFab.H>
 #include <AMReX_Box.H>
-#include <AMReX_BLProfiler.H>
-//#include <AMReX_BLFort.H>
 #include <AMReX_Utility.H>
-//#include <AMReX_Random.H>
 #include <AMReX_Print.H>
 #include <AMReX_Arena.H>
 #include <AMReX_BLBackTrace.H>
 #include <AMReX_MemPool.H>
-//#include <AMReX_Geometry.H>
 #include <AMReX_Gpu.H>
 
 #ifdef AMREX_USE_HYPRE
@@ -25,10 +21,6 @@
 #include <AMReX_Sundials.H>
 #endif
 
-#ifdef AMREX_USE_CUPTI
-#include <AMReX_CuptiTrace.H>
-#endif
-
 //#include <AMReX_Machine.H>
 
 #ifdef AMREX_USE_EB
@@ -38,9 +30,6 @@
 #ifndef BL_AMRPROF
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
-//#include <AMReX_iMultiFab.H>
-#include <AMReX_VisMF.H>
-//#include <AMReX_AsyncOut.H>
 #endif
 
 #ifdef BL_LAZY
@@ -374,7 +363,6 @@ amrex::Initialize (int& argc, char**& argv, bool build_parm_parse,
         The_Initialize_Function_Stack.pop();
     }
 
-    BL_PROFILE_INITIALIZE();
 
 #ifndef BL_AMRPROF
     if (build_parm_parse)
@@ -500,21 +488,14 @@ amrex::Initialize (int& argc, char**& argv, bool build_parm_parse,
     BoxArray::Initialize();
     DistributionMapping::Initialize();
     FArrayBox::Initialize();
-//    IArrayBox::Initialize();
     FabArrayBase::Initialize();
     MultiFab::Initialize();
-//    iMultiFab::Initialize();
-    VisMF::Initialize();
-//    AsyncOut::Initialize();
 
 #ifdef AMREX_USE_EB
     EB2::Initialize();
 #endif
 
-    BL_PROFILE_INITPARAMS();
 #endif // ifndef BL_AMRPROF
-
-//    machine::Initialize();
 
 #ifdef AMREX_USE_GPU
     Gpu::Fuser::Initialize();
@@ -557,7 +538,6 @@ amrex::Initialize (int& argc, char**& argv, bool build_parm_parse,
         amrex::Print() << "AMReX (" << amrex::Version() << ") initialized" << std::endl;
     }
 
-    BL_TINY_PROFILE_INITIALIZE();
 
     AMReX::push(new AMReX());
     return AMReX::top();
@@ -582,8 +562,6 @@ amrex::Finalize (amrex::AMReX* pamrex)
     if (init_hypre) HYPRE_Finalize();
 #endif
 
-    BL_TINY_PROFILE_FINALIZE();
-    BL_PROFILE_FINALIZE();
 
 #ifdef AMREX_USE_CUDA
 //    amrex::DeallocateRandomSeedDevArray();

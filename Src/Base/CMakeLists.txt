@@ -68,7 +68,6 @@ target_sources( amrex
    AMReX_EArena.cpp
    AMReX_PArena.H
    AMReX_PArena.cpp
-   AMReX_BLProfiler.H
    AMReX_BLBackTrace.H
    AMReX_BLFort.H
    AMReX_NFiles.H
@@ -221,7 +220,6 @@ target_sources( amrex
    AMReX_MemPool.cpp
    AMReX_MemPool.H
    # Profiling ---------------------------------------------------------------
-   AMReX_BLProfiler.cpp
    AMReX_BLBackTrace.cpp
    )
 
@@ -231,7 +229,6 @@ if (AMReX_FORTRAN)
       PRIVATE
       AMReX_filcc_f.H
       AMReX_BLutil_F.F90
-      AMReX_BLProfiler_F.F90
       AMReX_FILCC_${AMReX_SPACEDIM}D.F90
       AMReX_filcc_mod.F90
       AMReX_omp_mod.F90

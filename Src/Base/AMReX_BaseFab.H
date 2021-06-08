@@ -12,7 +12,6 @@
 #include <AMReX_BArena.H>
 #include <AMReX_CArena.H>
 #include <AMReX_REAL.H>
-#include <AMReX_BLProfiler.H>
 #include <AMReX_BoxIterator.H>
 #include <AMReX_MakeType.H>
 #include <AMReX_Utility.H>

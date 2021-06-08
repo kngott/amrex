@@ -1,7 +1,6 @@
 
 #include <AMReX.H>
 #include <AMReX_Utility.H>
-#include <AMReX_BLProfiler.H>
 
 #ifndef BL_NO_FORT
 #include <AMReX_BLFort.H>
@@ -232,21 +231,15 @@ ErrorString (int errorcode)
 void
 Message::wait ()
 {
-    BL_PROFILE_S("ParallelDescriptor::Message::wait()");
 
-    BL_COMM_PROFILE(BLProfiler::Wait, sizeof(m_type), pid(), tag());
     BL_MPI_REQUIRE( MPI_Wait(&m_req, &m_stat) );
-    BL_COMM_PROFILE(BLProfiler::Wait, sizeof(m_type), BLProfiler::AfterCall(), tag());
 }
 
 bool
 Message::test ()
 {
     int flag;
-    BL_PROFILE_S("ParallelDescriptor::Message::test()");
-    BL_COMM_PROFILE(BLProfiler::Test, sizeof(m_type), pid(), tag());
     BL_MPI_REQUIRE( MPI_Test(&m_req, &flag, &m_stat) );
-    BL_COMM_PROFILE(BLProfiler::Test, flag, BLProfiler::AfterCall(), tag());
     m_finished = flag != 0;
     return m_finished;
 }
@@ -338,7 +331,6 @@ StartParallel (int* argc, char*** argv, MPI_Comm a_mpi_comm)
     if(!flag) {
         amrex::Abort("MPI_Comm_get_attr() failed to get MPI_TAG_UB");
     }
-    BL_COMM_PROFILE_TAGRANGE(m_MinTag, m_MaxTag);
 
 #ifdef BL_USE_MPI3
     int mpi_version, mpi_subversion;
@@ -394,12 +386,9 @@ Barrier (const std::string &message)
     Lazy::EvalReduction();
 #endif
 
-    BL_PROFILE_S("ParallelDescriptor::Barrier()");
-    BL_COMM_PROFILE_BARRIER(message, true);
 
     BL_MPI_REQUIRE( MPI_Barrier(ParallelDescriptor::Communicator()) );
 
-    BL_COMM_PROFILE_BARRIER(message, false);
 }
 
 void
@@ -414,12 +403,9 @@ Barrier (const MPI_Comm &comm, const std::string &message)
         Lazy::EvalReduction();
 #endif
 
-    BL_PROFILE_S("ParallelDescriptor::Barrier(comm)");
-    BL_COMM_PROFILE_BARRIER(message, true);
 
     BL_MPI_REQUIRE( MPI_Barrier(comm) );
 
-    BL_COMM_PROFILE_BARRIER(message, false);
 }
 
 
@@ -445,12 +431,9 @@ Abarrier (const MPI_Comm & comm)
 void
 Test (MPI_Request& request, int& flag, MPI_Status& status)
 {
-    BL_PROFILE_S("ParallelDescriptor::Test()");
-    BL_COMM_PROFILE(BLProfiler::Test, sizeof(char), status.MPI_SOURCE, status.MPI_TAG);
 
     BL_MPI_REQUIRE( MPI_Test(&request,&flag,&status) );
 
-    BL_COMM_PROFILE(BLProfiler::Test, flag, BLProfiler::AfterCall(), status.MPI_TAG);
 }
 
 void
@@ -462,31 +445,24 @@ Test (Vector<MPI_Request>& request, int& flag, Vector<MPI_Status>& status)
 void
 IProbe (int src_pid, int tag, int& flag, MPI_Status& status)
 {
-    BL_PROFILE_S("ParallelDescriptor::Iprobe()");
-    BL_COMM_PROFILE(BLProfiler::Iprobe, sizeof(char), src_pid, tag);
 
     BL_MPI_REQUIRE( MPI_Iprobe(src_pid, tag, ParallelDescriptor::Communicator(),
                                &flag, &status) );
 
-    BL_COMM_PROFILE(BLProfiler::Iprobe, flag, BLProfiler::AfterCall(), status.MPI_TAG);
 }
 
 void
 IProbe (int src_pid, int tag, MPI_Comm comm, int& flag, MPI_Status& status)
 {
-    BL_PROFILE_S("ParallelDescriptor::Iprobe(comm)");
-    BL_COMM_PROFILE(BLProfiler::Iprobe, sizeof(char), src_pid, tag);
 
     BL_MPI_REQUIRE( MPI_Iprobe(src_pid, tag, comm,
                                &flag, &status) );
 
-    BL_COMM_PROFILE(BLProfiler::Iprobe, flag, BLProfiler::AfterCall(), status.MPI_TAG);
 }
 
 void
 Comm_dup (MPI_Comm comm, MPI_Comm& newcomm)
 {
-    BL_PROFILE_S("ParallelDescriptor::Comm_dup()");
     BL_MPI_REQUIRE( MPI_Comm_dup(comm, &newcomm) );
 }
 
@@ -893,8 +869,6 @@ ReduceLongAnd (Vector<std::reference_wrapper<Long> >&& rvar,int cpu)
 void
 Gather (Real* sendbuf, int nsend, Real* recvbuf, int root)
 {
-    BL_PROFILE_S("ParallelDescriptor::Gather()");
-    BL_COMM_PROFILE(BLProfiler::GatherRiRi, BLProfiler::BeforeCall(), root, BLProfiler::NoTag());
 
     BL_ASSERT(root >= 0);
     BL_ASSERT(nsend > 0);
@@ -911,7 +885,6 @@ Gather (Real* sendbuf, int nsend, Real* recvbuf, int root)
                                typ,
                                root,
                                Communicator()));
-    BL_COMM_PROFILE(BLProfiler::GatherRiRi, nsend * sizeof(Real), root, BLProfiler::NoTag());
 }
 
 template <>
@@ -1013,10 +986,7 @@ Mpi_typemap<ParallelDescriptor::lull_t>::type ()
 void
 Wait (MPI_Request& req, MPI_Status& status)
 {
-    BL_PROFILE_S("ParallelDescriptor::Wait()");
-    BL_COMM_PROFILE_WAIT(BLProfiler::Wait, req, status, true);
     BL_MPI_REQUIRE( MPI_Wait(&req, &status) );
-    BL_COMM_PROFILE_WAIT(BLProfiler::Wait, req, status, false);
 }
 
 void
@@ -1024,24 +994,18 @@ Waitall (Vector<MPI_Request>& reqs, Vector<MPI_Status>& status)
 {
     BL_ASSERT(status.size() >= reqs.size());
 
-    BL_PROFILE_S("ParallelDescriptor::Waitall()");
-    BL_COMM_PROFILE_WAITSOME(BLProfiler::Waitall, reqs, reqs.size(), status, true);
     BL_MPI_REQUIRE( MPI_Waitall(reqs.size(),
                                 reqs.dataPtr(),
                                 status.dataPtr()) );
-    BL_COMM_PROFILE_WAITSOME(BLProfiler::Waitall, reqs, status.size(), status, false);
 }
 
 void
 Waitany (Vector<MPI_Request>& reqs, int &index, MPI_Status& status)
 {
-    BL_PROFILE_S("ParallelDescriptor::Waitany()");
-    BL_COMM_PROFILE_WAIT(BLProfiler::Waitany, reqs[0], status, true);
     BL_MPI_REQUIRE( MPI_Waitany(reqs.size(),
                                 reqs.dataPtr(),
                                 &index,
                                 &status) );
-    BL_COMM_PROFILE_WAIT(BLProfiler::Waitany, reqs[index], status, false);
 }
 
 void
@@ -1051,14 +1015,11 @@ Waitsome (Vector<MPI_Request>& reqs, int& completed,
     BL_ASSERT(status.size() >= reqs.size());
     BL_ASSERT(indx.size() >= reqs.size());
 
-    BL_PROFILE_S("ParallelDescriptor::Waitsome()");
-    BL_COMM_PROFILE_WAITSOME(BLProfiler::Waitsome, reqs, reqs.size(), status, true);
     BL_MPI_REQUIRE( MPI_Waitsome(reqs.size(),
                                  reqs.dataPtr(),
                                  &completed,
                                  indx.dataPtr(),
                                  status.dataPtr()));
-    BL_COMM_PROFILE_WAITSOME(BLProfiler::Waitsome, reqs, indx.size(), status, false);
 }
 
 void
@@ -1071,8 +1032,6 @@ Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm comm)
         Lazy::EvalReduction();
 #endif
 
-    BL_PROFILE_S("ParallelDescriptor::Bcast(viMiM)");
-    BL_COMM_PROFILE(BLProfiler::BCastTsi, BLProfiler::BeforeCall(), root, BLProfiler::NoTag());
 
     BL_MPI_REQUIRE( MPI_Bcast(buf,
                               count,
@@ -1081,7 +1040,6 @@ Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm comm)
                               comm) );
     int tsize(0);
     BL_MPI_REQUIRE( MPI_Type_size(datatype, &tsize) );
-    BL_COMM_PROFILE(BLProfiler::BCastTsi, count * tsize, root, BLProfiler::NoTag());
 }
 
 
@@ -1588,8 +1546,6 @@ template <>
 Message
 Asend<char> (const char* buf, size_t n, int pid, int tag, MPI_Comm comm)
 {
-    BL_PROFILE_T_S("ParallelDescriptor::Asend(TsiiM)", char);
-    BL_COMM_PROFILE(BLProfiler::AsendTsiiM, n * sizeof(char), pid, tag);
 
     MPI_Request req;
     Message msg;
@@ -1626,7 +1582,6 @@ Asend<char> (const char* buf, size_t n, int pid, int tag, MPI_Comm comm)
         amrex::Abort("TODO: message size is too big");
     }
 
-    BL_COMM_PROFILE(BLProfiler::AsendTsiiM, BLProfiler::AfterCall(), pid, tag);
     return msg;
 }
 
@@ -1634,8 +1589,6 @@ template <>
 Message
 Send<char> (const char* buf, size_t n, int pid, int tag, MPI_Comm comm)
 {
-    BL_PROFILE_T_S("ParallelDescriptor::Send(Tsii)", char);
-    BL_COMM_PROFILE(BLProfiler::SendTsii, n * sizeof(char), pid, tag);
 
     const int comm_data_type = ParallelDescriptor::select_comm_data_type(n);
     if (comm_data_type == 1) {
@@ -1667,7 +1620,6 @@ Send<char> (const char* buf, size_t n, int pid, int tag, MPI_Comm comm)
         amrex::Abort("TODO: message size is too big");
     }
 
-    BL_COMM_PROFILE(BLProfiler::SendTsii, BLProfiler::AfterCall(), pid, tag);
     return Message();
 }
 
@@ -1675,8 +1627,6 @@ template <>
 Message
 Arecv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm)
 {
-    BL_PROFILE_T_S("ParallelDescriptor::Arecv(TsiiM)", char);
-    BL_COMM_PROFILE(BLProfiler::ArecvTsiiM, n * sizeof(char), pid, tag);
 
     MPI_Request req;
     Message msg;
@@ -1711,7 +1661,6 @@ Arecv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm)
         amrex::Abort("Message size is too big");
     }
 
-    BL_COMM_PROFILE(BLProfiler::ArecvTsiiM, BLProfiler::AfterCall(), pid, tag);
     return msg;
 }
 
@@ -1719,8 +1668,6 @@ template <>
 Message
 Recv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm)
 {
-    BL_PROFILE_T_S("ParallelDescriptor::Recv(Tsii)", char);
-    BL_COMM_PROFILE(BLProfiler::RecvTsii, BLProfiler::BeforeCall(), pid, tag);
 
     MPI_Status stat;
     Message msg;
@@ -1755,7 +1702,6 @@ Recv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm)
         amrex::Abort("Message size is too big");
     }
 
-    BL_COMM_PROFILE(BLProfiler::RecvTsii, n * sizeof(char), pid, stat.MPI_TAG);
     return msg;
 }
 

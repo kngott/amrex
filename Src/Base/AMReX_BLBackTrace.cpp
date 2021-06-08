@@ -5,10 +5,6 @@
 #include <AMReX.H>
 #include <AMReX_Utility.H>
 
-#ifdef AMREX_TINY_PROFILING
-#include <AMReX_TinyProfiler.H>
-#endif
-
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -97,18 +93,6 @@ BLBackTrace::handler(int s)
             errfile << std::endl;
         }
     }
-
-#ifdef AMREX_TINY_PROFILING
-    {
-        std::ofstream errfile;
-        errfile.open(errfilename.c_str(), std::ofstream::out | std::ofstream::app);
-        if (errfile.is_open()) {
-            errfile << std::endl;
-            TinyProfiler::PrintCallStack(errfile);
-            errfile << std::endl;
-        }
-    }
-#endif
 
     if (ParallelDescriptor::NProcs() > 1) {
         amrex::Sleep(3);

@@ -1,9 +1,6 @@
 #include <AMReX.H>
 #include <AMReX_MultiFab.H>
-#include <AMReX_VisMF.H>
 #include <AMReX_ParmParse.H>
-#include <AMReX_BLProfiler.H>
-//#include <AMReX_MultiFabUtil.H>
 
 void main_main ();
 
@@ -17,10 +14,7 @@ Real MFdiff(const amrex::MultiFab& lhs, const amrex::MultiFab& rhs,
     amrex::MultiFab temp(rhs.boxArray(), rhs.DistributionMap(), rhs.nComp(), nghost);
     temp.ParallelCopy(lhs);
     temp.minus(rhs, strt_comp, num_comp, nghost);
-/*
-    if (name != "")
-        { amrex::VisMF::Write(temp, std::string("pltfiles/" + name)); }
-*/
+
     Real max_diff = 0;
     for (int i=0; i<num_comp; ++i)
     {
@@ -44,8 +38,6 @@ int main (int argc, char* argv[])
 
 void main_main ()
 {
-
-    BL_PROFILE("main");
 
     int ncell = 64;
     int ncomp = 1;
@@ -98,12 +90,7 @@ void main_main ()
 
         mf_dst.define(ba, dm_dst, ncomp, ghosts);
         mf_dst.setVal(val++);
-/*
-        amrex::UtilCreateDirectoryDestructive("./pltfiles");
 
-        amrex::VisMF::Write(mf_src, std::string("pltfiles/src_B"));
-        amrex::VisMF::Write(mf_dst, std::string("pltfiles/dst_B"));
-*/
         amrex::Print() << "dm = " << dm_src << std::endl;
         amrex::Vector<int> count(nboxes, 0);
         for (int& p: dst_map)
@@ -114,22 +101,8 @@ void main_main ()
     }
 
     {   
-        BL_PROFILE("**** Test - 1st");
         mf_dst.ParallelCopy(mf_src);
     }
-/*
-    {
-        BL_PROFILE("**** Test - 2nd");
-        CPC c_pattern(mf_dst, ghosts, mf_src, ghosts, amrex::Periodicity::NonPeriodic());
-
-        ParallelCopy(mf_dst, mf_src, 0, 0, ncomp,
-                     ghosts, ghosts, amrex::Periodicity::NonPeriodic(),
-                     COPY, c_pattern);
-    }
-
-    amrex::VisMF::Write(mf_src, std::string("pltfiles/src_after"));
-    amrex::VisMF::Write(mf_dst, std::string("pltfiles/dst_after"));
-*/
 
     amrex::Print() << "Error in old PC: " 
                    << MFdiff(mf_src, mf_dst, 0, ncomp, nghost) << std::endl;
