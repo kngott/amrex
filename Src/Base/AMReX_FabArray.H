@@ -22,12 +22,6 @@
 #include <AMReX_TypeTraits.H>
 #include <AMReX_LayoutData.H>
 #include <AMReX_BaseFab.H>
-#ifdef AMREX_USE_GPU
-#include <AMReX_MFParallelForG.H>
-#else
-#include <AMReX_MFParallelForC.H>
-#endif
-
 #include <AMReX_Gpu.H>
 
 #ifdef AMREX_USE_OMP

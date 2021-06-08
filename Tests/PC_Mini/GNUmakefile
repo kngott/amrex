@@ -4,7 +4,6 @@ AMREX_HOME ?= ../..
 
 #DEBUG        = TRUE 
 USE_OMP      = FALSE
-TINY_PROFILE = TRUE
 USE_MPI      = TRUE
 USE_CUDA     = FALSE
 COMP         = gcc
