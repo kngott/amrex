@@ -142,11 +142,10 @@ namespace amrex
         std::ostringstream comms("comm = [", std::ios_base::ate);
 
         auto const& LocTags = fb.m_LocTags;
-        int N_locs = LocTags.size();  
+        int N_locs = LocTags.size();
         for (int i=0; i<N_locs; ++i) {
             const CopyComTag& tag = LocTags[i];
 
-            
         }
 
         // Gather & Gatherv
