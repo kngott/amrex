@@ -35,7 +35,7 @@ namespace amrex
                 file << "  subgraph cluster_" << i <<  " {" << std::endl;
                 file << subgraph[i];
                 file << "    label = \"rank " << i << "\"" << std::endl;
-                file << "  }" << std::endl << std::endl; 
+                file << "  }" << std::endl << std::endl;
             }
             file << "}";
         }
@@ -46,7 +46,7 @@ namespace amrex
     // ================================================================================
 
     void dot_graph_python(const std::string& filename,
-                          const DistributionMapping& dm, 
+                          const DistributionMapping& dm,
                           const Vector<Real>& weights)
     {
         if (ParallelDescriptor::IOProcessor())
@@ -77,14 +77,14 @@ namespace amrex
             amrex::PrintToFile file("dot."+filename);
 
             file << "dot = graphviz.Graph(engine='fdp')" << std::endl << std::endl;
-            file << "dot.attr(label=r'\\n\\nAverage weight per rank: " 
+            file << "dot.attr(label=r'\\n\\nAverage weight per rank: "
                  << std::to_string(wgt_per_rank) << "')" << std::endl << std::endl;
 
             for (unsigned int i=0; i<subgraph.size(); ++i)
             {
                 file << "with dot.subgraph(name='cluster_" << i << "') as c:" << std::endl;
                 file << subgraph[i];
-                file << "    c.attr(label='rank " << i; 
+                file << "    c.attr(label='rank " << i;
                 if (is_wgts) {
                     file << ", wgt " << std::to_string(subweight[i]);
                 }
