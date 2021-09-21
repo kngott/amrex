@@ -28,14 +28,6 @@ namespace amrex
                        const FabArrayBase::FB& fb,
                        const DistributionMapping& dm_prev = DistributionMapping());
 
-    template <class FAB>
-    void dot_graph_raw(const std::string& filename,
-                       const FabArray<FAB>& fab,
-                       const Vector<Real>& weights,
-                       const FabArrayBase::FB& fb,
-                       const DistributionMapping& dm_prev);
-
-
     // ===========================================================
     // ===========================================================
     // ===========================================================
@@ -51,7 +43,6 @@ namespace amrex
             const DistributionMapping& dm = fab.DistributionMap();
             const BoxArray& ba = fab.boxArray();
 
-            int ipl = 10;    // items-per-line
             int nbxs = dm.size();
 
             std::ostringstream dm_str    ("dm = [",      std::ios_base::ate);
@@ -107,7 +98,6 @@ namespace amrex
             const DistributionMapping& dm = fab.DistributionMap();
             const BoxArray& ba = fab.boxArray();
 
-            int ipl = 10;    // items-per-line
             int nbxs = dm.size();
 
             std::ostringstream dm_str    ("dm = [",      std::ios_base::ate);
@@ -148,10 +138,21 @@ namespace amrex
                  << dm_str.str() << "\n\n" << wgts_str.str() << "\n\n"
                  << dmprev_str.str() << "\n\n" << ba_str.str();
         }
-        else
-        { /*SEND*/ }
 
-        //RECV & Write
+        std::ostringstream comms("comm = [", std::ios_base::ate);
+
+        auto const& LocTags = fb.m_LocTags;
+        int N_locs = LocTags.size();  
+        for (int i=0; i<N_locs; ++i) {
+            const CopyComTag& tag = LocTags[i];
+
+            
+        }
+
+        // Gather & Gatherv
+
+        if (IOPROC)
+          { } // write to file;
     }
 
 
