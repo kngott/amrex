@@ -1,5 +1,5 @@
-#ifndef AMREX_DOTGRAPH_H_
-#define AMREX_DOTGRAPH_H_
+#ifndef AMREX_GRAPH_H_
+#define AMREX_GRAPH_H_
 
 #include <AMReX_DistributionMapping.H>
 #include <AMReX_Config.H>
@@ -9,6 +9,233 @@
 
 namespace amrex
 {
+    class Graph
+    {
+        public:
+
+        Graph();
+        ~Graph();
+
+        // Add -- if name exists, return.
+        // Update -- if name exists, overwrite. Otherwise, add.
+
+        // Add an objective. Matches based on string names.
+        void addObj();
+        void addObj();
+
+        // Add an objective, matching already existing names.
+        // Include string/weight combination for new weights.
+        void addObj();
+        void addObj();
+
+        // Piecewise data addition. 
+        // Can be used to add data without an objective or partial obj info. 
+        void addNodeList();
+        void addEdgeList();
+        void addWeight();
+
+        // Print to file
+        void print(std::string filename);
+
+        // Clear graph
+        void clear();
+
+        // +++++++++++++++++++++++++++++++++++++++++++++++ 
+
+        struct Weights {
+            std::string m_name;
+            std::vector<double> m_weights;
+            double m_scaling;
+        };
+
+        struct NodeList {
+            std::string m_name;
+            int m_id = -1;
+            int m_offset = -1; 
+
+            std::vector<int> m_ranklist;
+            std::vector<std::string> m_labels;
+
+            std::vector<Weights> m_wgts;
+        };
+
+        struct EdgeList {
+            std::string m_name;
+            int m_id = -1;
+            int m_offset = -1;
+
+            std::vector<std::pair<int,int>> m_edgelist;
+            std::vector<std::string> m_labels;
+
+            std::vector<Weights> m_wgts;
+        };
+
+        private:
+
+        int m_n_count = 0;
+        int m_e_count = 0;
+
+        std::vector<NodeList> m_nodes;
+        std::vector<EdgeList> m_edges;
+    };
+
+    // ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    template<class FAB>
+    void Graph::addNodeList(const FabArray<FAB>& fab,
+                            const std::string& name)
+    {
+        if (not_present(name, m_nodes))
+        {
+            std::vector<std::string> labels(fab.size());
+            BoxArray& ba = fab.boxArray();
+
+            for (int i=0; i<fab.size(); ++i)
+            {
+                std::ostringstream oss("\"", std::ios_base:ate);
+                const Box& bx = ba[i];
+
+                oss << bx.smallEnd() << " " << bx.bigEnd() << "\"";
+
+                labels[i] = oss.str();
+            }
+
+
+            // Call other version, with ba = labels.
+            addNodeList(fab.DistributionMapping(), name, labels);
+        }
+    }
+
+    void Graph::addNodeList(const DistributionMapping& dm,
+                            const std::string& name,
+                            const std::vector<std::string>& labels = std::vector())
+    {
+        if (not_present(name, m_nodes))
+        {
+            NodeList nl;
+            nl.m_name = name;
+            nl.m_ranklist = dm.ProcessorMap();
+            nl.m_labels = labels;
+
+            nl.m_id = m_nodes.size();
+            nl.m_offset = m_n_count;
+            m_n_count += dm.size();
+
+            nodes[nl].my_wgts.emplace_back(std::move(nl));
+        }
+    }
+
+    void Graph::addEdgeList(const FabArrayBase::CommMetaData comm_data,
+                            const std::string& name,
+                            const std::vector<std::string> labels = std::vector())
+    {
+        if (not_present(name, m_edges))
+        {
+            
+        }
+    }
+    // -------------------------------- 
+
+    void Graph::addNodeWeight(const std::string& node_name,
+                              const std::string& wgts_name,
+                              const std::vector<double> wgts,
+                              const double scaling)
+    {
+        int nl = get_index(node_name, m_nodes);
+
+        if (nl != -1)
+        {
+            if (not_present(wgts_name, m_nodes[nl].m_wgts))
+            {
+                Weights wgts;
+                wgts.m_name = wgts_name;
+                wgts.m_weights = wgts;
+                wgts.m_scaling = scaling;
+
+                m_nodes[nl].m_wgts.emplace_back(std::move(wgts));
+            }
+        }
+    }
+
+    void Graph::addEdgeWeight(const std::string& edge_name,
+                              const std::string& wgts_name,
+                              const std::vector<double> wgts,
+                              const double scaling)
+    {
+        int el = get_index(edge_name, m_edges);
+
+        if (el != -1)
+        {
+            if (not_present(wgts_name, m_edges[el].m_wgts))
+            {
+                Weights wgts;
+                wgts.m_name = wgts_name;
+                wgts.m_weights = wgts;
+                wgts.m_scaling = scaling;
+
+                m_edges[el].m_wgts.emplace_back(std::move(wgts));
+            }
+        }
+    }
+
+    // -------------------------------- 
+
+    template<class FAB>
+    void Graph::addObj(const FabArray<FAB>& fab,
+                       const std::string& node_name,
+                       const std::vector<Real>& weights,
+                       const Real scaling) {
+    }
+
+    void Graph::addObj(const DistributionMapping& dm,
+                       const std::string& node_name,
+                       const std::vector<Real>& weights
+                       const Real scaling) {
+    }
+
+    void Graph::addObj(const std::string& noe_name, 
+                       const std::string& wgt_name) {
+    }
+
+    // -------------------------------- 
+
+    template<class SList>
+    int Graph::get_index(const std::string& find,
+                         const SList& list)
+    {
+        for(int i=0; i<list.size(); ++i) {
+            if (list[i].name == find)
+                { return i; }
+        }
+        return -1;
+    }
+
+    template<class SList>
+    bool Graph::is_present(const std::string& find,
+                           const SList& list)
+    {
+        return (get_index(find, list) != -1);
+    }
+
+    template<class SList>
+    bool Graph::not_present(const std::string& find,
+                            const SList& list)
+    {
+        return (get_index(find, list) == -1);
+    }
+
+    void Graph::clear()
+    {
+        m_n_count = 0;
+        m_e_count = 0;
+        m_nodes.clear();
+        m_edges.clear();
+    }
+
+    // ===========================================================
+    // ===========================================================
+    // ===========================================================
+
     void dot_graph (const std::string& filename,
                     const DistributionMapping& dm,
                     const Vector<Real>& weights=Vector<Real>());
@@ -30,8 +257,6 @@ namespace amrex
                        const FabArrayBase::FB& fb,
                        const DistributionMapping& dm_prev = DistributionMapping());
 
-    // ===========================================================
-    // ===========================================================
     // ===========================================================
 
     template <class FAB>
