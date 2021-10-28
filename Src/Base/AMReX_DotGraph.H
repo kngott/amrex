@@ -96,7 +96,7 @@ namespace amrex
                        const int& ncomp,
                        const DistributionMapping& dm_prev)
     {
-
+#if 0
         amrex::PrintToFile file("rawgraph."+filename);
 
         if (ParallelDescriptor::IOProcessor())
@@ -219,7 +219,9 @@ namespace amrex
         if (ParallelDescriptor::IOProcessor()) {
               file << comms_str.str() << "\n\n";
         }
+#endif
     }
+
 }
 
 #endif
