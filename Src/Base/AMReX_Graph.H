@@ -8,9 +8,19 @@
 #include <numeric>
 
 // TODO: CHECK WHETHER SIZE OF ADDED OBJ/FAB/EDGE > 0.
-// OR TODO: CHECK CONSISTENT SIZES. EXTRA INT?
+// OR TODO: CHECK CONSISTENT SIZES.
+
 // TODO: INTS OR LONGS?
 // TODO: ADD AND UPDATE?
+
+// TODO: FLAG FOR ARE THE WEIGHTS GLOBAL OR LOCAL?
+// TODO: UNIQUE SCALING ON EACH RANK?
+// TODO: SIZE OF COMM ITEMS THE SAME?
+// TODO: CHECK WHERE IOPROC SHOULD BE DOING THE WORK ONLY.
+//       E.G. GLOBAL WEIGHTS, NODE LIST DEF, ETC.
+
+// TODO: LABELS AS INTVECTS (LOW & HIGH)
+// TODO: FOR NL -- STORE BA & DM, PRINT FROM THAT?
 
 namespace amrex
 {
@@ -18,48 +28,133 @@ namespace amrex
     {
         public:
 
-        Graph();
-        ~Graph();
+        Graph() = default;
+        ~Graph() = default;
 
-        // Add an objective. Matches based on string names.
+        // Highest-level, user functions.
+        // Add a fab (node) or comm operation (edge).
+
         template <typename FAB>
-        void addObj(const FabArray<FAB>& fab,
+        void addFab(const FabArray<FAB>& fab,
                     const std::string& node_name,
                     const std::vector<double>& weights,
                     const std::string& wgts_name,
                     const Real scaling);
 
-        void addObj(const DistributionMapping& dm,
-                    const std::string& node_name,
-                    const std::vector<std::string> labels,
-                    const std::vector<double>& weights,
-                    const std::string& wgts_name,
-                    const Real scaling);
+        template <typename FAB>
+        void addFab(const FabArray<FAB>& fab,
+                    const std::string& name);
 
         // ---------------------------
 
-        // Piecewise data addition. 
-        // Can be used to add data without an objective or partial obj info.
+        // name, from, to, scaling + FB variables.
+        // ***** SumBoundary? EnforcePeriodicity? Particle Comms.
+        // OverWrite Sync.
         template <typename FAB>
-        void addNodeList(const FabArray<FAB>& fab,
-                         const std::string& name);
+        void addFB(const std::string& name, const std::string& nodes, const double scaling,
+                   const FabArray<FAB>& fab,
+                   bool cross = false)
+        {
+            addFB(name, nodes, scaling,
+                  fab, 0, fab.nComp(), fab.nGrowVect(), Periodicity::NonPeriodic(), cross);
+        }
 
-        void addNodeList(const DistributionMapping& dm,
-                         const std::string& name,
-                         const std::vector<std::string>& labels = std::vector<std::string>());
+        template <typename FAB>
+        void addFB(const std::string& name, const std::string& nodes, const double scaling,
+                   const FabArray<FAB>& fab,
+                   const Periodicity& period, bool cross = false)
+        {
+            addFB(name, nodes, scaling,
+                  fab, 0, fab.nComp(), fab.nGrowVect(), period, cross);
+        }
+
+        template <typename FAB>
+        void addFB(const std::string& name, const std::string& nodes, const double scaling,
+                   const FabArray<FAB>& fab,
+                   const IntVect& nghost, Periodicity& period, bool cross = false)
+        {
+            addFB(name, nodes, scaling,
+                  fab, 0, fab.nComp(), nghost, period, cross);
+        }
+
+        template <typename FAB>
+        void addFB(const std::string& name, const std::string& nodes, const double scaling,
+                   const FabArray<FAB>& fab,
+                   const int scomp, const int ncomp, bool cross = false)
+        {
+            addFB(name, nodes, scaling,
+                  fab, scomp, ncomp, fab.nGrowVect(), Periodicity::NonPeriodic(), cross);
+        }
+
+        template <typename FAB>
+        void addFB(const std::string& name, const std::string& nodes, const double scaling,
+                   const FabArray<FAB>& fab,
+                   const int scomp, const int ncomp,
+                   const Periodicity& period, bool cross = false)
+        {
+            addFB(name, nodes, scaling,
+                  fab, scomp, ncomp, fab.nGrowVect(), period, cross);
+        }
+
+        template <typename FAB>
+        void addFB(const std::string& name, const std::string& nodes, const double scaling,
+                   const FabArray<FAB>& fab,
+                   const int /* scomp */, const int ncomp,
+                   const IntVect& nghost, const Periodicity& period, bool cross = false)
+        {
+            const FabArrayBase::CommMetaData& fb = fab.getFB(nghost, period, cross, false);
+            addEdgeList(name, nodes, nodes, scaling, fb, ncomp);
+        }
+
+#if 0
+    void ParallelCopy (const FabArray<FAB>& fa,
+                       const Periodicity&   period = Periodicity::NonPeriodic(),
+                       CpOp                 op = FabArrayBase::COPY)
+    void ParallelCopy (const FabArray<FAB>& src,
+                       int                  src_comp,
+                       int                  dest_comp,
+                       int                  num_comp,
+                       const Periodicity&   period = Periodicity::NonPeriodic(),
+                       CpOp                 op = FabArrayBase::COPY)
+    void ParallelCopy (const FabArray<FAB>& src,
+                       int                  src_comp,
+                       int                  dest_comp,
+                       int                  num_comp,
+                       int                  src_nghost,
+                       int                  dst_nghost,
+                       const Periodicity&   period = Periodicity::NonPeriodic(),
+                       CpOp                 op = FabArrayBase::COPY)
+    void ParallelCopy (const FabArray<FAB>& src,
+                       int                  src_comp,
+                       int                  dest_comp,
+                       int                  num_comp,
+                       const IntVect&       src_nghost,
+                       const IntVect&       dst_nghost,
+                       const Periodicity&   period = Periodicity::NonPeriodic(),
+                       CpOp                 op = FabArrayBase::COPY,
+                       const FabArrayBase::CPC* a_cpc = nullptr);
+#endif
+
+/*
+
+        void addPC( );
+*/
+        // ---------------------------
+
+        // Lower-level functions.
+        // General implementations.
+
+        void addNodeList(const std::string& name,
+                         const std::vector<int>& rank_array,
+                         const std::size_t item_size,
+                         const std::vector<std::string>& labels);
 
         void addEdgeList(const std::string& name,
-                         const FabArrayBase::CommMetaData comm_data,
                          const std::string& from_name,
                          const std::string& to_name,
-                         const std::string& name,
-                         const std::vector<std::string> labels);
-
-        void addEdgeList(const std::string& name,
-                         const FabArrayBase::CommMetaData comm_data,
-                         const std::string& from_name,
-                         const std::string& to_name,
-                         const std::string& name);
+                         const double scaling,
+                         const FabArrayBase::CommMetaData& comm_data,
+                         const int ncomp);
 
         // ---------------------------
 
@@ -94,10 +189,14 @@ namespace amrex
         struct NodeList {
             std::string m_name;
             int m_id = -1;
-            int m_offset = -1; 
+            int m_offset = -1;
+            int m_size = -1;
 
-            std::vector<int> m_ranks;
+            std::size_t m_bytes_per_item = 0;
             std::vector<std::string> m_labels;
+            std::vector<int> m_ranks;        // DM
+//            std::vector<IntVect> m_lo;       // BA
+//            std::vector<IntVect> m_hi;       // BA
 
             std::vector<Weights> m_wgts;
         };
@@ -107,9 +206,10 @@ namespace amrex
             std::string m_name;
             int m_id = -1;
             int m_offset = -1;
+            int m_size = -1;
 
             std::pair<std::string, std::string> m_mynodes;   // int,int & ID instead?
-            std::vector<std::pair<int,int>> m_edges;
+            std::vector<std::pair<int,int>> m_edgelist;
             std::vector<std::string> m_labels;
 
             std::vector<Weights> m_wgts;
@@ -135,15 +235,27 @@ namespace amrex
 
     // ++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+    template <typename FAB>
+    void Graph::addFab(const FabArray<FAB>& fab,
+                       const std::string& node_name,
+                       const std::vector<double>& weights,
+                       const std::string& wgts_name,
+                       const Real scaling)
+    {
+        addFab(fab, node_name);
+        addNodeWeight(node_name, wgts_name, weights, scaling);
+    }
+
+
     template<class FAB>
-    void Graph::addNodeList(const FabArray<FAB>& fab,
-                            const std::string& name)
+    void Graph::addFab(const FabArray<FAB>& fab,
+                       const std::string& name)
     {
         if (not_present(name, m_nodes))
         {
-            // Build labels from box array and move on.
+            // Build labels from box array.
             std::vector<std::string> labels(fab.size());
-            BoxArray& ba = fab.boxArray();
+            const BoxArray& ba = fab.boxArray();
 
             for (int i=0; i<fab.size(); ++i)
             {
@@ -155,70 +267,106 @@ namespace amrex
                 labels[i] = oss.str();
             }
 
-            addNodeList(fab.DistributionMapping(), name, labels);
+            const std::vector<int>& dm = fab.DistributionMap().ProcessorMap();
+            const std::size_t type_size = sizeof(typename FAB::value_type);
+
+            addNodeList(name, dm, type_size, labels);
         }
     }
 
-    void Graph::addNodeList(const DistributionMapping& dm,
-                            const std::string& name,
+    // --------------------------------
+
+    void Graph::addNodeList(const std::string& name,
+                            const std::vector<int>& rank_array,
+                            const std::size_t item_size,
                             const std::vector<std::string>& labels)
     {
         if (not_present(name, m_nodes))
         {
             NodeList nl;
             nl.m_name = name;
-            nl.m_ranks = dm.ProcessorMap();
-            nl.m_labels = labels;
-
             nl.m_id = m_nodes.size();
             nl.m_offset = m_n_count;
-            m_n_count += dm.size();
+            nl.m_size = rank_array.size();
+            m_n_count += rank_array.size();
+
+            nl.m_ranks = rank_array;
+            nl.m_labels = labels;
+            nl.m_bytes_per_item = item_size;
 
             m_nodes.emplace_back(std::move(nl));
         }
     }
 
     void Graph::addEdgeList(const std::string& name,
-                            const FabArrayBase::CommMetaData comm_data,
                             const std::string& from_name,
                             const std::string& to_name,
-                            const std::string& name,
-                            const std::vector<std::string> labels)
+                            const double scaling,
+                            const FabArrayBase::CommMetaData& comm_data,
+                            const int ncomp)
+
     {
+        // label => snd box
+        // weight => bytes sent
+
         if (not_present(name, m_edges))
         {
             EdgeList el;
             el.m_name = name;
-            el.m_labels = labels;
-
             el.m_id = m_edges.size();
             el.m_offset = m_e_count;
+            el.m_mynodes.first = from_name;
+            el.m_mynodes.second = to_name;
+
+            // Don't do recvs, so comms aren't duplicated.
             const int N_locs = comm_data.m_LocTags->size();
             const int N_snds = comm_data.m_SndTags->size();
-            m_e_count += (N_locs + N_rcvs + N_snds);
+            el.m_size = (N_locs + N_snds);
+            m_e_count += el.m_size;
+            el.m_edgelist.reserve(el.m_size);
+            el.m_labels.reserve(el.m_size);
 
-            int offset_src = m_nodes[get_index(from_name, m_nodes)].m_offset;
-            int offset_dst = m_nodes[get_index(to_name, m_nodes)].m_offset;
+            std::vector<double> weights;
+            weights.reserve(el.m_size);
 
-            for (int i=0; i<N_locs; ++i) {
-                 
+            int from_id = get_index(from_name, m_nodes);
+            int to_id = get_index(to_name, m_nodes);
+
+            int offset_src = m_nodes[from_id].m_offset;
+            int offset_dst = m_nodes[to_id].m_offset;
+            int type_size = m_nodes[from_id].m_bytes_per_item;
+
+            const auto& LocTags = comm_data.m_LocTags;
+            const auto& SndTags = comm_data.m_SndTags;
+
+            // Combination of multiple ranges would make this much nicer. :)
+            // Or, subfunction/lambda function to do this once.
+            for (const FabArrayBase::CopyComTag& cct : *LocTags) {
+                std::ostringstream oss("\"", std::ios_base::ate);
+                const Box& bx = cct.sbox;
+                oss << bx.smallEnd() << " " << bx.bigEnd() << "\"";
+
+                el.m_edgelist.emplace_back(cct.srcIndex, cct.dstIndex);
+                el.m_labels.emplace_back(oss.str());
+                weights.emplace_back(bx.numPts()*type_size*ncomp);
             }
- 
-            for (MAP ITERATOR) {
-                 
+
+            for (const auto& kv: *SndTags) {
+                for (const auto& cct : kv.second) {
+                    std::ostringstream oss("\"", std::ios_base::ate);
+                    const Box& bx = cct.sbox;
+                    oss << bx.smallEnd() << " " << bx.bigEnd() << "\"";
+
+                    el.m_edgelist.emplace_back(cct.srcIndex, cct.dstIndex);
+                    el.m_labels.emplace_back(oss.str());
+                    weights.emplace_back(bx.numPts()*type_size*ncomp);
+                }
             }
 
             m_edges.emplace_back(std::move(el));
-        }
-    }
+            addEdgeWeight(name, "bytes", weights, scaling);
 
-    void Graph::addEdgeList(const std::string& name,
-                            const FabArrayBase::CommMetaData comm_data,
-                            const std::string& from_name,
-                            const std::string& to_name,
-                            const std::string& name)
-    {
-        // Build appropriate labels. Box or size or both?
+        }
     }
 
     // -------------------------------- 
@@ -237,12 +385,12 @@ namespace amrex
                 // Check length of weights is correct 
                 AMREX_ASSERT(wgts.size() == m_nodes[nl].m_ranks.size() );
 
-                Weights my_wgts;
-                my_wgts.m_name = wgts_name;
-                my_wgts.m_weights = wgts;
-                my_wgts.m_scaling = scaling;
+                Weights new_wgt;
+                new_wgt.m_name = wgts_name;
+                new_wgt.m_weights = wgts;
+                new_wgt.m_scaling = scaling;
 
-                m_nodes[nl].m_wgts.emplace_back(std::move(my_wgts));
+                m_nodes[nl].m_wgts.emplace_back(std::move(new_wgt));
             }
         }
     }
@@ -261,46 +409,16 @@ namespace amrex
                 // Check length of weights is correct 
                 AMREX_ASSERT(wgts.size() == m_edges[el].m_edges.size() );
 
-                Weights wgts;
-                wgts.m_name = wgts_name;
-                wgts.m_weights = wgts;
-                wgts.m_scaling = scaling;
+                Weights new_wgt;
+                new_wgt.m_name = wgts_name;
+                new_wgt.m_weights = wgts;
+                new_wgt.m_scaling = scaling;
 
-                m_edges[el].m_wgts.emplace_back(std::move(wgts));
+                m_edges[el].m_wgts.emplace_back(std::move(new_wgt));
             }
         }
     }
 
-    // -------------------------------- 
-
-    template<class FAB>
-    void Graph::addObj(const FabArray<FAB>& fab,
-                       const std::string& node_name,
-                       const std::vector<Real>& weights,
-                       const std::string& wgts_name,
-                       const Real scaling)
-    {
-        addNodeList(fab, node_name);
-        addNodeWeight(node_name, wgts_name, weights, scaling);
-    }
-
-    void Graph::addObj(const DistributionMapping& dm,
-                       const std::string& node_name,
-                       const std::vector<std::string> labels,
-                       const std::vector<Real>& weights,
-                       const std::string& wgts_name,
-                       const Real scaling)
-    {
-        addNodeList(dm, node_name, labels);
-        addNodeWeight(node_name, wgts_name, weights, scaling);
-    }
-
-/*
-    void Graph::addEdgeObj(const std::string& noe_name, 
-                           const std::string& wgt_name)
-    {
-    }
-*/
     // -------------------------------- 
 
     template<class L>
@@ -343,9 +461,18 @@ namespace amrex
     name_weight_scaling = 
     */
     void Graph::print(const std::string& filename,
-                      const int wgt_precision = 5,
-                      const bool replace_file = false)    // std::rename ?
+                      const int wgt_precision,
+                      const bool replace_file)    // std::rename ?
     {
+/*
+        if (ParallelDescriptor::IOProcessor())
+        {
+            return;
+        }
+*/
+        // Node comms: (local weights).
+        // or, all comms: (can later collapse and improve).
+
         amrex::PrintToFile file(filename);
 
         for (int nid=0; nid<m_nodes.size(); ++nid)
@@ -359,35 +486,108 @@ namespace amrex
             oss_l << nl.m_name << "_labels = [";
 
             for (int i=0; i<nl.m_ranks.size(); ++i) {
-                oss_r << " " << std::to_string(nl.m_ranks[i]);     // To ensure no round-off.
+                oss_r << " " << std::to_string(nl.m_ranks[i]); // To ensure no round-off.
                 oss_l << " " << nl.m_labels[i]; 
 
             }
             oss_r << "]\n";
             oss_l << "]\n";
 
-            file << oss_r.str() << std::endl << oss_l << std::endl;
+            file << oss_r.str() << std::endl << oss_l.str() << std::endl;
 
 
             for (int w=0; w<nl.m_wgts.size(); ++w)
             {
                 const Weights& wt = nl.m_wgts[w];
-                std::string this_name = nl.m_name + "_" + wt.name;
+                std::string this_name = nl.m_name + "_" + wt.m_name;
 
                 std::ostringstream oss_w(std::ios_base::ate);
                 oss_w.precision(wgt_precision);
 
-                oss_w[w] << this_name << " = [";
+                oss_w << this_name << " = [";
                 for (int i=0; i<nl.m_ranks.size(); ++i) {
-                    oss_w[w] << " " << wt.m_weights[i];
+                    oss_w << " " << wt.m_weights[i];
                 } 
-                oss_w[w] << "]\n" <<
-                            this_name << "_scaling = " << wt.m_scaling;
+                oss_w << "]\n" <<
+                         this_name << "_scaling = " << wt.m_scaling;
 
-                file << oss_w << std::endl; 
+                file << oss_w.str() << std::endl;
             }
         }
 
+        file << std::endl << std::endl;
+
+        // name = [  ]
+        // name_src = from
+        // name_dst = to
+        // name_labels = [ ]
+        // name_weight = [ ]
+        // name_weight_scaling =
+
+        // Edge comms: Pairs, labels, weights (unknown size)
+/*
+        for (int eid=0; eid<m_edges.size(); ++eid)
+        {
+            if (!ParallelDescriptor::IOProcessor())
+            {
+
+                Send bytes in pairs / labels / weights
+
+                Sends
+            }
+            else
+            {
+                Recvs
+            }
+        }
+*/
+
+        for (int eid=0; eid<m_edges.size(); ++eid)
+        {
+            if (eid==0) {
+                file << std::endl << std::endl;
+            }
+
+            const EdgeList& el = m_edges[eid];
+
+            std::ostringstream oss_e(std::ios_base::ate);
+            std::ostringstream oss_l(std::ios_base::ate);
+
+            oss_e << el.m_name << " = [";
+            oss_l << el.m_name << "_labels = [";
+
+            for (int i=0; i<el.m_edgelist.size(); ++i) {
+                const std::pair<int,int>& edge = el.m_edgelist[i];
+                oss_e << " (" << std::to_string(edge.first) << ","
+                              << std::to_string(edge.second) << ")";    // To ensure no round-off.
+                oss_l << " " << el.m_labels[i];
+            }
+            oss_e << "]\n";
+            oss_l << "]\n";
+
+            file << oss_e.str() << std::endl
+                 << el.m_name << "_src = " << el.m_mynodes.first << std::endl
+                 << el.m_name << "_dst = " << el.m_mynodes.second << std::endl
+                 << oss_l.str() << std::endl;
+
+            for (int w=0; w<el.m_wgts.size(); ++w)
+            {
+                const Weights& wt = el.m_wgts[w];
+                std::string this_name = el.m_name + "_" + wt.m_name;
+
+                std::ostringstream oss_w(std::ios_base::ate);
+                oss_w.precision(wgt_precision);
+
+                oss_w << this_name << " = [";
+                for (int i=0; i<el.m_edgelist.size(); ++i) {
+                    oss_w << " " << wt.m_weights[i];
+                }
+                oss_w << "]\n" <<
+                         this_name << "_scaling = " << wt.m_scaling;
+
+                file << oss_w.str() << std::endl;
+            }
+        }
     }
 }
 
