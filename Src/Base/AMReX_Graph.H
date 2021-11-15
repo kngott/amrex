@@ -178,7 +178,7 @@ namespace amrex
         // Clear graph
         void clear();
 
-        // +++++++++++++++++++++++++++++++++++++++++++++++ 
+        // +++++++++++++++++++++++++++++++++++++++++++++++
 
         struct Weights {
             std::string m_name;
@@ -194,7 +194,7 @@ namespace amrex
 
             std::size_t m_bytes_per_item = 0;
             std::vector<std::string> m_labels;
-            std::vector<int> m_ranks;        // DM
+            std::vector<int> m_ranks;          // DM
 //            std::vector<IntVect> m_lo;       // BA
 //            std::vector<IntVect> m_hi;       // BA
 
@@ -369,7 +369,7 @@ namespace amrex
         }
     }
 
-    // -------------------------------- 
+    // --------------------------------
 
     void Graph::addNodeWeight(const std::string& node_name,
                               const std::string& wgts_name,
@@ -382,7 +382,7 @@ namespace amrex
         {
             if (not_present(wgts_name, m_nodes[nl].m_wgts))
             {
-                // Check length of weights is correct 
+                // Check length of weights is correct
                 AMREX_ASSERT(wgts.size() == m_nodes[nl].m_ranks.size() );
 
                 Weights new_wgt;
@@ -406,7 +406,7 @@ namespace amrex
         {
             if (not_present(wgts_name, m_edges[el].m_wgts))
             {
-                // Check length of weights is correct 
+                // Check length of weights is correct
                 AMREX_ASSERT(wgts.size() == m_edges[el].m_edges.size() );
 
                 Weights new_wgt;
@@ -419,7 +419,7 @@ namespace amrex
         }
     }
 
-    // -------------------------------- 
+    // --------------------------------
 
     template<class L>
     int Graph::get_index(const std::string& find,
@@ -458,7 +458,7 @@ namespace amrex
     name = [...]
     name_labels = [...]
     name_weight = [...]
-    name_weight_scaling = 
+    name_weight_scaling =
     */
     void Graph::print(const std::string& filename,
                       const int wgt_precision,
@@ -487,7 +487,7 @@ namespace amrex
 
             for (int i=0; i<nl.m_ranks.size(); ++i) {
                 oss_r << " " << std::to_string(nl.m_ranks[i]); // To ensure no round-off.
-                oss_l << " " << nl.m_labels[i]; 
+                oss_l << " " << nl.m_labels[i];
 
             }
             oss_r << "]\n";
@@ -507,7 +507,7 @@ namespace amrex
                 oss_w << this_name << " = [";
                 for (int i=0; i<nl.m_ranks.size(); ++i) {
                     oss_w << " " << wt.m_weights[i];
-                } 
+                }
                 oss_w << "]\n" <<
                          this_name << "_scaling = " << wt.m_scaling;
 
