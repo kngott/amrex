@@ -259,7 +259,7 @@ namespace amrex
         // ------------------
         // The Graph Data:
 
-        bool m_assembled = true; 
+        bool m_assembled = true;
         int m_rank = ParallelDescriptor::IOProcessorNumber();
 
         int m_n_count = 0;

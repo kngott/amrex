@@ -260,8 +260,8 @@ Graph Graph::assemble()
         // .....................
         // Connection Pairs
         {
-            std::vector<int> all_from(n_total_edges, -1); 
-            std::vector<int> all_to(n_total_edges, -1); 
+            std::vector<int> all_from(n_total_edges, -1);
+            std::vector<int> all_to(n_total_edges, -1);
 
             el.m_from.resize(n_total_edges);
             el.m_to.resize(n_total_edges);
@@ -338,7 +338,7 @@ Graph Graph::assemble()
             double my_value = full_wgt.m_scaling[0];
 
             full_wgt.m_scaling.resize(ParallelDescriptor::NProcs());
-            full_wgt.m_scaling = ParallelDescriptor::Gather<double>(my_value, m_rank);  
+            full_wgt.m_scaling = ParallelDescriptor::Gather<double>(my_value, m_rank);
         }
     }
 
