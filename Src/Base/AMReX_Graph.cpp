@@ -350,7 +350,7 @@ void Graph::print(const std::string& filename,
                   const bool /*replace_file*/)    // std::rename ?
 {
     Graph assembled = this->assemble();
-    full_graph.print_doit(filename, wgt_precision);
+    assembled.print_doit(filename, wgt_precision);
 }
 
 
