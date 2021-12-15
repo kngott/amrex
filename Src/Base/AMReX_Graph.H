@@ -21,6 +21,8 @@
 
 // TODO: CHECKS IF THERE IS NO INFORMATION ON A RANK.
 
+// TODO: MARK ASSEMBLED GRAPHS
+
 // TODO: ALLOW SETTING OF IO PROC.
 //       (MULTIPLE SIMULTANEOUS GRAPHS ON DIFFERENT RANKS).
 // TODO: GLOBAL SCALING INFORMATION? DON'T NEED TO COLLECT SCALING?
@@ -55,88 +57,218 @@ namespace amrex
         // ***** SumBoundary? EnforcePeriodicity? Particle Comms.
         // OverWrite Sync.
         template <typename FAB>
-        void addFB(const std::string& name, const std::string& nodes, const double scaling,
-                   const FabArray<FAB>& fab,
+        void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling,
+                             const FabArray<FAB>& fab, bool cross = false)
+        {
+            addFillBoundary(name, nodes, scaling,
+                            fab, 0, fab.nComp(), fab.nGrowVect(), Periodicity::NonPeriodic(), cross);
+        }
+
+        template <typename FAB>
+        void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling,
+                             const FabArray<FAB>& fab, const Periodicity& period, bool cross = false)
+        {
+            addFillBoundary(name, nodes, scaling,
+                            fab, 0, fab.nComp(), fab.nGrowVect(), period, cross);
+        }
+
+        template <typename FAB>
+        void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling,
+                   const FabArray<FAB>& fab, const IntVect& nghost, Periodicity& period,
                    bool cross = false)
         {
-            addFB(name, nodes, scaling,
-                  fab, 0, fab.nComp(), fab.nGrowVect(), Periodicity::NonPeriodic(), cross);
+            addFillBoundary(name, nodes, scaling,
+                            fab, 0, fab.nComp(), nghost, period, cross);
         }
 
         template <typename FAB>
-        void addFB(const std::string& name, const std::string& nodes, const double scaling,
-                   const FabArray<FAB>& fab,
+        void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling,
+                   const FabArray<FAB>& fab, const int scomp, const int ncomp, bool cross = false)
+        {
+            addFillBoundary(name, nodes, scaling,
+                            fab, scomp, ncomp, fab.nGrowVect(), Periodicity::NonPeriodic(), cross);
+        }
+
+        template <typename FAB>
+        void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling,
+                   const FabArray<FAB>& fab, const int scomp, const int ncomp,
                    const Periodicity& period, bool cross = false)
         {
-            addFB(name, nodes, scaling,
-                  fab, 0, fab.nComp(), fab.nGrowVect(), period, cross);
+            addFillBoundary(name, nodes, scaling,
+                            fab, scomp, ncomp, fab.nGrowVect(), period, cross);
         }
 
         template <typename FAB>
-        void addFB(const std::string& name, const std::string& nodes, const double scaling,
-                   const FabArray<FAB>& fab,
-                   const IntVect& nghost, Periodicity& period, bool cross = false)
-        {
-            addFB(name, nodes, scaling,
-                  fab, 0, fab.nComp(), nghost, period, cross);
-        }
-
-        template <typename FAB>
-        void addFB(const std::string& name, const std::string& nodes, const double scaling,
-                   const FabArray<FAB>& fab,
-                   const int scomp, const int ncomp, bool cross = false)
-        {
-            addFB(name, nodes, scaling,
-                  fab, scomp, ncomp, fab.nGrowVect(), Periodicity::NonPeriodic(), cross);
-        }
-
-        template <typename FAB>
-        void addFB(const std::string& name, const std::string& nodes, const double scaling,
-                   const FabArray<FAB>& fab,
-                   const int scomp, const int ncomp,
-                   const Periodicity& period, bool cross = false)
-        {
-            addFB(name, nodes, scaling,
-                  fab, scomp, ncomp, fab.nGrowVect(), period, cross);
-        }
-
-        template <typename FAB>
-        void addFB(const std::string& name, const std::string& nodes, const double scaling,
-                   const FabArray<FAB>& fab,
-                   const int /* scomp */, const int ncomp,
+        void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling,
+                   const FabArray<FAB>& fab, const int /* scomp */, const int ncomp,
                    const IntVect& nghost, const Periodicity& period, bool cross = false)
         {
             const FabArrayBase::CommMetaData& fb = fab.getFB(nghost, period, cross, false);
             addEdgeList(name, nodes, nodes, scaling, fb, ncomp);
         }
 
+// ..................
+
+        template <typename FAB>
+        void addParallelCopy(const std::string& name, const std::string& nodes_dst,
+                             const std::string& nodes_src, const double scaling,
+                             const FabArray<FAB>& dst, const FabArray<FAB>& src,
+                             const Periodicity period = Periodicity::NonPeriodic(),
+                             CpOp op = FabArrayBase::COPY)
+        {
+            addParallelCopy(name, nodes_dst, nodes_src, scaling,
+                            src, dst, 0, 0, dst.nComp(), 0, 0, period, op);
+        }
+
+        template <typename FAB>
+        void addParallelCopy(const std::string& name, const std::string& nodes_dst,
+                             const std::string& nodes_src, const double scaling,
+                             const FabArray<FAB>& dst, const FabArray<FAB>& src,
+                             const int src_comp, const int dst_comp, const int num_comp,
+                             const Periodicity period = Periodicity::NonPeriodic(),
+                             CpOp op = FabArrayBase::COPY)
+        {
+            addParallelCopy(name, nodes_dst, nodes_src, scaling,
+                            src, dst, src_comp, dst_comp, num_comp, 0, 0, period, op);
+        }
+
+        template <typename FAB>
+        void addParallelCopy(const std::string& name, const std::string& nodes_dst,
+                             const std::string& nodes_src, const double scaling,
+                             const FabArray<FAB>& dst, const FabArray<FAB>& src,
+                             const int src_comp/, const int dst_comp, const int num_comp,
+                             const int src_nghost, const int dst_nghost,
+                             const Periodicity period = Periodicity::NonPeriodic(),
+                             CpOp op = FabArrayBase::COPY)
+        {
+            addParallelCopy(name, nodes_dst, nodes_src, scaling,
+                            src, dst, src_comp, dst_comp, num_comp,
+                            IntVect(src_nghost), IntVect(dst_nghost), period, op);
+        }
+
+        template <typename FAB>
+        void addParallelCopy(const std::string& name, const std::string& nodes_dst,
+                             const std::string& nodes_src, const double scaling,
+                             const FabArray<FAB>& dst, const FabArray<FAB>& src,
+                             const int src_comp, const int dst_comp, const int num_comp,
+                             const IntVect& src_nghost, const IntVect& dst_nghost,
+                             const Periodicity period = Periodicity::NonPeriodic(),
+                             CpOp op = FabArrayBase::COPY,
+                             const FabArrayBase::CPC* a_cpc = nullptr)
+        {
+            addParallelCopy(name, nodes_dst, nodes_src, scaling,
+                            src, dst, src_comp, dst_comp, num_comp,
+                            src_nghost, dst_nghost, period, op, a_cpc);
+        }
+
+        template <typename FAB>
+        void addParallelCopyToGhost(const std::string& name, const std::string& nodes_dst,
+                                    const std::string& nodes_src, const double scaling,
+                                    const FabArray<FAB>& dst, const FabArray<FAB>& src,
+                                    const int src_comp, const int dst_comp, const int num_comp,
+                                    const IntVect& src_nghost, const IntVect& dst_nghost,
+                                    const Periodicity period = Periodicity::NonPeriodic())
+        {
+            addParallelCopy(name, nodes_dst, nodes_src, scaling,
+                            src, dst, src_comp, dst_comp, num_comp,
+                            src_nghost, dst_nghost, period, FabArrayBase::COPY, nullptr, true);
+        }
+
+        template <typename FAB>
+        void addParallelCopy(const std::string& name, const std::string& nodes_dst,
+                             const std::string& nodes_src, const double scaling,
+                             const FabArray<FAB>& dst, const FabArray<FAB>& src,
+                             const int /*src_comp*/, const int /*dst_comp*/, const int num_comp,
+                             const IntVect& src_nghost, const IntVect& dst_nghost,
+                             const Periodicity period = Periodicity::NonPeriodic(),
+                             CpOp /*op*/ = FabArrayBase::COPY,
+                             const FabArrayBase::CPC* a_cpc = nullptr,
+                             bool to_ghost_cells_only = false)
+        {
+            const FabArrayBase::CommMetaData& pc = (a_cpc) ? *a_cpc :
+                         dst.getCPC(dst_nghost, src, src_nghost, period, to_ghost_cells_only);
+
+            addEdgeList(name, nodes_src, nodes_dst, scaling, pc, num_comp);
+        }
+
+// ..................
+
 #if 0
-    void ParallelCopy (const FabArray<FAB>& fa,
-                       const Periodicity&   period = Periodicity::NonPeriodic(),
-                       CpOp                 op = FabArrayBase::COPY)
-    void ParallelCopy (const FabArray<FAB>& src,
-                       int                  src_comp,
-                       int                  dest_comp,
-                       int                  num_comp,
-                       const Periodicity&   period = Periodicity::NonPeriodic(),
-                       CpOp                 op = FabArrayBase::COPY)
-    void ParallelCopy (const FabArray<FAB>& src,
-                       int                  src_comp,
-                       int                  dest_comp,
-                       int                  num_comp,
-                       int                  src_nghost,
-                       int                  dst_nghost,
-                       const Periodicity&   period = Periodicity::NonPeriodic(),
-                       CpOp                 op = FabArrayBase::COPY)
-    void ParallelCopy (const FabArray<FAB>& src,
-                       int                  src_comp,
-                       int                  dest_comp,
-                       int                  num_comp,
-                       const IntVect&       src_nghost,
-                       const IntVect&       dst_nghost,
-                       const Periodicity&   period = Periodicity::NonPeriodic(),
-                       CpOp                 op = FabArrayBase::COPY,
-                       const FabArrayBase::CPC* a_cpc = nullptr);
+
+        template <typename FAB>
+        void addSumBoundary(const std::string& name, const std::string& nodes_dst,
+                            const std::string& nodes_src, const double scaling,
+                            const FabArray<FAB>& fab,
+                            const Periodicity& period = Periodicity::NonPeriodic())
+        {
+            addSumBoundary(name, nodes_dst, nodes_src, scaling,
+                           fab, 0, fab.nComp(), IntVect(0), period);
+        }
+
+        template <typename FAB>
+        void addSumBoundary(const std::string& name, const std::string& nodes_dst,
+                            const std::string& nodes_src, const double scaling,
+                            const FabArray<FAB>& fab,
+                            const int scomp, const int ncomp,
+                            const Periodicity& period = Periodicity::NonPeriodic())
+        {
+            addSumBoundary(name, nodes_dst, nodes_src, scaling,
+                           fab, scomp, ncomp, IntVect(0), period);
+        }
+
+        template <typename FAB>
+        void addSumBoundary(const std::string& name, const std::string& nodes_dst,
+                            const std::string& nodes_src, const double scaling,
+                            const FabArray<FAB>& fab,
+                            const int scomp, const int ncomp,
+                            const IntVect& nghost, 
+                            const Periodicity& period = Periodicity::NonPeriodic())
+        {
+            addSumBoundary(name, nodes_dst, nodes_src, scaling,
+                           fab, scomp, ncomp, fab.nGrowVect(), nghost, period);
+        }
+
+        template <typename FAB>
+        void addSumBoundary(const std::string& name, const std::string& nodes_dst,
+                            const std::string& nodes_src, const double scaling,
+                            const FabArray<FAB>& fab,
+                            const int scomp, const int ncomp,
+                            const IntVect& src_nghost, const IntVect& dst_nghost,
+                            const Periodicity& period = Periodicity::NonPeriodic())
+        {
+            if ( fab.nGrowVect() == IntVect::TheZeroVector() 
+              && fab.boxArray().ixType().cellCentered())  { return; }
+
+            const FabArrayBase::CommMetaData& pc = (a_cpc) ? *a_cpc :
+                      dst.getCPC(dst_nghost, src, src_nghost, period, to_ghost_cells_only);
+
+            addEdgeList(name, nodes_src, nodes_dst, scaling, pc, num_comp);
+
+        }
+
+    if ( n_grow == IntVect::TheZeroVector() && boxArray().ixType().cellCentered()) return;
+    = PC: this->ParallelCopy_nowait(*tmp,0,scomp,ncomp,src_nghost,dst_nghost,period,FabArrayBase::ADD);
+
+        template <typename FAB>
+        void EnforcePeriodicity(const std::string& name, const std::string& nodes_dst,
+                                const std::string& nodes_src, const double scaling,
+
+    
+    void EnforcePeriodicity (const Periodicity& period)
+    void EnforcePeriodicity (int scomp, int ncomp, const Periodicity& period);
+    void EnforcePeriodicity (int scomp, int ncomp, const IntVect& nghost,
+                             const Periodicity& period);
+    = FB: if (period.isAnyPeriodic()) { FBEP_nowait(scomp, ncomp, nghost, period, false, true); }
+
+
+    //! Sync up nodal data with owners overriding non-owners
+    void OverrideSync (const Periodicity& period = Periodicity::NonPeriodic());
+    void OverrideSync (const iMultiFab& msk, const Periodicity& period = Periodicity::NonPeriodic());
+
+        amrex::OverrideSync(*this, *msk, period);
+
+    = PC: if (fa.ixType().cellCentered()) return; { fa.os_temp->ParallelCopy_nowait(fa, period, FabArrayBase::ADD); }
+
 #endif
 
 /*
