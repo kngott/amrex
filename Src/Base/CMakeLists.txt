@@ -42,6 +42,8 @@ target_sources( amrex
    AMReX_SPACE.H
    AMReX_DistributionMapping.H
    AMReX_DistributionMapping.cpp
+   AMReX_Graph.H
+   AMReX_Graph.cpp
    AMReX_ParallelDescriptor.H
    AMReX_ParallelDescriptor.cpp
    AMReX_OpenMP.H
