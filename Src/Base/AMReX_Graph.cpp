@@ -1,6 +1,7 @@
 
 #include <AMReX_Graph.H>
 #include <AMReX_DistributionMapping.H>
+#include <AMReX_ParallelDescriptor.H>
 #include <AMReX_Config.H>
 #include <AMReX_FabArray.H>
 #include <AMReX_LayoutData.H>
