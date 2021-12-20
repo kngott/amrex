@@ -53,9 +53,6 @@ namespace amrex
 
         // ---------------------------
 
-        // name, from, to, scaling + FB variables.
-        // ***** SumBoundary? EnforcePeriodicity? Particle Comms.
-        // OverWrite Sync.
         template <typename FAB>
         void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling,
                              const FabArray<FAB>& fab, bool cross = false)
@@ -107,7 +104,7 @@ namespace amrex
             addEdgeList(name, nodes, nodes, scaling, fb, ncomp);
         }
 
-// ..................
+        // ..................
 
         template <typename FAB>
         void addParallelCopy(const std::string& name, const std::string& nodes_dst,
@@ -191,10 +188,8 @@ namespace amrex
             addEdgeList(name, nodes_src, nodes_dst, scaling, pc, num_comp);
         }
 
-// ..................
-
+        // ..................
 #if 0
-
         template <typename FAB>
         void addSumBoundary(const std::string& name, const std::string& nodes_dst,
                             const std::string& nodes_src, const double scaling,
@@ -236,11 +231,13 @@ namespace amrex
                             const IntVect& src_nghost, const IntVect& dst_nghost,
                             const Periodicity& period = Periodicity::NonPeriodic())
         {
+            // If not called, don't create the edge list: (interpretted as: the comm doesn't happen).
+
             if ( fab.nGrowVect() == IntVect::TheZeroVector() 
               && fab.boxArray().ixType().cellCentered())  { return; }
 
-            const FabArrayBase::CommMetaData& pc = (a_cpc) ? *a_cpc :
-                      dst.getCPC(dst_nghost, src, src_nghost, period, to_ghost_cells_only);
+            const FabArrayBase::CommMetaData& pc =
+                      fab.getCPC(dst_nghost, fab, src_nghost, period, to_ghost_cells_only);
 
             addEdgeList(name, nodes_src, nodes_dst, scaling, pc, num_comp);
 
@@ -253,17 +250,20 @@ namespace amrex
         void EnforcePeriodicity(const std::string& name, const std::string& nodes_dst,
                                 const std::string& nodes_src, const double scaling,
 
+        // ..................
+
     
-    void EnforcePeriodicity (const Periodicity& period)
-    void EnforcePeriodicity (int scomp, int ncomp, const Periodicity& period);
-    void EnforcePeriodicity (int scomp, int ncomp, const IntVect& nghost,
+        void EnforcePeriodicity (const Periodicity& period)
+        void EnforcePeriodicity (int scomp, int ncomp, const Periodicity& period);
+        void EnforcePeriodicity (int scomp, int ncomp, const IntVect& nghost,
                              const Periodicity& period);
     = FB: if (period.isAnyPeriodic()) { FBEP_nowait(scomp, ncomp, nghost, period, false, true); }
 
+        // ..................
 
-    //! Sync up nodal data with owners overriding non-owners
-    void OverrideSync (const Periodicity& period = Periodicity::NonPeriodic());
-    void OverrideSync (const iMultiFab& msk, const Periodicity& period = Periodicity::NonPeriodic());
+        //! Sync up nodal data with owners overriding non-owners
+        void OverrideSync (const Periodicity& period = Periodicity::NonPeriodic());
+        void OverrideSync (const iMultiFab& msk, const Periodicity& period = Periodicity::NonPeriodic());
 
         amrex::OverrideSync(*this, *msk, period);
 
