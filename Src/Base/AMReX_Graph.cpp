@@ -288,7 +288,7 @@ Graph Graph::assemble()
 
             // Do it manually. Better way?
             unsigned long index = -1;
-            for (int j=0; j<el.m_labels.size(); ++j)
+            for (unsigned int j=0; j<el.m_labels.size(); ++j)
             {
                 for (char k : el.m_labels[j]) {
                     local_clabel[++index] = k;
