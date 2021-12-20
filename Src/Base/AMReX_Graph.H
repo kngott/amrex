@@ -111,7 +111,7 @@ namespace amrex
                              const std::string& nodes_src, const double scaling,
                              const FabArray<FAB>& dst, const FabArray<FAB>& src,
                              const Periodicity period = Periodicity::NonPeriodic(),
-                             CpOp op = FabArrayBase::COPY)
+                             FabArrayBase::CpOp op = FabArrayBase::COPY)
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
                             src, dst, 0, 0, dst.nComp(), 0, 0, period, op);
@@ -123,7 +123,7 @@ namespace amrex
                              const FabArray<FAB>& dst, const FabArray<FAB>& src,
                              const int src_comp, const int dst_comp, const int num_comp,
                              const Periodicity period = Periodicity::NonPeriodic(),
-                             CpOp op = FabArrayBase::COPY)
+                             FabArrayBase::CpOp op = FabArrayBase::COPY)
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
                             src, dst, src_comp, dst_comp, num_comp, 0, 0, period, op);
@@ -133,10 +133,10 @@ namespace amrex
         void addParallelCopy(const std::string& name, const std::string& nodes_dst,
                              const std::string& nodes_src, const double scaling,
                              const FabArray<FAB>& dst, const FabArray<FAB>& src,
-                             const int src_comp/, const int dst_comp, const int num_comp,
+                             const int src_comp, const int dst_comp, const int num_comp,
                              const int src_nghost, const int dst_nghost,
                              const Periodicity period = Periodicity::NonPeriodic(),
-                             CpOp op = FabArrayBase::COPY)
+                             FabArrayBase::CpOp op = FabArrayBase::COPY)
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
                             src, dst, src_comp, dst_comp, num_comp,
@@ -150,7 +150,7 @@ namespace amrex
                              const int src_comp, const int dst_comp, const int num_comp,
                              const IntVect& src_nghost, const IntVect& dst_nghost,
                              const Periodicity period = Periodicity::NonPeriodic(),
-                             CpOp op = FabArrayBase::COPY,
+                             FabArrayBase::CpOp op = FabArrayBase::COPY,
                              const FabArrayBase::CPC* a_cpc = nullptr)
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
@@ -178,7 +178,7 @@ namespace amrex
                              const int /*src_comp*/, const int /*dst_comp*/, const int num_comp,
                              const IntVect& src_nghost, const IntVect& dst_nghost,
                              const Periodicity period = Periodicity::NonPeriodic(),
-                             CpOp /*op*/ = FabArrayBase::COPY,
+                             FabArrayBase::CpOp /*op*/ = FabArrayBase::COPY,
                              const FabArrayBase::CPC* a_cpc = nullptr,
                              bool to_ghost_cells_only = false)
         {
@@ -216,7 +216,7 @@ namespace amrex
                             const std::string& nodes_src, const double scaling,
                             const FabArray<FAB>& fab,
                             const int scomp, const int ncomp,
-                            const IntVect& nghost, 
+                            const IntVect& nghost,
                             const Periodicity& period = Periodicity::NonPeriodic())
         {
             addSumBoundary(name, nodes_dst, nodes_src, scaling,
@@ -231,9 +231,10 @@ namespace amrex
                             const IntVect& src_nghost, const IntVect& dst_nghost,
                             const Periodicity& period = Periodicity::NonPeriodic())
         {
-            // If not called, don't create the edge list: (interpretted as: the comm doesn't happen).
+            // If not called, don't create the edge list:
+            //      (interpretted as: the comm doesn't happen).
 
-            if ( fab.nGrowVect() == IntVect::TheZeroVector() 
+            if ( fab.nGrowVect() == IntVect::TheZeroVector()
               && fab.boxArray().ixType().cellCentered())  { return; }
 
             const FabArrayBase::CommMetaData& pc =
@@ -252,7 +253,6 @@ namespace amrex
 
         // ..................
 
-    
         void EnforcePeriodicity (const Periodicity& period)
         void EnforcePeriodicity (int scomp, int ncomp, const Periodicity& period);
         void EnforcePeriodicity (int scomp, int ncomp, const IntVect& nghost,
