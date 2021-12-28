@@ -320,6 +320,16 @@ namespace amrex
                    const int wgt_precision = 5,
                    const bool replace_file = false);
 
+        // Print to file
+        void print_table_doit(const std::string& filename,
+                              const int wgt_precision = 5,
+                              const bool replace_file = false);
+
+        // Print to file
+        void print_table(const std::string& filename,
+                         const int wgt_precision = 5,
+                         const bool replace_file = false);
+
         // Clear graph
         void clear();
 
@@ -366,10 +376,11 @@ namespace amrex
             int m_offset = -1;
             int m_size = -1;
 
-            std::pair<std::string, std::string> m_mynodes;  // NodeList.m_id instead? Lookup name at print?
+            // NodeList.m_id instead? Lookup name at print?
+            std::pair<std::string, std::string> m_mynodes;
             std::vector<int> m_from;
             std::vector<int> m_to;
-            std::vector<std::string> m_labels;              // Box for Mesh, # particles for Particles?
+            std::vector<std::string> m_labels;  // Box for Mesh, # particles for Particles?
 
             std::vector<Weight> m_wgts;
         };
@@ -399,7 +410,7 @@ namespace amrex
 
         std::vector<NodeList> m_nodes;
         std::vector<EdgeList> m_edges;
-   };
+    };
 
     // ++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
