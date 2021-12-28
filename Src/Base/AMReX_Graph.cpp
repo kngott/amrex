@@ -354,6 +354,13 @@ void Graph::print(const std::string& filename,
     assembled.print_doit(filename, wgt_precision);
 }
 
+void Graph::print_table(const std::string& filename,
+                  const int wgt_precision,
+                  const bool /*replace_file*/)    // std::rename ?
+{
+    Graph assembled = this->assemble();
+    assembled.print_table_doit(filename, wgt_precision);
+}
 
 void Graph::print_doit(const std::string& filename,
                        const int wgt_precision,
@@ -481,6 +488,181 @@ void Graph::print_doit(const std::string& filename,
             file << oss_w.str() << std::endl;
         }
     }
+}
+
+void Graph::print_table_doit(const std::string& dirname,
+                             const int wgt_precision,
+                             const bool /*replace_file*/)    // std::rename ?
+{
+
+    // ............ ADD: If graph is not already assembled.
+
+    if ( !ParallelDescriptor::IOProcessor() )  { return; }
+
+    std::string fulldirname = std::string("graphs/") + dirname;
+    amrex::UtilCreateCleanDirectory(fulldirname, false);
+
+    // Create a sorted list of weights.
+    
+
+    /*
+        Tables:
+ 
+        Name = directory name
+        Graph/name/files
+
+        nodes.csv
+        edges.csv
+        weights.csv
+        scaling.csv
+        nodelists.csv
+        edgelists.csv
+
+        fab_name <size> start end
+
+        edge_name <size> start end
+
+        rank wgt1 wgt2 wgt3 wgt4   <--- either one per or global list of weights?
+
+        box#(row#) rank label wgt1 wgt2 wgt3 wgt4
+
+        from(box#) to(box#) label wgt1 wgt2 wgt3 wgt4
+    */
+
+    // Nodes 
+    amrex::PrintToFile n_file(fulldirname + std::string("/nodes.txt"));
+
+    // Edges 
+    amrex::PrintToFile e_file(fulldirname + std::string("/edges.txt"));
+
+    // Scaling
+    amrex::PrintToFile s_file(fulldirname + std::string("/scaling.txt"));
+
+    // Node List
+    amrex::PrintToFile nl_file(fulldirname + std::string("/nodelists.txt"));
+
+    // Edge List
+    amrex::PrintToFile el_file(fulldirname + std::string("/edgelists.txt"));
+
+     
+#if 0
+    /*
+        For NodeLists:
+
+        name = [...]
+        name_labels = [...]
+        name_weight = [...]
+        name_weight_scaling =
+    */
+
+    for (unsigned int nid=0; nid<m_nodes.size(); ++nid)
+    {
+        const NodeList& nl = m_nodes[nid];
+
+        std::ostringstream oss_r(std::ios_base::ate);
+        std::ostringstream oss_l(std::ios_base::ate);
+
+        oss_r << nl.m_name << " = [";
+        oss_l << nl.m_name << "_labels = [";
+
+        for (int i=0; i<nl.m_size; ++i) {
+            const Box& bx = nl.m_fab.boxArray()[i];
+
+            oss_r << " " << std::to_string(nl.m_fab.DistributionMap()[i]); // To ensure no round-off.
+            oss_l << bx.smallEnd() << "-" << bx.bigEnd() << " ";
+        }
+        oss_r << "]\n";
+        oss_l << "]\n";
+
+        file << oss_r.str() << std::endl << oss_l.str() << std::endl;
+
+
+        for (unsigned int w=0; w<nl.m_wgts.size(); ++w)
+        {
+            const Weight& wt = nl.m_wgts[w];
+            std::string this_name = nl.m_name + "_" + wt.m_name;
+
+            std::ostringstream oss_w(std::ios_base::ate);
+            oss_w.precision(wgt_precision);
+
+            oss_w << this_name << " = [";
+            for (unsigned int i=0; i<wt.m_weights.size(); ++i) {
+                oss_w << " " << wt.m_weights[i];
+            }
+
+            oss_w << "]\n" << this_name << "_scaling = [";
+            for (unsigned int i=0; i<wt.m_scaling.size(); ++i) {
+                oss_w << " " << wt.m_scaling[i];
+            }
+            oss_w << "]\n";
+
+            file << oss_w.str() << std::endl;
+        }
+    }
+
+    file << std::endl << std::endl;
+
+    /*
+       For EdgeLists:
+       name = [  ]
+       name_src = from
+       name_dst = to
+       name_labels = [ ]
+       name_weight = [ ]
+       name_weight_scaling =
+    */
+
+    for (unsigned int eid=0; eid<m_edges.size(); ++eid)
+    {
+        if (eid==0) {
+            file << std::endl << std::endl;
+        }
+
+        const EdgeList& el = m_edges[eid];
+
+        std::ostringstream oss_e(std::ios_base::ate);
+        std::ostringstream oss_l(std::ios_base::ate);
+
+        oss_e << el.m_name << " = [";
+        oss_l << el.m_name << "_labels = [";
+
+        for (unsigned int i=0; i<el.m_from.size(); ++i) {
+            oss_e << " (" << std::to_string(el.m_from[i]) << ","
+                          << std::to_string(el.m_to[i]) << ")";    // To ensure no round-off.
+            oss_l << " " << el.m_labels[i];
+        }
+        oss_e << "]\n";
+        oss_l << "]\n";
+
+        file << oss_e.str() << std::endl
+             << el.m_name << "_src = " << el.m_mynodes.first << std::endl
+             << el.m_name << "_dst = " << el.m_mynodes.second << std::endl
+             << oss_l.str() << std::endl;
+
+        for (unsigned int w=0; w<el.m_wgts.size(); ++w)
+        {
+            const Weight& wt = el.m_wgts[w];
+            std::string this_name = el.m_name + "_" + wt.m_name;
+
+            std::ostringstream oss_w(std::ios_base::ate);
+            oss_w.precision(wgt_precision);
+
+            oss_w << this_name << " = [";
+            for (unsigned int i=0; i<el.m_from.size(); ++i) {
+                oss_w << " " << wt.m_weights[i];
+            }
+
+            oss_w << "]\n" << this_name << "_scaling = [";
+            for (unsigned int i=0; i<wt.m_scaling.size(); ++i) {
+                oss_w << " " << wt.m_scaling[i];
+            }
+            oss_w << "]\n";
+
+            file << oss_w.str() << std::endl;
+        }
+    }
+
+#endif
 }
 
 }  // namespace amrex
