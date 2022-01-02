@@ -408,6 +408,10 @@ namespace amrex
         int m_n_count = 0;
         int m_e_count = 0;
 
+        // List of weights names for table output.
+        std::vector<std::string> m_nwgts;
+        std::vector<std::string> m_ewgts;
+
         std::vector<NodeList> m_nodes;
         std::vector<EdgeList> m_edges;
     };
