@@ -245,7 +245,7 @@ Graph::assemble()
             n_total_edges = amrex::Scan::ExclusiveSum(n_ranks, edge_count.data(), disp.data());
         }
 
-	// ... Labels ...
+        // ... Labels ...
         int n_local_chars = 0;
         std::vector<int> char_count(n_local_edges, 0);
         for (int j=0; j<n_local_edges; ++j) {
