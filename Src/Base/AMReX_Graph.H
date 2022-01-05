@@ -144,21 +144,6 @@ namespace amrex
         }
 
         template <typename FAB>
-        void addParallelCopy(const std::string& name, const std::string& nodes_dst,
-                             const std::string& nodes_src, const double scaling,
-                             const FabArray<FAB>& dst, const FabArray<FAB>& src,
-                             const int src_comp, const int dst_comp, const int num_comp,
-                             const IntVect& src_nghost, const IntVect& dst_nghost,
-                             const Periodicity period = Periodicity::NonPeriodic(),
-                             FabArrayBase::CpOp op = FabArrayBase::COPY,
-                             const FabArrayBase::CPC* a_cpc = nullptr)
-        {
-            addParallelCopy(name, nodes_dst, nodes_src, scaling,
-                            src, dst, src_comp, dst_comp, num_comp,
-                            src_nghost, dst_nghost, period, op, a_cpc);
-        }
-
-        template <typename FAB>
         void addParallelCopyToGhost(const std::string& name, const std::string& nodes_dst,
                                     const std::string& nodes_src, const double scaling,
                                     const FabArray<FAB>& dst, const FabArray<FAB>& src,
@@ -321,12 +306,12 @@ namespace amrex
                    const bool replace_file = false);
 
         // Print to file
-        void print_table_doit(const std::string& filename,
+        void print_table_doit(const std::string& dirname,
                               const int wgt_precision = 5,
                               const bool replace_file = false);
 
         // Print to file
-        void print_table(const std::string& filename,
+        void print_table(const std::string& dirname,
                          const int wgt_precision = 5,
                          const bool replace_file = false);
 
