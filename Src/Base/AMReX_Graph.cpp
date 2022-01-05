@@ -176,18 +176,15 @@ void Graph::clear()
     m_edges.clear();
 }
 
-Graph Graph::assemble()
+Graph
+Graph::assemble()
 {
-    // If un-assembled, else return copy of self?
-    //   -- Need to add accessor to assembled.
-    // (If local weights ever added or updated,
-    //  or if new node or edge list added to an assembled graph).
-    // Graph started "assembled" -- blank is assembled.
+    // Make a copy and add full data from other ranks to the full_graph on m_rank.
 
     Graph full_graph;
+    bool is_writer = (ParallelDescriptor::MyProc() == m_rank);
 
-    // Set assembled to false on non-host ranks?
-//    if (ParallelDescriptor::MyProc() == m_rank) {}
+    const int n_ranks = ParallelDescriptor::NProcs();
 
     // Nodes: collect local weights.
     for (unsigned int i=0; i<m_nodes.size(); ++i)
@@ -208,25 +205,24 @@ Graph Graph::assemble()
             {
                 for (MFIter mfi(fab); mfi.isValid(); ++mfi)
                 {
-                    // I believe this is correct, assuming tiling is off.
+                    // Assuming tiling is off.
                     lod[mfi] = wgt.m_weights[mfi.LocalIndex()];
                 }
 
                 Vector<double> collection(fab.size(), 0.0);
                 ParallelDescriptor::GatherLayoutDataToVector<double>(lod, collection, m_rank);
 
-                full_wgt.m_weights = collection;
+                if (is_writer) { full_wgt.m_weights = collection; }
             }
 
             // For all weights, collect scaling.
             double my_value = full_wgt.m_scaling[0];
 
-            full_wgt.m_scaling.resize(ParallelDescriptor::NProcs());
+            full_wgt.m_scaling.resize(n_ranks);
             full_wgt.m_scaling = ParallelDescriptor::Gather<double>(my_value, m_rank);
         }
     }
 
-    // ====================================
     // ====================================
 
     // Edges: aggregate all information.
@@ -235,29 +231,36 @@ Graph Graph::assemble()
     {
         full_graph.m_edges.push_back(m_edges[i]);
         EdgeList& el = full_graph.m_edges[i];
-        int n_ranks = ParallelDescriptor::NProcs();
 
         // ---------------------------
         // Send # of edges & size of labels for all of them
 
+        // ... Edges ...
         int n_local_edges = el.m_from.size();
         std::vector<int> edge_count = ParallelDescriptor::Gather<int>(n_local_edges, m_rank);
         std::vector<int> disp(n_ranks, 0);
-        int n_total_edges = amrex::Scan::ExclusiveSum(n_ranks, edge_count.data(), disp.data());
+        int n_total_edges = 0;
 
+        if (is_writer) {
+            n_total_edges = amrex::Scan::ExclusiveSum(n_ranks, edge_count.data(), disp.data());
+        }
+
+	// ... Labels ...
         int n_local_chars = 0;
         std::vector<int> char_count(n_local_edges, 0);
         for (int j=0; j<n_local_edges; ++j) {
             char_count[j] = el.m_labels[j].size();
             n_local_chars += el.m_labels[j].size();
         }
+
         std::vector<int> char_sums = ParallelDescriptor::Gather<int>(n_local_chars, m_rank);
         std::vector<int> label_disp (n_ranks, 0);
+        int n_global_chars = 0;
 
-        // m_rank only?
-        int n_global_chars = amrex::Scan::ExclusiveSum(n_ranks, char_sums.data(),
-                                                         label_disp.data());
-
+        if (is_writer) {
+            n_global_chars = amrex::Scan::ExclusiveSum(n_ranks, char_sums.data(),
+                                                       label_disp.data());
+        }
 
         std::vector<int> label_sizes(n_total_edges, 0);
         ParallelDescriptor::Gatherv<int>(char_count.data(), n_local_edges,
@@ -272,17 +275,15 @@ Graph Graph::assemble()
             std::vector<int> all_from(n_total_edges, -1);
             std::vector<int> all_to(n_total_edges, -1);
 
-            el.m_from.resize(n_total_edges);
-            el.m_to.resize(n_total_edges);
-
             ParallelDescriptor::Gatherv<int>(el.m_from.data(), n_local_edges,
                                              all_from.data(), edge_count, disp, m_rank);
             ParallelDescriptor::Gatherv<int>(el.m_to.data(), n_local_edges,
                                              all_to.data(), edge_count, disp, m_rank);
 
-            // Can comm in place? Or keep like this to ensure ordering.
-            el.m_from = std::move(all_from);
-            el.m_to = std::move(all_to);
+            if (is_writer) {
+                el.m_from = std::move(all_from);
+                el.m_to = std::move(all_to);
+            }
         }
 
         // .....................
@@ -291,7 +292,7 @@ Graph Graph::assemble()
             char* local_clabel = static_cast<char*> (amrex::The_Cpu_Arena()->alloc(sizeof(char)*n_local_chars));
 
             char* global_clabel = nullptr;
-            if (ParallelDescriptor::MyProc() == m_rank) {
+            if (is_writer) {
                 global_clabel = static_cast<char*> (amrex::The_Cpu_Arena()->alloc(sizeof(char)*n_global_chars));
             }
 
@@ -311,20 +312,19 @@ Graph Graph::assemble()
 
             // Unpack based on Gather-ed sizes. Kept like this until packing method is
             //   determined. Other option: null terminated.
-            if (ParallelDescriptor::MyProc() == m_rank) {
+            if (is_writer) {
                 char* c = global_clabel;
                 for (int j=0; j<n_total_edges; ++j) {
                     unpack_labels[j].assign(c, label_sizes[j]);
                     c += label_sizes[j];
                 }
-            }
 
-            el.m_labels = std::move(unpack_labels);
+                el.m_labels = std::move(unpack_labels);
 
-            amrex::The_Cpu_Arena()->free(local_clabel);
-            if (ParallelDescriptor::MyProc() == m_rank) {
                 amrex::The_Cpu_Arena()->free(global_clabel);
             }
+
+            amrex::The_Cpu_Arena()->free(local_clabel);
         }
 
         // ......................
@@ -332,7 +332,6 @@ Graph Graph::assemble()
 
         for (unsigned int w=0; w<el.m_wgts.size(); ++w)
         {
-//          collect weights & scalings -- node copy?
             const Weight& wgt = el.m_wgts[w];
             Weight& full_wgt = full_graph.m_edges[i].m_wgts[w];
 
@@ -340,8 +339,9 @@ Graph Graph::assemble()
 
             ParallelDescriptor::Gatherv<double>(wgt.m_weights.data(), n_local_edges,
                                                 collection.data(), edge_count, disp, m_rank);
-
-            full_wgt.m_weights = std::move(collection);
+            if (is_writer) {
+                full_wgt.m_weights = std::move(collection);
+            }
 
             // For all weights, collect scaling.
             double my_value = full_wgt.m_scaling[0];
@@ -377,7 +377,7 @@ void Graph::print_doit(const std::string& filename,
 
     // ............ ADD: If graph is not already assembled.
 
-    if ( !ParallelDescriptor::IOProcessor() )  { return; }
+    if (ParallelDescriptor::MyProc() != m_rank)  { return; }
 
     amrex::PrintToFile file(filename);
 
@@ -431,11 +431,11 @@ void Graph::print_doit(const std::string& filename,
             }
             oss_w << "]\n";
 
-            file << oss_w.str() << std::endl;
+            file << oss_w.str() << std::endl << std::endl;
         }
     }
 
-    file << std::endl << std::endl;
+//    file << std::endl << std::endl;
 
     /*
        For EdgeLists:
@@ -505,14 +505,14 @@ void Graph::print_table_doit(const std::string& dirname,
 
     // ............ ADD: If graph is not already assembled.
 
-    if ( !ParallelDescriptor::IOProcessor() )  { return; }
+    if (ParallelDescriptor::MyProc() != m_rank)  { return; }
 
     std::string fulldirname = std::string("graphs/") + dirname;
     amrex::UtilCreateCleanDirectory(fulldirname, false);
 
     /*
         Tables:
- 
+
         Name = directory name
         Graph/name/files
 
@@ -534,18 +534,19 @@ void Graph::print_table_doit(const std::string& dirname,
         std::ostringstream ns_ss(std::ios_base::ate);
         long node_id = 0;
 
-        std::vector< std::vector<double>* > smap(m_nwgts.size(), nullptr);
+        std::vector< std::vector<double> const* > smap(m_nwgts.size(), nullptr);
 
         for (unsigned int nid=0; nid<m_nodes.size(); ++nid)
         {
             const NodeList& nl = m_nodes[nid];
 
-            nl_ss << nl.m_name << " " << std::string(nl.m_size) << " "
-                  << std::string(nl.m_offset) << " " << std::string(nl.m_offset+nl.m_size) << "\n";
+            nl_ss << nl.m_name << " " << std::to_string(nl.m_size)
+                               << " " << std::to_string(nl.m_offset)
+                               << " " << std::to_string(nl.m_offset+nl.m_size) << "\n";
 
             std::vector<int> wgtmap(m_nwgts.size(), -1);;
-            for (int w=0; w<nl.m_nwgts; ++w) {
-                const int idx = get_index(m_nwgts[w], nl);
+            for (unsigned int w=0; w<m_nwgts.size(); ++w) {
+                const int idx = get_index(m_nwgts[w], nl.m_wgts);
                 if (idx != -1) {
                     wgtmap[w] = idx;
                     smap[w] = &(nl.m_wgts[idx].m_weights);
@@ -553,7 +554,7 @@ void Graph::print_table_doit(const std::string& dirname,
             }
 
             for (int i=0; i<nl.m_size; ++i) {
-                const int rank = nl.m_fab.DistributionMapping()[i];
+                const int rank = nl.m_fab.DistributionMap()[i];
                 const Box& bx = nl.m_fab.boxArray()[i];
 
                 // to::string to prevent any precision-based round off.
@@ -598,39 +599,39 @@ void Graph::print_table_doit(const std::string& dirname,
         std::ostringstream es_ss(std::ios_base::ate);
         long edge_id = 0;
 
-        std::vector< std::vector<double>* > smap(m_ewgts.size(), nullptr);
+        std::vector< std::vector<double> const* > smap(m_ewgts.size(), nullptr);
 
-        for (unsigned int eid=0; eid<m_edges.size(); ++nid)
+        for (unsigned int eid=0; eid<m_edges.size(); ++eid)
         {
             const EdgeList& el = m_edges[eid];
 
-            el_ss << el.m_name << " " << el.m_mynodes.first << " " << el.mynodes.second << " "
-                  << std::string(el.m_size) << " " << std::string(el.m_offset) << " "
-                  << std::string(el.m_offset+el.m_size) << "\n";
+            el_ss << el.m_name << " " << el.m_mynodes.first << " " << el.m_mynodes.second << " "
+                  << std::to_string(el.m_size) << " " << std::to_string(el.m_offset) << " "
+                  << std::to_string(el.m_offset+el.m_size) << "\n";
 
             std::vector<int> wgtmap(m_ewgts.size(), -1);
-            const int idx_b = get_index("bytes", nl)
+            const int idx_b = get_index("bytes", el.m_wgts);
 
-            for (int w=0; w<m_ewgts; ++w) {
-                const int idx = get_index(m_ewgts[w], nl);
+            for (unsigned int w=0; w<m_ewgts.size(); ++w) {
+                const int idx = get_index(m_ewgts[w], el.m_wgts);
 
                 if (idx != -1) {
                     wgtmap[w] = idx;
                     smap[w] = &(el.m_wgts[idx].m_weights);
                 }
-                else if (n_ewgts[w] == el.m_name+"_bytes") {
+                else if (m_ewgts[w] == el.m_name+"_bytes") {
                     wgtmap[w] = idx_b;
                     smap[w] = &(el.m_wgts[idx_b].m_weights);
                 }
             }
 
             for (int i=0; i<el.m_size; ++i) {
-                int global_to = el.m_to[i] + m_offset;
-                int global_from = el.m_from[i] + m_offset;
+                int global_to = el.m_to[i] + el.m_offset;
+                int global_from = el.m_from[i] + el.m_offset;
 
                 // to::string to prevent any precision-based round off.
-                e_ss << edge_id << " " << std::string(global_from)
-                                << " " << std::string(global_to)
+                e_ss << edge_id << " " << std::to_string(global_from)
+                                << " " << std::to_string(global_to)
                                 << " " << el.m_labels[i];
 
                 e_ss.precision(wgt_precision);
@@ -671,8 +672,8 @@ void Graph::print_table_doit(const std::string& dirname,
         nw_ss << m_nwgts[0];
         ew_ss << m_ewgts[0];
 
-        for (int w=1; w<m_nwgts.size(); ++w) { nw_ss << " " << m_nwgts[w]; }
-        for (int w=1; w<m_ewgts.size(); ++w) { ew_ss << " " << m_ewgts[w]; }
+        for (unsigned int w=1; w<m_nwgts.size(); ++w) { nw_ss << " " << m_nwgts[w]; }
+        for (unsigned int w=1; w<m_ewgts.size(); ++w) { ew_ss << " " << m_ewgts[w]; }
 
         amrex::PrintToFile nw_file(fulldirname + std::string("/nodeweights.txt"));
         amrex::PrintToFile ew_file(fulldirname + std::string("/edgeweights.txt"));
