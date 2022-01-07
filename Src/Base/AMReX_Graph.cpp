@@ -193,7 +193,7 @@ Graph::assemble()
 
         full_graph.m_rank = m_rank;
         full_graph.m_n_count = m_n_count;
-        full_graph.m_e_count = 0;          // Local data, so counted here. 
+        full_graph.m_e_count = 0;          // Local data, so counted here.
         full_graph.m_nwgts = m_nwgts;
         full_graph.m_ewgts = m_ewgts;
     }
@@ -260,7 +260,7 @@ Graph::assemble()
         if (is_writer) {
             n_total_edges = amrex::Scan::ExclusiveSum(n_ranks, edge_count.data(), disp.data());
             el.m_size = n_total_edges;
-            el.m_offset = offset_count; 
+            el.m_offset = offset_count;
             offset_count += n_total_edges;
             full_graph.m_e_count += n_total_edges;
         }
@@ -624,7 +624,7 @@ void Graph::print_table_doit(const std::string& dirname,
                   << std::to_string(el.m_size-1) << " " << std::to_string(el.m_offset) << " "
                   << std::to_string(el.m_offset+el.m_size) << "\n";
 
-            int from_idx = get_index(el.m_mynodes.first, m_nodes); 
+            int from_idx = get_index(el.m_mynodes.first, m_nodes);
             int to_idx = get_index(el.m_mynodes.second, m_nodes);
 
             int from_offset = m_nodes[from_idx].m_offset;
