@@ -1,4 +1,3 @@
-
 #include <AMReX_Graph.H>
 #include <AMReX_DistributionMapping.H>
 #include <AMReX_ParallelDescriptor.H>
@@ -170,8 +169,13 @@ void Graph::addEdgeWeight(const std::string& edge_name,
 
 void Graph::clear()
 {
+    // Leave m_rank, for matching re-use.
+
+    m_assembled = false;
     m_n_count = 0;
     m_e_count = 0;
+    m_nwgts.clear();
+    m_ewgts.clear();
     m_nodes.clear();
     m_edges.clear();
 }
@@ -183,6 +187,16 @@ Graph::assemble()
 
     Graph full_graph;
     bool is_writer = (ParallelDescriptor::MyProc() == m_rank);
+
+    if (is_writer) {
+        full_graph.m_assembled = true;
+
+        full_graph.m_rank = m_rank;
+        full_graph.m_n_count = m_n_count;
+        full_graph.m_e_count = 0;          // Local data, so counted here. 
+        full_graph.m_nwgts = m_nwgts;
+        full_graph.m_ewgts = m_ewgts;
+    }
 
     const int n_ranks = ParallelDescriptor::NProcs();
 
@@ -201,7 +215,7 @@ Graph::assemble()
             Weight& full_wgt = full_graph.m_nodes[i].m_wgts[w];
 
             // If non-global, update it.
-            if ( nl.m_wgts[w].m_weights.size() < (unsigned int) (fab.size()) )
+            if ( wgt.m_weights.size() < (unsigned int) (fab.size()) )
             {
                 for (MFIter mfi(fab); mfi.isValid(); ++mfi)
                 {
@@ -225,6 +239,8 @@ Graph::assemble()
 
     // ====================================
 
+    int offset_count = 0;
+
     // Edges: aggregate all information.
     // Need to protect from aggregating over and over and over again.
     for (unsigned int i=0; i<m_edges.size(); ++i)
@@ -243,6 +259,10 @@ Graph::assemble()
 
         if (is_writer) {
             n_total_edges = amrex::Scan::ExclusiveSum(n_ranks, edge_count.data(), disp.data());
+            el.m_size = n_total_edges;
+            el.m_offset = offset_count; 
+            offset_count += n_total_edges;
+            full_graph.m_e_count += n_total_edges;
         }
 
         // ... Labels ...
@@ -358,25 +378,22 @@ void Graph::print(const std::string& filename,
                   const int wgt_precision,
                   const bool /*replace_file*/)    // std::rename ?
 {
-    Graph assembled = this->assemble();
-    assembled.print_doit(filename, wgt_precision);
+    Graph fullg = this->assemble();
+    fullg.print_doit(filename, wgt_precision);
 }
 
 void Graph::print_table(const std::string& filename,
                   const int wgt_precision,
                   const bool /*replace_file*/)    // std::rename ?
 {
-    Graph assembled = this->assemble();
-    assembled.print_table_doit(filename, wgt_precision);
+    Graph fullg = this->assemble();
+    fullg.print_table_doit(filename, wgt_precision);
 }
 
 void Graph::print_doit(const std::string& filename,
                        const int wgt_precision,
                        const bool /*replace_file*/)    // std::rename ?
 {
-
-    // ............ ADD: If graph is not already assembled.
-
     if (ParallelDescriptor::MyProc() != m_rank)  { return; }
 
     amrex::PrintToFile file(filename);
@@ -502,9 +519,6 @@ void Graph::print_table_doit(const std::string& dirname,
                              const int wgt_precision,
                              const bool /*replace_file*/)    // std::rename ?
 {
-
-    // ............ ADD: If graph is not already assembled.
-
     if (ParallelDescriptor::MyProc() != m_rank)  { return; }
 
     std::string fulldirname = std::string("graphs/") + dirname;
@@ -542,14 +556,14 @@ void Graph::print_table_doit(const std::string& dirname,
 
             nl_ss << nl.m_name << " " << std::to_string(nl.m_size)
                                << " " << std::to_string(nl.m_offset)
-                               << " " << std::to_string(nl.m_offset+nl.m_size) << "\n";
+                               << " " << std::to_string(nl.m_offset+nl.m_size-1) << "\n";
 
             std::vector<int> wgtmap(m_nwgts.size(), -1);;
             for (unsigned int w=0; w<m_nwgts.size(); ++w) {
                 const int idx = get_index(m_nwgts[w], nl.m_wgts);
                 if (idx != -1) {
                     wgtmap[w] = idx;
-                    smap[w] = &(nl.m_wgts[idx].m_weights);
+                    smap[w] = &(nl.m_wgts[idx].m_scaling);
                 }
             }
 
@@ -570,6 +584,7 @@ void Graph::print_table_doit(const std::string& dirname,
                         n_ss << " null";
                     }
                 }
+                n_ss << std::endl;
                 node_id++;
             }
         }
@@ -578,9 +593,9 @@ void Graph::print_table_doit(const std::string& dirname,
         for (int n=0; n<ParallelDescriptor::NProcs(); ++n) {
             ns_ss << std::to_string(n);
             for (unsigned int s=0; s<smap.size(); ++s) {
-                ns_ss << " " << smap[n];
+                ns_ss << " " << (*(smap[s]))[n];
             }
-            ns_ss << " ";
+            ns_ss << "\n";
         }
 
         amrex::PrintToFile n_file(fulldirname + std::string("/nodes.txt"));
@@ -606,8 +621,14 @@ void Graph::print_table_doit(const std::string& dirname,
             const EdgeList& el = m_edges[eid];
 
             el_ss << el.m_name << " " << el.m_mynodes.first << " " << el.m_mynodes.second << " "
-                  << std::to_string(el.m_size) << " " << std::to_string(el.m_offset) << " "
+                  << std::to_string(el.m_size-1) << " " << std::to_string(el.m_offset) << " "
                   << std::to_string(el.m_offset+el.m_size) << "\n";
+
+            int from_idx = get_index(el.m_mynodes.first, m_nodes); 
+            int to_idx = get_index(el.m_mynodes.second, m_nodes);
+
+            int from_offset = m_nodes[from_idx].m_offset;
+            int to_offset = m_nodes[to_idx].m_offset;
 
             std::vector<int> wgtmap(m_ewgts.size(), -1);
             const int idx_b = get_index("bytes", el.m_wgts);
@@ -617,17 +638,17 @@ void Graph::print_table_doit(const std::string& dirname,
 
                 if (idx != -1) {
                     wgtmap[w] = idx;
-                    smap[w] = &(el.m_wgts[idx].m_weights);
+                    smap[w] = &(el.m_wgts[idx].m_scaling);
                 }
                 else if (m_ewgts[w] == el.m_name+"_bytes") {
                     wgtmap[w] = idx_b;
-                    smap[w] = &(el.m_wgts[idx_b].m_weights);
+                    smap[w] = &(el.m_wgts[idx_b].m_scaling);
                 }
             }
 
             for (int i=0; i<el.m_size; ++i) {
-                int global_to = el.m_to[i] + el.m_offset;
-                int global_from = el.m_from[i] + el.m_offset;
+                int global_from = el.m_from[i] + from_offset;
+                int global_to = el.m_to[i] + to_offset;
 
                 // to::string to prevent any precision-based round off.
                 e_ss << edge_id << " " << std::to_string(global_from)
@@ -643,6 +664,7 @@ void Graph::print_table_doit(const std::string& dirname,
                         e_ss << " null";
                     }
                 }
+                e_ss << "\n";
                 edge_id++;
             }
         }
@@ -651,9 +673,9 @@ void Graph::print_table_doit(const std::string& dirname,
         for (int n=0; n<ParallelDescriptor::NProcs(); ++n) {
             es_ss << std::to_string(n);
             for (unsigned int s=0; s<smap.size(); ++s) {
-                es_ss << " " << smap[n];
+                es_ss << " " << (*(smap[s]))[n];
             }
-            es_ss << " ";
+            es_ss << "\n";
         }
 
         amrex::PrintToFile e_file(fulldirname + std::string("/edges.txt"));
@@ -669,8 +691,8 @@ void Graph::print_table_doit(const std::string& dirname,
     {
         std::ostringstream nw_ss(std::ios_base::ate);
         std::ostringstream ew_ss(std::ios_base::ate);
-        nw_ss << m_nwgts[0];
-        ew_ss << m_ewgts[0];
+        if (m_nwgts.size() > 0) { nw_ss << m_nwgts[0]; }
+        if (m_ewgts.size() > 0) { ew_ss << m_ewgts[0]; }
 
         for (unsigned int w=1; w<m_nwgts.size(); ++w) { nw_ss << " " << m_nwgts[w]; }
         for (unsigned int w=1; w<m_ewgts.size(); ++w) { ew_ss << " " << m_ewgts[w]; }
