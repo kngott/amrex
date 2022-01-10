@@ -4,6 +4,7 @@
 #include <AMReX_DistributionMapping.H>
 #include <AMReX_Config.H>
 #include <AMReX_FabArray.H>
+#include <AMReX_iMultiFab.H>
 
 #include <numeric>
 
@@ -243,7 +244,7 @@ namespace amrex
         template <typename FAB>
         void addEnforcePeriodicity (const std::string& name, const std::string& nodes, const double scaling,
                                     const FabArray<FAB>& fab,
-                                    int scomp, int ncomp, const IntVect& nghost,
+                                    int /*scomp*/, int ncomp, const IntVect& nghost,
                                     const Periodicity& period)
         {
             // If EnforcePeriodicity wouldn't be completed, don't create the edge list.
@@ -259,6 +260,7 @@ namespace amrex
         // ..................
 
         //! Sync up nodal data with owners overriding non-owners
+        template <typename FAB>
         void addOverrideSync (const std::string& name, const std::string& nodes, const double scaling,
                               const FabArray<FAB>& fab,
                               const Periodicity& period = Periodicity::NonPeriodic())
@@ -266,6 +268,7 @@ namespace amrex
             addOverrideSync(name, nodes, scaling, fab, iMultiFab(), period);
         }
 
+        template <typename FAB>
         void addOverrideSync (const std::string& name, const std::string& nodes, const double scaling,
                               const FabArray<FAB>& fab,
                               const iMultiFab& /*msk*/, const Periodicity& period = Periodicity::NonPeriodic())
