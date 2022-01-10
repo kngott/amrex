@@ -317,7 +317,7 @@ Graph::assemble()
             }
 
             // Do it manually. Better way?
-            unsigned long index = -1;
+            long index = -1;
             for (unsigned int j=0; j<el.m_labels.size(); ++j)
             {
                 for (char k : el.m_labels[j]) {
