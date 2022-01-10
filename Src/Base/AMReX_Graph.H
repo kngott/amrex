@@ -282,7 +282,7 @@ namespace amrex
                               0, MFInfo(), fab.Factory());
 
             const FabArrayBase::CommMetaData& pc =
-                      temp.getCPC(0, fab, fab.nGrowVect(), period, false);
+                      temp.getCPC(IntVect{0, 0, 0}, fab, fab.nGrowVect(), period, false);
 
             addEdgeList(name, nodes, nodes, scaling, pc, fab.nComp());
         }
