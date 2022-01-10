@@ -174,96 +174,119 @@ namespace amrex
         }
 
         // ..................
-#if 0
+
         template <typename FAB>
-        void addSumBoundary(const std::string& name, const std::string& nodes_dst,
-                            const std::string& nodes_src, const double scaling,
+        void addSumBoundary(const std::string& name, const std::string& nodes, const double scaling,
                             const FabArray<FAB>& fab,
                             const Periodicity& period = Periodicity::NonPeriodic())
         {
-            addSumBoundary(name, nodes_dst, nodes_src, scaling,
+            addSumBoundary(name, nodes, scaling,
                            fab, 0, fab.nComp(), IntVect(0), period);
         }
 
         template <typename FAB>
-        void addSumBoundary(const std::string& name, const std::string& nodes_dst,
-                            const std::string& nodes_src, const double scaling,
+        void addSumBoundary(const std::string& name, const std::string& nodes, const double scaling,
                             const FabArray<FAB>& fab,
                             const int scomp, const int ncomp,
                             const Periodicity& period = Periodicity::NonPeriodic())
         {
-            addSumBoundary(name, nodes_dst, nodes_src, scaling,
+            addSumBoundary(name, nodes, scaling,
                            fab, scomp, ncomp, IntVect(0), period);
         }
 
         template <typename FAB>
-        void addSumBoundary(const std::string& name, const std::string& nodes_dst,
-                            const std::string& nodes_src, const double scaling,
+        void addSumBoundary(const std::string& name, const std::string& nodes, const double scaling,
                             const FabArray<FAB>& fab,
                             const int scomp, const int ncomp,
                             const IntVect& nghost,
                             const Periodicity& period = Periodicity::NonPeriodic())
         {
-            addSumBoundary(name, nodes_dst, nodes_src, scaling,
+            addSumBoundary(name, nodes, scaling,
                            fab, scomp, ncomp, fab.nGrowVect(), nghost, period);
         }
 
         template <typename FAB>
-        void addSumBoundary(const std::string& name, const std::string& nodes_dst,
-                            const std::string& nodes_src, const double scaling,
+        void addSumBoundary(const std::string& name, const std::string& nodes, const double scaling,
                             const FabArray<FAB>& fab,
-                            const int scomp, const int ncomp,
+                            const int /*scomp*/, const int ncomp,
                             const IntVect& src_nghost, const IntVect& dst_nghost,
                             const Periodicity& period = Periodicity::NonPeriodic())
         {
-            // If not called, don't create the edge list:
-            //      (interpretted as: the comm doesn't happen).
-
+            // If SumBoundary wouldn't be completed, don't create the edge list.
+            //      (interpretted as: the comm doesn't happen, so don't add a list).
             if ( fab.nGrowVect() == IntVect::TheZeroVector()
-              && fab.boxArray().ixType().cellCentered())  { return; }
+              && fab.boxArray().ixType().cellCentered() )  { return; }
 
             const FabArrayBase::CommMetaData& pc =
-                      fab.getCPC(dst_nghost, fab, src_nghost, period, to_ghost_cells_only);
+                      fab.getCPC(dst_nghost, fab, src_nghost, period, false);
 
-            addEdgeList(name, nodes_src, nodes_dst, scaling, pc, num_comp);
-
+            addEdgeList(name, nodes, nodes, scaling, pc, ncomp);
         }
-
-    if ( n_grow == IntVect::TheZeroVector() && boxArray().ixType().cellCentered()) return;
-    = PC: this->ParallelCopy_nowait(*tmp,0,scomp,ncomp,src_nghost,dst_nghost,period,FabArrayBase::ADD);
-
-        template <typename FAB>
-        void EnforcePeriodicity(const std::string& name, const std::string& nodes_dst,
-                                const std::string& nodes_src, const double scaling,
 
         // ..................
 
-        void EnforcePeriodicity (const Periodicity& period)
-        void EnforcePeriodicity (int scomp, int ncomp, const Periodicity& period);
-        void EnforcePeriodicity (int scomp, int ncomp, const IntVect& nghost,
-                             const Periodicity& period);
-    = FB: if (period.isAnyPeriodic()) { FBEP_nowait(scomp, ncomp, nghost, period, false, true); }
+        template <typename FAB>
+        void addEnforcePeriodicity(const std::string& name, const std::string& nodes, const double scaling,
+                                   const FabArray<FAB>& fab, const Periodicity& period)
+        {
+            addEnforcePeriodicity(name, nodes, scaling, fab, 0, fab.nComp(), fab.nGrowVect(), period);
+        }
+
+        template <typename FAB>
+        void addEnforcePeriodicity (const std::string& name, const std::string& nodes, const double scaling,
+                                    const FabArray<FAB>& fab,
+                                    int scomp, int ncomp, const Periodicity& period)
+        {
+            addEnforcePeriodicity(name, nodes, scaling, fab, scomp, ncomp, fab.nGrowVect(), period);
+        }
+
+        template <typename FAB>
+        void addEnforcePeriodicity (const std::string& name, const std::string& nodes, const double scaling,
+                                    const FabArray<FAB>& fab,
+                                    int scomp, int ncomp, const IntVect& nghost,
+                                    const Periodicity& period)
+        {
+            // If EnforcePeriodicity wouldn't be completed, don't create the edge list.
+            //      (interpretted as: the comm doesn't happen, so don't add a list).
+            if ( period.isAnyPeriodic() )
+            {
+                const FabArrayBase::CommMetaData& fb = fab.getFB(nghost, period, false, true);
+
+                addEdgeList(name, nodes, nodes, scaling, fb, ncomp);
+            }
+        }
 
         // ..................
 
         //! Sync up nodal data with owners overriding non-owners
-        void OverrideSync (const Periodicity& period = Periodicity::NonPeriodic());
-        void OverrideSync (const iMultiFab& msk, const Periodicity& period = Periodicity::NonPeriodic());
+        void addOverrideSync (const std::string& name, const std::string& nodes, const double scaling,
+                              const FabArray<FAB>& fab,
+                              const Periodicity& period = Periodicity::NonPeriodic())
+        {
+            addOverrideSync(name, nodes, scaling, fab, iMultiFab(), period);
+        }
 
-        amrex::OverrideSync(*this, *msk, period);
+        void addOverrideSync (const std::string& name, const std::string& nodes, const double scaling,
+                              const FabArray<FAB>& fab,
+                              const iMultiFab& /*msk*/, const Periodicity& period = Periodicity::NonPeriodic())
+        {
+            // If OverrideSync wouldn't be completed, don't create the edge list.
+            //      (interpretted as: the comm doesn't happen, so don't add a list).
+            if (fab.ixType().cellCentered()) { return; }
 
-    = PC: if (fa.ixType().cellCentered()) return; { fa.os_temp->ParallelCopy_nowait(fa, period, FabArrayBase::ADD); }
+            // Zero ghost cell temporary, used in OverrideSync.
+            FabArrayBase temp(fab.boxArray(), fab.DistributionMap(), fab.nComp(),
+                              0, MFInfo(), fab.Factory());
 
-#endif
+            const FabArrayBase::CommMetaData& pc =
+                      temp.getCPC(0, fab, fab.nGrowVect(), period, false);
 
-/*
+            addEdgeList(name, nodes, nodes, scaling, pc, fab.nComp());
+        }
 
-        void addPC( );
-*/
         // ---------------------------
 
-        // Lower-level functions.
-        // General implementations.
+        // Lower-level functions; general implementations.
 
         void addNodeList(const std::string& name,
                          const FabArrayBase& fab,
