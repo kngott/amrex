@@ -122,8 +122,8 @@ void Graph::addNodeWeight(const std::string& node_name,
         if (not_present(wgts_name, m_nodes[nl].m_wgts))
         {
             // Check length of weights is correct (total or local)
-            AMREX_ASSERT(wgts.size() == m_nodes[nl].m_fab.size()
-                      || wgts.size() == m_nodes[nl].m_fab.local_size());
+            AMREX_ASSERT(long(wgts.size()) == m_nodes[nl].m_fab.size()
+                      || long(wgts.size()) == m_nodes[nl].m_fab.local_size());
 
             Weight new_wgt;
             new_wgt.m_name = wgts_name;
