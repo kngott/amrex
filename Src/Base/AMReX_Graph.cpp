@@ -49,6 +49,10 @@ void Graph::addEdgeList(const std::string& name,
         el.m_mynodes.first = from_name;
         el.m_mynodes.second = to_name;
 
+        if (not_present(from_name, m_nodes) || not_present(to_name, m_nodes)) {
+            amrex::Abort("Node lists" + from_name + " or " + to_name + " are not present in the graph.");
+        }
+
         // Don't do recvs, so comms aren't duplicated.
         const int N_locs = comm_data.m_LocTags->size();
         const int N_snds = comm_data.m_SndTags->size();
@@ -118,7 +122,8 @@ void Graph::addNodeWeight(const std::string& node_name,
         if (not_present(wgts_name, m_nodes[nl].m_wgts))
         {
             // Check length of weights is correct (total or local)
-//            AMREX_ASSERT(wgts.size() == m_nodes[nl].m_ranks.size() );
+            AMREX_ASSERT(wgts.size() == m_nodes[nl].fab.size()
+                      || wgts.size() == m_nodes[nl].fab.local_size());
 
             Weight new_wgt;
             new_wgt.m_name = wgts_name;
@@ -214,7 +219,6 @@ Graph::assemble()
             const Weight& wgt = nl.m_wgts[w];
             Weight& full_wgt = full_graph.m_nodes[i].m_wgts[w];
 
-            // If non-global, update it.
             if ( wgt.m_weights.size() < (unsigned int) (fab.size()) )
             {
                 for (MFIter mfi(fab); mfi.isValid(); ++mfi)
@@ -530,15 +534,13 @@ void Graph::print_table_doit(const std::string& dirname,
         Name = directory name
         Graph/name/files
 
-        edges.txt        --   from(box#) to(box#) label ewgt1 ewgt2 ewgt3
+        edges.txt        --   edge# from(box#) to(box#) label ewgt1 ewgt2 ewgt3
         edgelists.txt    --   edge_name node_to node_from size start(row#) end(row#)
         edgescaling.txt  --   rank ewgt1 ewgt2 ewgt3
-        edgeweights.txt  --   ewgt1_name ewgt2_name ewgt3_name
 
         nodes.txt        --   box#(row#) rank label nwgt1 nwgt2 nwgt3
         nodelists.txt    --   fab_name size start(row#) end(row#)
         nodescaling.txt  --   rank nwgt1 nwgt2 nwgt3
-        nodeweights.txt  --   nwgt1_name nwgt2_name nwgt3_name
     */
 
     // Nodes
@@ -546,9 +548,18 @@ void Graph::print_table_doit(const std::string& dirname,
         std::ostringstream  n_ss(std::ios_base::ate);
         std::ostringstream nl_ss(std::ios_base::ate);
         std::ostringstream ns_ss(std::ios_base::ate);
+        std::ostringstream nw_ss(std::ios_base::ate);
+
         long node_id = 0;
 
         std::vector< std::vector<double> const* > smap(m_nwgts.size(), nullptr);
+
+        // Create table headers
+        if (m_nwgts.size() > 0) { nw_ss << "\"" << m_nwgts[0] << "\""; }
+        for (unsigned int w=1; w<m_nwgts.size(); ++w) { nw_ss << " \"" << m_nwgts[w] << "\""; }
+        n_ss << "box-# rank label " << nw_ss.str() << std::endl;
+        nl_ss << "name size start-id end-id " << std::endl;
+        ns_ss << "rank " << nw_ss.str() << std::endl;
 
         for (unsigned int nid=0; nid<m_nodes.size(); ++nid)
         {
@@ -612,9 +623,18 @@ void Graph::print_table_doit(const std::string& dirname,
         std::ostringstream  e_ss(std::ios_base::ate);
         std::ostringstream el_ss(std::ios_base::ate);
         std::ostringstream es_ss(std::ios_base::ate);
+        std::ostringstream ew_ss(std::ios_base::ate);
         long edge_id = 0;
 
         std::vector< std::vector<double> const* > smap(m_ewgts.size(), nullptr);
+
+        // For table headers
+        if (m_ewgts.size() > 0) { ew_ss << "\"" << m_ewgts[0] << "\""; }
+        for (unsigned int w=1; w<m_ewgts.size(); ++w) { ew_ss << " \"" << m_ewgts[w] << "\""; }
+        e_ss << "edge-# from-box to-box label " << ew_ss.str() << std::endl;
+        el_ss << "name nl_to nl_from size start-id end-id" << std::endl;
+        es_ss << "rank " << ew_ss.str() << std::endl;
+
 
         for (unsigned int eid=0; eid<m_edges.size(); ++eid)
         {
@@ -685,23 +705,6 @@ void Graph::print_table_doit(const std::string& dirname,
         e_file << e_ss.str();
         el_file << el_ss.str();
         es_file << es_ss.str();
-    }
-
-    // Output weight names
-    {
-        std::ostringstream nw_ss(std::ios_base::ate);
-        std::ostringstream ew_ss(std::ios_base::ate);
-        if (m_nwgts.size() > 0) { nw_ss << m_nwgts[0]; }
-        if (m_ewgts.size() > 0) { ew_ss << m_ewgts[0]; }
-
-        for (unsigned int w=1; w<m_nwgts.size(); ++w) { nw_ss << " " << m_nwgts[w]; }
-        for (unsigned int w=1; w<m_ewgts.size(); ++w) { ew_ss << " " << m_ewgts[w]; }
-
-        amrex::PrintToFile nw_file(fulldirname + std::string("/nodeweights.txt"));
-        amrex::PrintToFile ew_file(fulldirname + std::string("/edgeweights.txt"));
-
-        nw_file << nw_ss.str();
-        ew_file << ew_ss.str();
     }
 }
 
