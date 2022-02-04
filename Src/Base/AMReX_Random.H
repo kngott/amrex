@@ -35,9 +35,9 @@ namespace amrex
 #else
         return 1.0 - hiprand_uniform_double(random_engine.rand_state);
 #endif
-#elif defined (__SYCL_DEVICE_ONLY__)
-        mkl::rng::device::uniform<Real> distr;
-        return mkl::rng::device::generate(distr, *random_engine.engine);
+//#elif defined (__SYCL_DEVICE_ONLY__)
+//        mkl::rng::device::uniform<Real> distr;
+//        return mkl::rng::device::generate(distr, *random_engine.engine);
 #else
         amrex::ignore_unused(random_engine);
         return Random();
@@ -68,9 +68,9 @@ namespace amrex
 #else
         return stddev * hiprand_normal_double(random_engine.rand_state) + mean;
 #endif
-#elif defined (__SYCL_DEVICE_ONLY__)
-        mkl::rng::device::gaussian<Real> distr(mean, stddev);
-        return mkl::rng::device::generate(distr, *random_engine.engine);
+//#elif defined (__SYCL_DEVICE_ONLY__)
+//        mkl::rng::device::gaussian<Real> distr(mean, stddev);
+//        return mkl::rng::device::generate(distr, *random_engine.engine);
 #else
         amrex::ignore_unused(random_engine);
         return RandomNormal(mean, stddev);
@@ -95,9 +95,9 @@ namespace amrex
         return curand_poisson(random_engine.rand_state, lambda);
 #elif defined(__HIP_DEVICE_COMPILE__)
         return hiprand_poisson(random_engine.rand_state, lambda);
-#elif defined (__SYCL_DEVICE_ONLY__)
-        mkl::rng::device::poisson<unsigned int> distr(lambda);
-        return mkl::rng::device::generate(distr, *random_engine.engine);
+//#elif defined (__SYCL_DEVICE_ONLY__)
+//        mkl::rng::device::poisson<unsigned int> distr(lambda);
+//        return mkl::rng::device::generate(distr, *random_engine.engine);
 #else
         amrex::ignore_unused(random_engine);
         return RandomPoisson(lambda);
@@ -117,10 +117,10 @@ namespace amrex
     unsigned int Random_int (unsigned int n, RandomEngine const& random_engine)
     {
 #if AMREX_DEVICE_COMPILE
-#if defined(__SYCL_DEVICE_ONLY__)
-        mkl::rng::device::uniform<unsigned int> distr(0,n);
-        return mkl::rng::device::generate(distr, *random_engine.engine);
-#else
+//#if defined(__SYCL_DEVICE_ONLY__)
+//        mkl::rng::device::uniform<unsigned int> distr(0,n);
+//        return mkl::rng::device::generate(distr, *random_engine.engine);
+//#else
         unsigned int rand;
         constexpr unsigned int RAND_M = 4294967295; // 2**32-1
         do {
@@ -128,7 +128,7 @@ namespace amrex
                                rand =  curand(random_engine.rand_state) );
         } while (rand > (RAND_M - RAND_M % n));
         return rand % n;
-#endif
+//#endif
 #else
         amrex::ignore_unused(random_engine);
         return Random_int(n);

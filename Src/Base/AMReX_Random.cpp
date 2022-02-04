@@ -18,7 +18,7 @@ namespace
 #ifdef AMREX_USE_GPU
 namespace amrex {
 #ifdef AMREX_USE_DPCPP
-    dpcpp_rng_descr* rand_engine_descr = nullptr;
+//    dpcpp_rng_descr* rand_engine_descr = nullptr;
 #else
     amrex::randState_t* gpu_rand_state = nullptr;
 #endif
@@ -39,8 +39,8 @@ void ResizeRandomSeed (amrex::ULong gpu_seed)
 
 #ifdef AMREX_USE_DPCPP
 
-    rand_engine_descr = new dpcpp_rng_descr
-        (Gpu::Device::nullQueue(), sycl::range<1>(N), gpu_seed, 1);
+//    rand_engine_descr = new dpcpp_rng_descr
+//        (Gpu::Device::nullQueue(), sycl::range<1>(N), gpu_seed, 1);
 
 #elif defined(AMREX_USE_CUDA) || defined(AMREX_USE_HIP)
 
@@ -180,11 +180,13 @@ amrex::DeallocateRandomSeedDevArray ()
 {
 #ifdef AMREX_USE_GPU
 #ifdef AMREX_USE_DPCPP
+/*
     if (rand_engine_descr) {
         delete rand_engine_descr;
         Gpu::synchronize();
         rand_engine_descr = nullptr;
     }
+*/
 #else
     if (gpu_rand_state != nullptr)
     {

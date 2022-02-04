@@ -13,11 +13,11 @@
 #elif defined(AMREX_USE_CUDA)
 #include <curand.h>
 #include <curand_kernel.h>
-#elif defined(AMREX_USE_DPCPP)
-#include <CL/sycl.hpp>
-namespace sycl = cl::sycl;
-#include <oneapi/mkl/rng/device.hpp>
-namespace mkl = oneapi::mkl;
+//#elif defined(AMREX_USE_DPCPP)
+//#include <CL/sycl.hpp>
+//namespace sycl = cl::sycl;
+//#include <oneapi/mkl/rng/device.hpp>
+//namespace mkl = oneapi::mkl;
 #endif
 
 namespace amrex
@@ -26,6 +26,8 @@ namespace amrex
 
 #ifdef AMREX_USE_DPCPP
 
+    struct RandomEngine {};
+/*
     using dpcpp_rng_engine = mkl::rng::device::philox4x32x10<>;
     using dpcpp_rng_descr = mkl::rng::device::engine_descriptor<dpcpp_rng_engine>;
     using dpcpp_rng_acc = mkl::rng::device::engine_accessor<dpcpp_rng_engine>;
@@ -38,7 +40,7 @@ namespace amrex
     struct RandomEngine {
         dpcpp_rng_engine* engine;
     };
-
+*/
 #else
 
 #ifdef AMREX_USE_HIP

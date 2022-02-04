@@ -534,6 +534,8 @@ void HostDeviceFor (Gpu::KernelInfo const&,
         box3,ncomp3,std::forward<L3>(f3));
 }
 
+#if 0
+
 template <typename T, typename L, typename M=std::enable_if_t<std::is_integral<T>::value> >
 void ParallelForRNG (T n, L&& f) noexcept
 {
@@ -567,6 +569,8 @@ void ParallelForRNG (Box const& box, T ncomp, L&& f) noexcept
         }}}
     }
 }
+
+#endif
 
 template <typename L>
 void single_task (L&& f) noexcept

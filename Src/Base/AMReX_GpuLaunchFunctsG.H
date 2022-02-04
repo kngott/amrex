@@ -325,7 +325,7 @@ void ParallelFor (Gpu::KernelInfo const& info, Box const& box, T ncomp, L&& f) n
         amrex::Abort(std::string("ParallelFor: ")+ex.what()+"!!!!!");
     }
 }
-
+#if 0
 template <typename T, typename L, typename M=std::enable_if_t<std::is_integral<T>::value> >
 void ParallelForRNG (T n, L&& f) noexcept
 {
@@ -453,6 +453,8 @@ void ParallelForRNG (Box const& box, T ncomp, L&& f) noexcept
         amrex::Abort(std::string("ParallelFor: ")+ex.what()+"!!!!!");
     }
 }
+
+#endif
 
 template <typename L1, typename L2>
 void ParallelFor (Gpu::KernelInfo const& /*info*/, Box const& box1, Box const& box2, L1&& f1, L2&& f2) noexcept
