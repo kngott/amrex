@@ -672,8 +672,17 @@ FabArray<FAB>::PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
 
     Vector<std::size_t> offset; offset.reserve(N_snds);
     std::size_t total_volume = 0;
-    for (auto const& kv : SndTags)
-    {
+
+    const int rpn = 4;    // ranks_per_node
+    const int& r = ParallelDescriptor::MyProc();
+    const int r1 = (rpn > 0) ? ((r/rpn)+1)*rpn : ParallelDescriptor::MyProc();
+    const auto& start = SndTags.lower_bound(r1);
+    auto it = start;
+
+//    for (auto const& kv : SndTags)
+    do {
+        auto const& kv = (*it);
+
         auto const& cctc = kv.second;
 
         std::size_t nbytes = 0;
@@ -698,7 +707,9 @@ FabArray<FAB>::PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
         send_rank.push_back(kv.first);
         send_reqs.push_back(MPI_REQUEST_NULL);
         send_cctc.push_back(&cctc);
-    }
+
+        it = (it != SndTags.end()) ? ++it : SndTags.begin();
+    } while (it != start);
 
     if (total_volume > 0)
     {
@@ -764,8 +775,17 @@ FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&  RcvTags,
 
     Vector<std::size_t> offset;
     std::size_t TotalRcvsVolume = 0;
-    for (const auto& kv : RcvTags) // loop over senders
-    {
+
+    const int rpn = 4;    // ranks_per_node
+    const int& r = ParallelDescriptor::MyProc();
+    const int r1 = (rpn > 0) ? ((r/rpn)+1)*rpn : r;
+    const auto& start = RcvTags.lower_bound(r1);
+    auto it = start;
+//    for (const auto& kv : RcvTags) // loop over senders
+
+    do {
+        auto const& kv = (*it);
+
         std::size_t nbytes = 0;
         for (auto const& cct : kv.second)
         {
@@ -786,7 +806,9 @@ FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&  RcvTags,
         recv_size.push_back(nbytes);
         recv_from.push_back(kv.first);
         recv_reqs.push_back(MPI_REQUEST_NULL);
-    }
+
+        it = (it != RcvTags.end()) ? ++it : RcvTags.begin();
+    } while (it != start);
 
     const int nrecv = recv_from.size();
 
