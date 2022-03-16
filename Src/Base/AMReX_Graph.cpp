@@ -66,10 +66,6 @@ void Graph::addEdgeList(const std::string& name,
         weights.reserve(el.m_size);
 
         int from_id = get_index(from_name, m_nodes);
-//        int to_id = get_index(to_name, m_nodes);
-
-//        int offset_src = m_nodes[from_id].m_offset;
-//        int offset_dst = m_nodes[to_id].m_offset;
         int type_size = m_nodes[from_id].m_bytes_per_item;
 
         const auto& LocTags = comm_data.m_LocTags;
@@ -188,6 +184,9 @@ void Graph::clear()
 Graph
 Graph::assemble()
 {
+    // If this is assembled, return a copy.
+    if (m_assembled) { return amrex::Graph() = *this; }
+
     // Make a copy and add full data from other ranks to the full_graph on m_rank.
 
     Graph full_graph;
@@ -565,9 +564,10 @@ void Graph::print_table_doit(const std::string& dirname,
         {
             const NodeList& nl = m_nodes[nid];
 
-            nl_ss << nl.m_name << " " << std::to_string(nl.m_size)
-                               << " " << std::to_string(nl.m_offset)
-                               << " " << std::to_string(nl.m_offset+nl.m_size-1) << "\n";
+            nl_ss << "\"" << nl.m_name
+                  << "\" " << std::to_string(nl.m_size)
+                  << " "   << std::to_string(nl.m_offset)
+                  << " "   << std::to_string(nl.m_offset+nl.m_size-1) << "\n";
 
             std::vector<int> wgtmap(m_nwgts.size(), -1);;
             for (unsigned int w=0; w<m_nwgts.size(); ++w) {
@@ -583,8 +583,8 @@ void Graph::print_table_doit(const std::string& dirname,
                 const Box& bx = nl.m_fab.boxArray()[i];
 
                 // to::string to prevent any precision-based round off.
-                n_ss << node_id << " " << std::to_string(rank) << " "
-                     << bx.smallEnd() << "-" << bx.bigEnd();
+                n_ss << node_id << " " << std::to_string(rank)
+                     << " \"" << bx.smallEnd() << " " << bx.bigEnd() << "\" ";
 
                 n_ss.precision(wgt_precision);
 
@@ -640,9 +640,11 @@ void Graph::print_table_doit(const std::string& dirname,
         {
             const EdgeList& el = m_edges[eid];
 
-            el_ss << el.m_name << " " << el.m_mynodes.first << " " << el.m_mynodes.second << " "
-                  << std::to_string(el.m_size-1) << " " << std::to_string(el.m_offset) << " "
-                  << std::to_string(el.m_offset+el.m_size) << "\n";
+            el_ss << "\""  << el.m_name << "\" "
+                  << "\"" << el.m_mynodes.first << "\" "
+                  << "\"" << el.m_mynodes.second << "\" "
+                  << std::to_string(el.m_size) << " " << std::to_string(el.m_offset) << " "
+                  << std::to_string(el.m_offset+el.m_size-1) << "\n";
 
             int from_idx = get_index(el.m_mynodes.first, m_nodes);
             int to_idx = get_index(el.m_mynodes.second, m_nodes);

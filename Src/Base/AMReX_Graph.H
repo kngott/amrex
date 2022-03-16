@@ -101,6 +101,8 @@ namespace amrex
                    const FabArray<FAB>& fab, const int /* scomp */, const int ncomp,
                    const IntVect& nghost, const Periodicity& period, bool cross = false)
         {
+            if (not_present(nodes, m_nodes)) { addFab(fab, nodes); }
+
             const FabArrayBase::CommMetaData& fb = fab.getFB(nghost, period, cross, false);
             addEdgeList(name, nodes, nodes, scaling, fb, ncomp);
         }
@@ -168,9 +170,11 @@ namespace amrex
                              const FabArrayBase::CPC* a_cpc = nullptr,
                              bool to_ghost_cells_only = false)
         {
+            if (not_present(nodes_dst, m_nodes)) { addFab(dst, nodes_dst); }
+            if (not_present(nodes_src, m_nodes)) { addFab(src, nodes_src); }
+
             const FabArrayBase::CommMetaData& pc = (a_cpc) ? *a_cpc :
                          dst.getCPC(dst_nghost, src, src_nghost, period, to_ghost_cells_only);
-
             addEdgeList(name, nodes_src, nodes_dst, scaling, pc, num_comp);
         }
 
@@ -218,9 +222,10 @@ namespace amrex
             if ( fab.nGrowVect() == IntVect::TheZeroVector()
               && fab.boxArray().ixType().cellCentered() )  { return; }
 
+            if (not_present(nodes, m_nodes)) { addFab(fab, nodes); }
+
             const FabArrayBase::CommMetaData& pc =
                       fab.getCPC(dst_nghost, fab, src_nghost, period, false);
-
             addEdgeList(name, nodes, nodes, scaling, pc, ncomp);
         }
 
@@ -251,8 +256,9 @@ namespace amrex
             //      (interpretted as: the comm doesn't happen, so don't add a list).
             if ( period.isAnyPeriodic() )
             {
-                const FabArrayBase::CommMetaData& fb = fab.getFB(nghost, period, false, true);
+                if (not_present(nodes, m_nodes)) { addFab(fab, nodes); }
 
+                const FabArrayBase::CommMetaData& fb = fab.getFB(nghost, period, false, true);
                 addEdgeList(name, nodes, nodes, scaling, fb, ncomp);
             }
         }
@@ -277,13 +283,14 @@ namespace amrex
             //      (interpretted as: the comm doesn't happen, so don't add a list).
             if (fab.ixType().cellCentered()) { return; }
 
+            if (not_present(nodes, m_nodes)) { addFab(fab, nodes); }
+
             // Zero ghost cell temporary, used in OverrideSync.
             FabArrayBase temp(fab.boxArray(), fab.DistributionMap(), fab.nComp(),
                               0, MFInfo(), fab.Factory());
 
             const FabArrayBase::CommMetaData& pc =
                       temp.getCPC(IntVect(0), fab, fab.nGrowVect(), period, false);
-
             addEdgeList(name, nodes, nodes, scaling, pc, fab.nComp());
         }
 
