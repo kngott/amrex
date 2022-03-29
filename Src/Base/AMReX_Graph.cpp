@@ -557,7 +557,7 @@ void Graph::print_table_doit(const std::string& dirname,
         if (m_nwgts.size() > 0) { nw_ss << "\"" << m_nwgts[0] << "\""; }
         for (unsigned int w=1; w<m_nwgts.size(); ++w) { nw_ss << " \"" << m_nwgts[w] << "\""; }
         n_ss << "box-# rank label " << nw_ss.str() << std::endl;
-        nl_ss << "name size start-id end-id " << std::endl;
+        nl_ss << "name type-size index size start-id end-id " << std::endl;
         ns_ss << "rank " << nw_ss.str() << std::endl;
 
         for (unsigned int nid=0; nid<m_nodes.size(); ++nid)
@@ -565,6 +565,8 @@ void Graph::print_table_doit(const std::string& dirname,
             const NodeList& nl = m_nodes[nid];
 
             nl_ss << "\"" << nl.m_name
+                  << "\" " << std::to_string(nl.m_bytes_per_item)
+                  << " \"" << nl.m_fab.ixType()
                   << "\" " << std::to_string(nl.m_size)
                   << " "   << std::to_string(nl.m_offset)
                   << " "   << std::to_string(nl.m_offset+nl.m_size-1) << "\n";
