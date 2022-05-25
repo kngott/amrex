@@ -43,7 +43,11 @@ namespace {
     Long the_managed_arena_release_threshold = std::numeric_limits<Long>::max();
     Long the_pinned_arena_release_threshold = std::numeric_limits<Long>::max();
     Long the_async_arena_release_threshold = std::numeric_limits<Long>::max();
+#ifdef AMREX_USE_HIP
+    bool the_arena_is_managed = false; // xxxxx HIP FIX HERE
+#else
     bool the_arena_is_managed = true;
+#endif
     bool abort_on_out_of_gpu_memory = false;
 }
 
@@ -122,7 +126,14 @@ Arena::allocate_system (std::size_t nbytes)
     if (arena_info.use_cpu_memory)
     {
         p = std::malloc(nbytes);
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
         if (p && arena_info.device_use_hostalloc) AMREX_MLOCK(p, nbytes);
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
     }
     else if (arena_info.device_use_hostalloc)
     {
