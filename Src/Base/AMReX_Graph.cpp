@@ -9,6 +9,18 @@
 
 namespace amrex {
 
+void Graph::addFab(const FabArrayBase& fab,
+                   const std::string& name,
+                   const size_t data_size)
+{
+    if (not_present(name, m_nodes))
+    {
+        addNodeList(name, fab, data_size);
+    }
+}
+
+// --------------------------------
+
 void Graph::addNodeList(const std::string& name,
                         const FabArrayBase& fab,
                         const std::size_t& item_size)
@@ -35,7 +47,6 @@ void Graph::addEdgeList(const std::string& name,
                         const double scaling,
                         const FabArrayBase::CommMetaData& comm_data,
                         const int ncomp)
-
 {
     // label => snd box
     // weight => bytes sent
@@ -99,10 +110,87 @@ void Graph::addEdgeList(const std::string& name,
 
         m_edges.emplace_back(std::move(el));
         addEdgeWeight(name, "bytes", weights, scaling);
-
     }
 }
 
+// --------------------------------
+#if 0
+void Graph::appendEdgeList(const std::string& name,
+                           const std::string& from_name,
+                           const std::string& to_name,
+                           const double scaling,
+                           const FabArrayBase::CommMetaData& comm_data,
+                           const int ncomp)
+{
+    el_index = get_index(name, m_edges);
+
+    if (el_index != -1)
+    {
+        EdgeList& el = m_edges[el_index];
+//        el.m_name = name;
+//        el.m_id = m_edges.size();
+        el.m_offset = m_e_count;   // Need to update all edgelists with index > this one.
+//        el.m_mynodes.first = from_name;
+//        el.m_mynodes.second = to_name;
+
+/*
+        from_name and to_name are not correct
+
+        if (not_present(from_name, m_nodes) || not_present(to_name, m_nodes)) {
+            amrex::Abort("Node lists" + from_name 
+                             + " or " + to_name + " are not present in the graph.");
+        }
+*/
+
+        // Don't do recvs, so comms aren't duplicated.
+        const int N_locs = comm_data.m_LocTags->size();
+        const int N_snds = comm_data.m_SndTags->size();
+        el.m_size += (N_locs + N_snds);
+        m_e_count += (N_locs + N_snds);
+        el.m_from.reserve(el.m_size);
+        el.m_to.reserve(el.m_size);
+        el.m_labels.reserve(el.m_size);
+
+        std::vector<double> weights;
+        weights.reserve(N_locs + N_snds);
+
+        int from_id = get_index(from_name, m_nodes);
+        int type_size = m_nodes[from_id].m_bytes_per_item;
+
+        const auto& LocTags = comm_data.m_LocTags;
+        const auto& SndTags = comm_data.m_SndTags;
+
+        // Combination of multiple ranges would make this much nicer. :)
+        // Or, subfunction/lambda function to do this once.
+        for (const FabArrayBase::CopyComTag& cct : *LocTags) {
+            std::ostringstream oss("\"", std::ios_base::ate);
+            const Box& bx = cct.sbox;
+            oss << bx.smallEnd() << " " << bx.bigEnd() << "\"";
+
+            el.m_from.emplace_back(cct.srcIndex);
+            el.m_to.emplace_back(cct.dstIndex);
+            el.m_labels.emplace_back(oss.str());
+            weights.emplace_back(bx.numPts()*type_size*ncomp);
+        }
+
+        for (const auto& kv: *SndTags) {
+            for (const auto& cct : kv.second) {
+                std::ostringstream oss("\"", std::ios_base::ate);
+                const Box& bx = cct.sbox;
+                oss << bx.smallEnd() << " " << bx.bigEnd() << "\"";
+
+                el.m_from.emplace_back(cct.srcIndex);
+                el.m_to.emplace_back(cct.dstIndex);
+                el.m_labels.emplace_back(oss.str());
+                weights.emplace_back(bx.numPts()*type_size*ncomp);
+            }
+        }
+
+        m_edges.emplace_back(std::move(el));
+        addEdgeWeight(name, "bytes", weights, scaling);
+    }
+}
+#endif
 // --------------------------------
 
 void Graph::addNodeWeight(const std::string& node_name,
@@ -166,6 +254,42 @@ void Graph::addEdgeWeight(const std::string& edge_name,
     }
 }
 
+// --------------------------------
+#if 0
+void Graph::appendEdgeWeight(const std::string& edge_name,
+                             const std::string& wgts_name,
+                             const std::vector<double>& wgts,
+                             const double scaling,
+                             const bool local)
+{
+/*
+    int el = get_index(edge_name, m_edges);
+
+    if (el != -1)
+    {
+        if (not_present(wgts_name, m_edges[el].m_wgts))
+        {
+            // Check length of weights is correct
+            AMREX_ASSERT(wgts.size() == m_edges[el].m_from.size());
+
+            Weight new_wgt;
+            new_wgt.m_name = wgts_name;
+            new_wgt.m_weights = wgts;
+            new_wgt.m_scaling[0] = scaling;
+            new_wgt.m_local = local;
+
+            m_edges[el].m_wgts.emplace_back(std::move(new_wgt));
+
+            if (wgts_name == "bytes") {
+                m_ewgts.push_back(edge_name + "_" + wgts_name);
+            } else {
+                m_ewgts.push_back(wgts_name);
+            }
+        }
+    }
+*/
+}
+#endif
 // --------------------------------
 
 void Graph::clear()

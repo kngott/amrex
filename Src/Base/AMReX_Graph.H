@@ -52,6 +52,10 @@ namespace amrex
         void addFab(const FabArray<FAB>& fab,
                     const std::string& name);
 
+        void addFab(const FabArrayBase& fab,
+                    const std::string& name,
+                    const size_t data_size);
+
         // ---------------------------
 
         template <typename FAB>
@@ -102,6 +106,16 @@ namespace amrex
                    const IntVect& nghost, const Periodicity& period, bool cross = false)
         {
             if (not_present(nodes, m_nodes)) { addFab(fab, nodes); }
+
+            const FabArrayBase::CommMetaData& fb = fab.getFB(nghost, period, cross, false);
+            addEdgeList(name, nodes, nodes, scaling, fb, ncomp);
+        }
+
+        void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling, const size_t type_size,
+                   const FabArrayBase& fab, const int /* scomp */, const int ncomp,
+                   const IntVect& nghost, const Periodicity& period, bool cross = false)
+        {
+            if (not_present(nodes, m_nodes)) { addFab(fab, nodes, type_size); }
 
             const FabArrayBase::CommMetaData& fb = fab.getFB(nghost, period, cross, false);
             addEdgeList(name, nodes, nodes, scaling, fb, ncomp);
