@@ -137,7 +137,7 @@ void Graph::appendEdgeList(const std::string& name,
         from_name and to_name are not correct
 
         if (not_present(from_name, m_nodes) || not_present(to_name, m_nodes)) {
-            amrex::Abort("Node lists" + from_name 
+            amrex::Abort("Node lists" + from_name
                              + " or " + to_name + " are not present in the graph.");
         }
 */
