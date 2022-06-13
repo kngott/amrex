@@ -175,7 +175,7 @@ void Graph::appendEdgeList(const std::string& name,
                    << N_locs << " " << N_snds << std::endl;
 
     // Update this edgelist and all with higher indexes.
-    for (int i=el_index; i<m_edges.size(); ++i) {
+    for (unsigned int i=el_index; i<m_edges.size(); ++i) {
         m_edges[el_index].m_offset += (N_locs + N_snds);
     }
 
@@ -320,7 +320,7 @@ void Graph::appendEdgeWeight(const std::string& edge_name,
                        << " Graph.appendEdgeWeight() called for a weight not in the graph -- "
                        << wgts_name << ". Returning." << std::endl;
 
-        for (int i=0; i<m_edges[el].m_wgts.size(); ++i) {
+        for (unsigned int i=0; i<m_edges[el].m_wgts.size(); ++i) {
             amrex::Print() << "NAME: " << m_edges[el].m_wgts[i].m_name << std::endl;
         }
         return;
