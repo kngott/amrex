@@ -323,6 +323,13 @@ namespace amrex
                          const FabArrayBase::CommMetaData& comm_data,
                          const int ncomp);
 
+        void appendEdgeList(const std::string& name,
+                           const std::string& from_name,
+                           const std::string& to_name,
+                           const double scaling,
+                           const FabArrayBase::CommMetaData& comm_data,
+                           const int ncomp);
+
         // ---------------------------
 
         void addNodeWeight(const std::string& node_name,
@@ -336,6 +343,12 @@ namespace amrex
                            const std::vector<double>& wgts,
                            const double scaling,
                            const bool local = true);
+
+        void appendEdgeWeight(const std::string& edge_name,
+                             const std::string& wgts_name,
+                             const std::vector<double>& wgts,
+                             const double scaling,
+                             const bool local = true);
 
         // ---------------------------
 
