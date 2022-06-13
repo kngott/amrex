@@ -287,13 +287,12 @@ void Graph::addEdgeWeight(const std::string& edge_name,
     new_wgt.m_local = local;
 
     m_edges[el].m_wgts.emplace_back(std::move(new_wgt));
-/*
+
     if (wgts_name == "bytes") {
         m_ewgts.push_back(edge_name + "_" + wgts_name);
     } else {
         m_ewgts.push_back(wgts_name);
     }
-*/
 }
 
 // --------------------------------
@@ -326,22 +325,16 @@ void Graph::appendEdgeWeight(const std::string& edge_name,
         return;
     }
 
+    Weight& my_wgt = m_edges[el].m_wgts[w_idx];
+
     // Check length of weights is correct
-    AMREX_ASSERT( m_edges[el].m_from.size() == (wgts.size() + m_wgts[el].m_ewgts[w_idx]) );
+    AMREX_ASSERT( m_edges[el].m_from.size() == (wgts.size() + my_wgt.m_weights.size()) );
 
-    Weight& new_wgt = m_edges[el].m_wgts[w_idx];
 //    new_wgt.m_name = wgts_name;
-    new_wgt.m_weights.insert(new_wgt.m_weights.end(), wgts.begin(), wgts.end());
-    new_wgt.m_scaling[0] = scaling;        // Update these in append
-    new_wgt.m_local = local;               // Update these in append
+    my_wgt.m_weights.insert(my_wgt.m_weights.end(), wgts.begin(), wgts.end());
+    my_wgt.m_scaling[0] = scaling;        // Update these in append
+    my_wgt.m_local = local;               // Update these in append
 
-//    m_edges[el].m_wgts.emplace_back(std::move(new_wgt));
-
-    if (wgts_name == "bytes") {
-        m_ewgts.push_back(edge_name + "_" + wgts_name);
-    } else {
-        m_ewgts.push_back(wgts_name);
-    }
 }
 
 // --------------------------------
