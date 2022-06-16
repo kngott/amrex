@@ -74,7 +74,7 @@ void Graph::addEdgeList(const std::string& name,
     el.m_mynodes.second = to_name;
 
     if (not_present(from_name, m_nodes) || not_present(to_name, m_nodes)) {
-        amrex::Abort("Node lists" + from_name + " or " + to_name + " are not present in the graph.");
+        amrex::Abort("Node lists " + from_name + " and/or " + to_name + " are not present in the graph.");
     }
 
     // Don't do recvs, so comms aren't duplicated.
