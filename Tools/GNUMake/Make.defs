@@ -206,6 +206,20 @@ else
   MPI_THREAD_MULTIPLE := FALSE
 endif
 
+ifdef USE_MPIACX
+  USE_MPIACX := $(strip $(USE_MPIACX))
+  ifeq ($(USE_MPIACX),TRUE)
+    ifeq ($(USE_CUDA),FALSE)
+      $(error MPI-ACX can only be used with CUDA)
+    endif
+
+    MPI_THREAD_MULTIPLE := TRUE
+    DEFINES += -DUSE_MPIACX
+  endif
+else
+  USE_MPIACX := FALSE
+endif
+
 ifdef USE_CONDUIT
   USE_CONDUIT := $(strip $(USE_CONDUIT))
 else

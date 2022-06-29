@@ -13,6 +13,11 @@
 
 #include <mpi.h>
 
+#ifdef USE_MPIACX
+#include <mpi-acx.h>
+#endif
+
+
 namespace amrex {
 namespace ParallelDescriptor
 {

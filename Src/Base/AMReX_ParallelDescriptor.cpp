@@ -288,6 +288,10 @@ StartParallel (int* argc, char*** argv, MPI_Comm a_mpi_comm)
         MPI_Init(argc, argv);
 #endif
 
+#ifdef USE_MPIACX
+        MPIX_Init();
+#endif
+
         m_comm = MPI_COMM_WORLD;
         call_mpi_finalize = 1;
     } else {
@@ -372,6 +376,10 @@ EndParallel ()
 
     if (call_mpi_finalize) {
         MPI_Finalize();
+
+#ifdef USE_MPIACX
+        MPIX_Finalize();
+#endif
     }
 }
 

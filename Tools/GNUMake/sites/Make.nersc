@@ -60,6 +60,14 @@ ifeq ($(which_computer),$(filter $(which_computer),perlmutter))
 
     ifdef NPE_VERSION
       includes += $(CRAY_CUDATOOLKIT_INCLUDE_OPTS)
+
+      ifeq ($(USE_MPIACX),TRUE)
+        ifndef MPIACX_HOME
+          $(error Define MPIACX_HOME to use MPI-ACX)
+        endif
+        includes += -I$(MPIACX_HOME)/include
+        LIBRARIES += -L$(MPIACX_HOME) -lmpi-acx
+      endif
     endif
 
     comm := ,
