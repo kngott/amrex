@@ -246,6 +246,247 @@ FabArray<FAB>::FillBoundary_finish ()
 #endif
 }
 
+// ***************************************************************
+
+template <class FAB>
+template <typename BUF, class F, typename std::enable_if<IsBaseFab<F>::value,int>::type Z>
+void
+FabArray<FAB>::FillBoundary_blocking (int scomp, int ncomp, const IntVect& nghost,
+                                      const Periodicity& period, bool cross,
+                                      bool enforce_periodicity_only,
+                                      bool override_sync)
+{
+    BL_PROFILE("FillBoundary_blocking()");
+
+    AMREX_ASSERT(!enforce_periodicity_only || !override_sync);
+
+    bool work_to_do;
+    if (enforce_periodicity_only) {
+        work_to_do = period.isAnyPeriodic();
+    } else if (override_sync) {
+        work_to_do = (nghost.max() > 0) || !is_cell_centered();
+    } else {
+        work_to_do = nghost.max() > 0;
+    }
+    if (!work_to_do) { return; }
+
+    const FB& TheFB = getFB(nghost, period, cross, enforce_periodicity_only, override_sync);
+
+    if (ParallelContext::NProcsSub() == 1)
+    {
+        //
+        // There can only be local work to do.
+        //
+        int N_locs = (*TheFB.m_LocTags).size();
+        if (N_locs == 0) return;
+#ifdef AMREX_USE_GPU
+        if (Gpu::inLaunchRegion())
+        {
+#if defined(__CUDACC__)
+            if (Gpu::inGraphRegion())
+            {
+                FB_local_copy_cuda_graph_1(TheFB, scomp, ncomp);
+            }
+            else
+#endif
+            {
+                FB_local_copy_gpu(TheFB, scomp, ncomp);
+            }
+        }
+        else
+#endif
+        {
+            FB_local_copy_cpu(TheFB, scomp, ncomp);
+        }
+
+        return;
+    }
+
+#ifdef BL_USE_MPI
+
+    //
+    // Do this before prematurely exiting if running in parallel.
+    // Otherwise sequence numbers will not match across MPI processes.
+    //
+    int SeqNum = ParallelDescriptor::SeqNum();
+
+    const int N_locs = TheFB.m_LocTags->size();
+    const int N_rcvs = TheFB.m_RcvTags->size();
+    const int N_snds = TheFB.m_SndTags->size();
+
+    if (N_locs == 0 && N_rcvs == 0 && N_snds == 0) {
+        // No work to do.
+        return;
+    }
+
+#ifdef USE_MPIACX
+    using MPI_Req = MPIX_Request;
+#else
+    using MPI_Req = MPI_Request;
+#endif
+
+    char*               the_recv_data = nullptr;
+    Vector<int>         recv_from;
+    Vector<char*>       recv_data;
+    Vector<std::size_t> recv_size;
+    Vector<MPI_Req>     recv_reqs;
+    Vector<MPI_Status>  recv_stat;
+
+    //
+    // Post rcvs. Allocate one chunk of space to hold'm all.
+    //
+
+    if (N_rcvs > 0) {
+        PostRcvs<BUF>(*TheFB.m_RcvTags, the_recv_data,
+                      recv_data, recv_size, recv_from, recv_reqs,
+                      ncomp, SeqNum);
+        recv_stat.resize(N_rcvs);
+    }
+
+    //
+    // Post send's
+    //
+    char*                           the_send_data = nullptr;
+    Vector<char*>                       send_data;
+    Vector<std::size_t>                 send_size;
+    Vector<int>                         send_rank;
+    Vector<MPI_Req>                     send_reqs;
+    Vector<const CopyComTagsContainer*> send_cctc;
+
+    if (N_snds > 0)
+    {
+        PrepareSendBuffers<BUF>(*TheFB.m_SndTags, the_send_data, send_data, send_size, send_rank,
+                           send_reqs, send_cctc, ncomp);
+
+#ifdef AMREX_USE_GPU
+        if (Gpu::inLaunchRegion())
+        {
+#if defined(__CUDACC__)
+            if (Gpu::inGraphRegion()) {
+                FB_pack_send_buffer_cuda_graph(TheFB, scomp, ncomp, send_data, send_size, send_cctc);
+            }
+            else
+#endif
+            {
+                pack_send_buffer_gpu<BUF>(*this, scomp, ncomp, send_data, send_size, send_cctc);
+            }
+        }
+        else
+#endif
+        {
+            pack_send_buffer_cpu<BUF>(*this, scomp, ncomp, send_data, send_size, send_cctc);
+        }
+
+        AMREX_ASSERT(send_reqs.size() == N_snds);
+        PostSnds(send_data, send_size, send_rank, send_reqs, SeqNum);
+    }
+
+    FillBoundary_test();
+
+    //
+    // Do the local work.  Hope for a bit of communication/computation overlap.
+    //
+    if (N_locs > 0)
+    {
+#ifdef AMREX_USE_GPU
+        if (Gpu::inLaunchRegion())
+        {
+#if defined(__CUDACC__)
+            if (Gpu::inGraphRegion()) {
+                FB_local_copy_cuda_graph_n(TheFB, scomp, ncomp);
+            }
+            else
+#endif
+            {
+                FB_local_copy_gpu(TheFB, scomp, ncomp);
+            }
+        }
+        else
+#endif
+        {
+            FB_local_copy_cpu(TheFB, scomp, ncomp);
+        }
+
+        FillBoundary_test();
+    }
+
+    if (N_rcvs > 0)
+    {
+        Vector<const CopyComTagsContainer*> recv_cctc(N_rcvs,nullptr);
+        for (int k = 0; k < N_rcvs; k++)
+        {
+            if (fbd->recv_size[k] > 0)
+            {
+                auto const& cctc = TheFB.m_RcvTags->at(recv_from[k]);
+                recv_cctc[k] = &cctc;
+            }
+        }
+
+        int actual_n_rcvs = N_rcvs - std::count(recv_data.begin(), recv_data.end(), nullptr);
+
+        if (actual_n_rcvs > 0) {
+#ifdef USE_MPIACX
+            MPIX_Waitall_enqueue(recv_reqs.size(), recv_reqs.data(), recv_stat.data(),
+                                 MPIX_QUEUE_CUDA_STREAM, Gpu::gpuStream());
+#else
+            ParallelDescriptor::Waitall(recv_reqs, recv_stat);
+#endif
+#ifdef AMREX_DEBUG
+            if (!CheckRcvStats(recv_stat, recv_size, tag))
+            {
+                amrex::Abort("FillBoundary_blocking failed with wrong message size");
+            }
+#endif
+        }
+
+        bool is_thread_safe = TheFB.m_threadsafe_rcv;
+
+#ifdef AMREX_USE_GPU
+        if (Gpu::inLaunchRegion())
+        {
+#if defined(__CUDACC__)
+            if (Gpu::inGraphRegion())
+            {
+                FB_unpack_recv_buffer_cuda_graph(TheFB, scomp, ncomp,
+                                                 recv_data, recv_size,
+                                                 recv_cctc, is_thread_safe);
+            }
+            else
+#endif
+            {
+                unpack_recv_buffer_gpu<BUF>(*this, scomp, ncomp, recv_data, recv_size,
+                                            recv_cctc, FabArrayBase::COPY, is_thread_safe);
+            }
+        }
+        else
+#endif
+        {
+            unpack_recv_buffer_cpu<BUF>(*this, scomp, ncomp, recv_data, recv_size,
+                                        recv_cctc, FabArrayBase::COPY, is_thread_safe);
+        }
+
+        if (the_recv_data)
+        {
+            amrex::The_FA_Arena()->free(the_recv_data);
+        }
+    }
+
+    if (N_snds > 0) {
+        Vector<MPI_Status> stats(send_reqs.size());
+#ifdef USE_MPIACX
+        MPIX_Waitall_enqueue(send_reqs.size(), send_reqs.data(), stats.data(),
+                             MPIX_QUEUE_CUDA_STREAM, Gpu::gpuStream());
+#else
+        ParallelDescriptor::Waitall(send_reqs, stats);
+#endif
+        amrex::The_FA_Arena()->free(the_send_data);
+    }
+
+#endif
+}
+
+// ***************************************************************
+
 template <class FAB>
 void
 FabArray<FAB>::ParallelCopy (const FabArray<FAB>& src,
@@ -613,13 +854,13 @@ FabArray<FAB>::copyTo (FAB& dest, int scomp, int dcomp, int ncomp, int nghost) c
 
 #ifdef BL_USE_MPI
 template <class FAB>
-template <typename BUF>
+template <typename BUF, class REQ>
 AMREX_NODISCARD TheFaArenaPointer
 FabArray<FAB>::PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
                                    Vector<char*>&                       send_data,
                                    Vector<std::size_t>&                 send_size,
                                    Vector<int>&                         send_rank,
-                                   Vector<MPI_Request>&                 send_reqs,
+                                   Vector<REQ>&                         send_reqs,
                                    Vector<const CopyComTagsContainer*>& send_cctc,
                                    int                                  ncomp) const
 {
@@ -629,14 +870,14 @@ FabArray<FAB>::PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
 }
 
 template <class FAB>
-template <typename BUF>
+template <typename BUF, class REQ>
 void
 FabArray<FAB>::PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
                                    char*&                               the_send_data,
                                    Vector<char*>&                       send_data,
                                    Vector<std::size_t>&                 send_size,
                                    Vector<int>&                         send_rank,
-                                   Vector<MPI_Request>&                 send_reqs,
+                                   Vector<REQ>&                         send_reqs,
                                    Vector<const CopyComTagsContainer*>& send_cctc,
                                    int                                  ncomp) const
 {
@@ -694,11 +935,12 @@ FabArray<FAB>::PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
 }
 
 template <class FAB>
+template <class REQ>
 void
 FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
                          Vector<std::size_t> const& send_size,
                          Vector<int> const&         send_rank,
-                         Vector<MPI_Request>&       send_reqs,
+                         Vector<REQ>&               send_reqs,
                          int                        SeqNum)
 {
     MPI_Comm comm = ParallelContext::CommunicatorSub();
@@ -715,12 +957,12 @@ FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
 }
 
 template <class FAB>
-template <typename BUF>
+template <typename BUF, class REQ>
 TheFaArenaPointer FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&       RcvTags,
                    Vector<char*>&                         recv_data,
                    Vector<std::size_t>&                   recv_size,
                    Vector<int>&                           recv_from,
-                   Vector<MPI_Request>&                   recv_reqs,
+                   Vector<REQ>&                           recv_reqs,
                    int                                    ncomp,
                    int                                    SeqNum) const
 {
@@ -730,14 +972,14 @@ TheFaArenaPointer FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&     
 }
 
 template <class FAB>
-template <typename BUF>
+template <typename BUF, class REQ>
 void
 FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&  RcvTags,
                          char*&                            the_recv_data,
                          Vector<char*>&                    recv_data,
                          Vector<std::size_t>&              recv_size,
                          Vector<int>&                      recv_from,
-                         Vector<MPI_Request>&              recv_reqs,
+                         Vector<REQ>&                      recv_reqs,
                          int                               ncomp,
                          int                               SeqNum) const
 {

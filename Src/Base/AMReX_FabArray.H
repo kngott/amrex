@@ -1048,6 +1048,13 @@ public:
                       bool enforce_periodicity_only = false,
                       bool override_sync = false);
 
+    template <typename BUF=value_type,
+              class F=FAB, typename std::enable_if<IsBaseFab<F>::value,int>::type = 0>
+    void FillBoundary_blocking (int scomp, int ncomp, const IntVect& nghost,
+                                const Periodicity& period, bool cross,
+                                bool enforce_periodicity_only = false,
+                                bool override_sync = false);
+
     void FB_local_copy_cpu (const FB& TheFB, int scomp, int ncomp);
     void PC_local_cpu (const CPC& thecpc, FabArray<FAB> const& src,
                        int scomp, int dcomp, int ncomp, CpOp op);
@@ -1213,48 +1220,49 @@ public:
 #ifdef BL_USE_MPI
 
     //! Prepost nonblocking receives
-    template <typename BUF=value_type>
+    template <typename BUF=value_type, class REQ>
     void PostRcvs (const MapOfCopyComTagContainers&       RcvTags,
                    char*&                                 the_recv_data,
                    Vector<char*>&                         recv_data,
                    Vector<std::size_t>&                   recv_size,
                    Vector<int>&                           recv_from,
-                   Vector<MPI_Request>&                   recv_reqs,
+                   Vector<REQ>&                           recv_reqs,
                    int                                    ncomp,
                    int                                    SeqNum) const;
 
-    template <typename BUF=value_type>
+    template <typename BUF=value_type, class REQ>
     AMREX_NODISCARD TheFaArenaPointer PostRcvs (const MapOfCopyComTagContainers&       RcvTags,
                    Vector<char*>&                         recv_data,
                    Vector<std::size_t>&                   recv_size,
                    Vector<int>&                           recv_from,
-                   Vector<MPI_Request>&                   recv_reqs,
+                   Vector<REQ>&                           recv_reqs,
                    int                                    ncomp,
                    int                                    SeqNum) const;
 
-    template <typename BUF=value_type>
+    template <typename BUF=value_type, class REQ>
     void PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
                              char*&                               the_send_data,
                              Vector<char*>&                       send_data,
                              Vector<std::size_t>&                 send_size,
                              Vector<int>&                         send_rank,
-                             Vector<MPI_Request>&                 send_reqs,
+                             Vector<REQ>&                         send_reqs,
                              Vector<const CopyComTagsContainer*>& send_cctc,
                              int                                  ncomp) const;
 
-    template <typename BUF=value_type>
+    template <typename BUF=value_type, class REQ>
     AMREX_NODISCARD TheFaArenaPointer PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
                              Vector<char*>&                       send_data,
                              Vector<std::size_t>&                 send_size,
                              Vector<int>&                         send_rank,
-                             Vector<MPI_Request>&                 send_reqs,
+                             Vector<REQ>&                         send_reqs,
                              Vector<const CopyComTagsContainer*>& send_cctc,
                              int                                  ncomp) const;
 
+    template <class REQ>
     static void PostSnds (Vector<char*> const&       send_data,
                           Vector<std::size_t> const& send_size,
                           Vector<int> const&         send_rank,
-                          Vector<MPI_Request>&       send_reqs,
+                          Vector<REQ>&               send_reqs,
                           int                        SeqNum);
 #endif
 
