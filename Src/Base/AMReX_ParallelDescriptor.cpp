@@ -1727,8 +1727,6 @@ Arecv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool use_acx)
 
     amrex::ignore_unused(use_acx);
 
-    amrex::Print() << "Stream: " << Gpu::Device::streamIndex() << std::endl;
-
 #ifdef USE_MPIACX
     MPIX_Request reqx = MPIX_REQUEST_NULL;
 #endif
