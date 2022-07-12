@@ -435,7 +435,7 @@ FabArray<FAB>::FillBoundary_blocking (int scomp, int ncomp, const IntVect& nghos
             ParallelDescriptor::Waitall(recv_reqs, recv_stat);
 #endif
 #ifdef AMREX_DEBUG
-            if (!CheckRcvStats(recv_stat, recv_size, tag))
+            if (!CheckRcvStats(recv_stat, recv_size, SeqNum))
             {
                 amrex::Abort("FillBoundary_blocking failed with wrong message size");
             }
