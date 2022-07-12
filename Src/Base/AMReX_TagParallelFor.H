@@ -217,16 +217,19 @@ ParallelFor_doit (Vector<TagType> const& tags, F && f, bool sync = true)
 #endif
     });
 
-    if (sync) {
-        Gpu::streamSynchronize();
-        The_Pinned_Arena()->free(h_buffer);
-        The_Arena()->free(d_buffer);
-    } else {
+#ifdef AMREX_USE_CUDA
+    if (!sync) {
         char** p = static_cast<char**>(std::malloc(2*sizeof(char*)));
         p[0] = d_buffer;
         p[1] = h_buffer;
         AMREX_CUDA_SAFE_CALL( cudaLaunchHostFunc(Gpu::gpuStream(),
                                                  amrex_asyncarray_delete, p) );
+    } else
+#endif
+    {
+        Gpu::streamSynchronize();
+        The_Pinned_Arena()->free(h_buffer);
+        The_Arena()->free(d_buffer);
     }
 }
 
