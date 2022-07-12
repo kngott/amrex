@@ -150,6 +150,8 @@ template <class TagType, class F>
 void
 ParallelFor_doit (Vector<TagType> const& tags, F && f, bool sync = true)
 {
+    amrex::ignore_unused(sync);
+
     const int ntags = tags.size();
     if (ntags == 0) return;
 

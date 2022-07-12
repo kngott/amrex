@@ -780,6 +780,7 @@ Message
 Arecv (T* buf, size_t n, int src_pid, int tag, MPI_Comm comm, bool use_acx)
 {
     static_assert(!std::is_same<char,T>::value, "Arecv: char version has been specialized");
+    amrex::ignore_unused(use_acx);
 
     BL_PROFILE_T_S("ParallelDescriptor::Arecv(TsiiM)", T);
     BL_COMM_PROFILE(BLProfiler::ArecvTsiiM, n * sizeof(T), src_pid, tag);
