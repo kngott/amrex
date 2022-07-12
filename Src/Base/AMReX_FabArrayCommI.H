@@ -320,8 +320,11 @@ FabArray<FAB>::FillBoundary_blocking (int scomp, int ncomp, const IntVect& nghos
     }
 
 #ifdef USE_MPIACX
+    bool sync = false;
     using MPI_Req = MPIX_Request;
+    amrex::Gpu::Device::setStreamIndex(1);
 #else
+    bool sync = true;
     using MPI_Req = MPI_Request;
 #endif
 
@@ -368,7 +371,7 @@ FabArray<FAB>::FillBoundary_blocking (int scomp, int ncomp, const IntVect& nghos
             else
 #endif
             {
-                pack_send_buffer_gpu<BUF>(*this, scomp, ncomp, send_data, send_size, send_cctc);
+                pack_send_buffer_gpu<BUF>(*this, scomp, ncomp, send_data, send_size, send_cctc, sync);
             }
         }
         else
@@ -455,7 +458,7 @@ FabArray<FAB>::FillBoundary_blocking (int scomp, int ncomp, const IntVect& nghos
 #endif
             {
                 unpack_recv_buffer_gpu<BUF>(*this, scomp, ncomp, recv_data, recv_size,
-                                            recv_cctc, FabArrayBase::COPY, is_thread_safe);
+                                            recv_cctc, FabArrayBase::COPY, is_thread_safe, sync);
             }
         }
         else
@@ -481,6 +484,8 @@ FabArray<FAB>::FillBoundary_blocking (int scomp, int ncomp, const IntVect& nghos
 #endif
         amrex::The_FA_Arena()->free(the_send_data);
     }
+
+    amrex::Gpu::Device::resetStreamIndex();
 
 #endif
 }
@@ -919,7 +924,7 @@ FabArray<FAB>::PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
         send_data.push_back(nullptr);
         send_size.push_back(nbytes);
         send_rank.push_back(kv.first);
-        send_reqs.push_back(MPI_REQUEST_NULL);
+        send_reqs.push_back(0);
         send_cctc.push_back(&cctc);
     }
 
@@ -935,12 +940,11 @@ FabArray<FAB>::PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
 }
 
 template <class FAB>
-template <class REQ>
 void
 FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
                          Vector<std::size_t> const& send_size,
                          Vector<int> const&         send_rank,
-                         Vector<REQ>&               send_reqs,
+                         Vector<MPI_Request>&       send_reqs,
                          int                        SeqNum)
 {
     MPI_Comm comm = ParallelContext::CommunicatorSub();
@@ -951,10 +955,32 @@ FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
         if (send_size[j] > 0) {
             const int rank = ParallelContext::global_to_local_rank(send_rank[j]);
             send_reqs[j] = ParallelDescriptor::Asend
-                (send_data[j], send_size[j], rank, SeqNum, comm).req();
+                (send_data[j], send_size[j], rank, SeqNum, comm, false).req();
         }
     }
 }
+
+template <class FAB>
+void
+FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
+                         Vector<std::size_t> const& send_size,
+                         Vector<int> const&         send_rank,
+                         Vector<MPIX_Request>&      send_reqs,
+                         int                        SeqNum)
+{
+    MPI_Comm comm = ParallelContext::CommunicatorSub();
+
+    const int N_snds = send_reqs.size();
+    for (int j = 0; j < N_snds; ++j)
+    {
+        if (send_size[j] > 0) {
+            const int rank = ParallelContext::global_to_local_rank(send_rank[j]);
+            send_reqs[j] = ParallelDescriptor::Asend
+                (send_data[j], send_size[j], rank, SeqNum, comm, true).reqx();
+        }
+    }
+}
+
 
 template <class FAB>
 template <typename BUF, class REQ>
@@ -972,14 +998,14 @@ TheFaArenaPointer FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&     
 }
 
 template <class FAB>
-template <typename BUF, class REQ>
+template <typename BUF>
 void
 FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&  RcvTags,
                          char*&                            the_recv_data,
                          Vector<char*>&                    recv_data,
                          Vector<std::size_t>&              recv_size,
                          Vector<int>&                      recv_from,
-                         Vector<REQ>&                      recv_reqs,
+                         Vector<MPI_Request>&              recv_reqs,
                          int                               ncomp,
                          int                               SeqNum) const
 {
@@ -1033,11 +1059,83 @@ FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&  RcvTags,
             {
                 const int rank = ParallelContext::global_to_local_rank(recv_from[i]);
                 recv_reqs[i] = ParallelDescriptor::Arecv
-                    (recv_data[i], recv_size[i], rank, SeqNum, comm).req();
+                    (recv_data[i], recv_size[i], rank, SeqNum, comm, false).req();
             }
         }
     }
 }
+
+template <class FAB>
+template <typename BUF>
+void
+FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&  RcvTags,
+                         char*&                            the_recv_data,
+                         Vector<char*>&                    recv_data,
+                         Vector<std::size_t>&              recv_size,
+                         Vector<int>&                      recv_from,
+                         Vector<MPIX_Request>&             recv_reqs,
+                         int                               ncomp,
+                         int                               SeqNum) const
+{
+    recv_data.clear();
+    recv_size.clear();
+    recv_from.clear();
+    recv_reqs.clear();
+
+    Vector<std::size_t> offset;
+    std::size_t TotalRcvsVolume = 0;
+    for (const auto& kv : RcvTags) // loop over senders
+    {
+        std::size_t nbytes = 0;
+        for (auto const& cct : kv.second)
+        {
+            nbytes += cct.dbox.numPts() * ncomp * sizeof(BUF);
+        }
+
+        std::size_t acd = ParallelDescriptor::alignof_comm_data(nbytes);
+        nbytes = amrex::aligned_size(acd, nbytes);  // so that nbytes are aligned
+
+        // Also need to align the offset properly
+        TotalRcvsVolume = amrex::aligned_size(std::max(alignof(BUF),acd),
+                                              TotalRcvsVolume);
+
+        offset.push_back(TotalRcvsVolume);
+        TotalRcvsVolume += nbytes;
+
+        recv_data.push_back(nullptr);
+        recv_size.push_back(nbytes);
+        recv_from.push_back(kv.first);
+        recv_reqs.push_back(MPIX_REQUEST_NULL);
+    }
+
+    const int nrecv = recv_from.size();
+
+    MPI_Comm comm = ParallelContext::CommunicatorSub();
+
+    if (TotalRcvsVolume == 0)
+    {
+        the_recv_data = nullptr;
+    }
+    else
+    {
+        the_recv_data = static_cast<char*>(amrex::The_FA_Arena()->alloc(TotalRcvsVolume));
+
+        for (int i = 0; i < nrecv; ++i)
+        {
+            recv_data[i] = the_recv_data + offset[i];
+            if (recv_size[i] > 0)
+            {
+                const int rank = ParallelContext::global_to_local_rank(recv_from[i]);
+                recv_reqs[i] = ParallelDescriptor::Arecv
+                    (recv_data[i], recv_size[i], rank, SeqNum, comm, true).reqx();
+            }
+        }
+    }
+}
+
+
+
+
 #endif
 
 template <class FAB>

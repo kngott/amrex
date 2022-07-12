@@ -67,6 +67,18 @@ namespace ParallelDescriptor
             m_finished(true),
             m_type(type_),
             m_req(MPI_REQUEST_NULL), m_stat(stat_) {}
+#ifdef USE_MPIACX
+        // At this point, just need a space to pass MPIX
+        // through the Message object for returning in
+        // ParallelDescriptor::Asend and Arecv.
+
+        Message (MPIX_Request req_, MPI_Datatype type_) :
+            m_finished(false),
+            m_type(type_),
+            m_req(MPI_REQUEST_NULL), m_reqx(req_) {}
+
+        MPIX_Request reqx () const { return m_reqx; }
+#endif
         void wait ();
         bool test ();
         size_t count () const;
@@ -81,6 +93,9 @@ namespace ParallelDescriptor
         bool               m_finished;
         MPI_Datatype       m_type;
         MPI_Request        m_req;
+#ifdef USE_MPIACX
+        MPIX_Request       m_reqx = MPIX_REQUEST_NULL;
+#endif
         mutable MPI_Status m_stat;
     };
 
@@ -589,11 +604,11 @@ while ( false )
     inline int SeqNum () noexcept { return ParallelContext::get_inc_mpi_tag(); }
 
     template <class T> Message Asend(const T*, size_t n, int pid, int tag);
-    template <class T> Message Asend(const T*, size_t n, int pid, int tag, MPI_Comm comm);
+    template <class T> Message Asend(const T*, size_t n, int pid, int tag, MPI_Comm comm, bool use_acx = false);
     template <class T> Message Asend(const std::vector<T>& buf, int pid, int tag);
 
     template <class T> Message Arecv(T*, size_t n, int pid, int tag);
-    template <class T> Message Arecv(T*, size_t n, int pid, int tag, MPI_Comm comm);
+    template <class T> Message Arecv(T*, size_t n, int pid, int tag, MPI_Comm comm, bool use_acx = false);
     template <class T> Message Arecv(std::vector<T>& buf, int pid, int tag);
 
     template <class T> Message Send(const T* buf, size_t n, int dst_pid, int tag);
@@ -668,13 +683,14 @@ ParallelDescriptor::Asend (const T* buf, size_t n, int dst_pid, int tag)
 namespace ParallelDescriptor {  // Have to use namespace here to work around a gcc bug
 template <>
 Message
-Asend<char> (const char* buf, size_t n, int dst_pid, int tag, MPI_Comm comm);
+Asend<char> (const char* buf, size_t n, int dst_pid, int tag, MPI_Comm comm, bool use_acx);
 
 template <class T>
 Message
-Asend (const T* buf, size_t n, int dst_pid, int tag, MPI_Comm comm)
+Asend (const T* buf, size_t n, int dst_pid, int tag, MPI_Comm comm, bool use_acx)
 {
     static_assert(!std::is_same<char,T>::value, "Asend: char version has been specialized");
+    amrex::ignore_unused(use_acx);
 
     BL_PROFILE_T_S("ParallelDescriptor::Asend(TsiiM)", T);
     BL_COMM_PROFILE(BLProfiler::AsendTsiiM, n * sizeof(T), dst_pid, tag);
@@ -757,11 +773,11 @@ ParallelDescriptor::Arecv (T* buf, size_t n, int src_pid, int tag)
 namespace ParallelDescriptor {  // Have to use namespace here to work around a gcc bug
 template <>
 Message
-Arecv<char> (char* buf, size_t n, int src_pid, int tag, MPI_Comm comm);
+Arecv<char> (char* buf, size_t n, int src_pid, int tag, MPI_Comm comm, bool use_acx);
 
 template <class T>
 Message
-Arecv (T* buf, size_t n, int src_pid, int tag, MPI_Comm comm)
+Arecv (T* buf, size_t n, int src_pid, int tag, MPI_Comm comm, bool use_acx)
 {
     static_assert(!std::is_same<char,T>::value, "Arecv: char version has been specialized");
 

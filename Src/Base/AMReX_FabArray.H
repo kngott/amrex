@@ -1067,7 +1067,7 @@ public:
 
 #ifdef AMREX_USE_GPU
 
-    void FB_local_copy_gpu (const FB& TheFB, int scomp, int ncomp);
+    void FB_local_copy_gpu (const FB& TheFB, int scomp, int ncomp, bool sync = true);
     void PC_local_gpu (const CPC& thecpc, FabArray<FAB> const& src,
                        int scomp, int dcomp, int ncomp, CpOp op);
 
@@ -1104,14 +1104,15 @@ public:
     static void pack_send_buffer_gpu (FabArray<FAB> const& src, int scomp, int ncomp,
                                       Vector<char*> const& send_data,
                                       Vector<std::size_t> const& send_size,
-                                      Vector<const CopyComTagsContainer*> const& send_cctc);
+                                      Vector<const CopyComTagsContainer*> const& send_cctc,
+                                      bool sync = true);
 
     template <typename BUF = value_type>
     static void unpack_recv_buffer_gpu (FabArray<FAB>& dst, int dcomp, int ncomp,
                                         Vector<char*> const& recv_data,
                                         Vector<std::size_t> const& recv_size,
                                         Vector<const CopyComTagsContainer*> const& recv_cctc,
-                                        CpOp op, bool is_thread_safe);
+                                        CpOp op, bool is_thread_safe, bool sync = true);
 
 #endif
 
@@ -1220,13 +1221,24 @@ public:
 #ifdef BL_USE_MPI
 
     //! Prepost nonblocking receives
-    template <typename BUF=value_type, class REQ>
+    template <typename BUF=value_type>
     void PostRcvs (const MapOfCopyComTagContainers&       RcvTags,
                    char*&                                 the_recv_data,
                    Vector<char*>&                         recv_data,
                    Vector<std::size_t>&                   recv_size,
                    Vector<int>&                           recv_from,
-                   Vector<REQ>&                           recv_reqs,
+                   Vector<MPI_Request>&                   recv_reqs,
+                   int                                    ncomp,
+                   int                                    SeqNum) const;
+
+    //! Prepost nonblocking receives
+    template <typename BUF=value_type>
+    void PostRcvs (const MapOfCopyComTagContainers&       RcvTags,
+                   char*&                                 the_recv_data,
+                   Vector<char*>&                         recv_data,
+                   Vector<std::size_t>&                   recv_size,
+                   Vector<int>&                           recv_from,
+                   Vector<MPIX_Request>&                  recv_reqs,
                    int                                    ncomp,
                    int                                    SeqNum) const;
 
@@ -1258,11 +1270,16 @@ public:
                              Vector<const CopyComTagsContainer*>& send_cctc,
                              int                                  ncomp) const;
 
-    template <class REQ>
     static void PostSnds (Vector<char*> const&       send_data,
                           Vector<std::size_t> const& send_size,
                           Vector<int> const&         send_rank,
-                          Vector<REQ>&               send_reqs,
+                          Vector<MPI_Request>&       send_reqs,
+                          int                        SeqNum);
+
+    static void PostSnds (Vector<char*> const&       send_data,
+                          Vector<std::size_t> const& send_size,
+                          Vector<int> const&         send_rank,
+                          Vector<MPIX_Request>&      send_reqs,
                           int                        SeqNum);
 #endif
 
