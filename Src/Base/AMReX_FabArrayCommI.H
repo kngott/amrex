@@ -328,6 +328,8 @@ FabArray<FAB>::FillBoundary_blocking (int scomp, int ncomp, const IntVect& nghos
     using MPI_Req = MPI_Request;
 #endif
 
+    amrex::ignore_unused(sync); // Not used with CPU.
+
     char*               the_recv_data = nullptr;
     Vector<int>         recv_from;
     Vector<char*>       recv_data;
