@@ -960,6 +960,8 @@ FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
     }
 }
 
+#ifdef USE_MPIACX
+
 template <class FAB>
 void
 FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
@@ -981,6 +983,7 @@ FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
     }
 }
 
+#endif
 
 template <class FAB>
 template <typename BUF, class REQ>
@@ -1065,6 +1068,8 @@ FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&  RcvTags,
     }
 }
 
+#ifdef USE_MPIACX
+
 template <class FAB>
 template <typename BUF>
 void
@@ -1133,7 +1138,7 @@ FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&  RcvTags,
     }
 }
 
-
+#endif
 
 
 #endif

@@ -1230,7 +1230,7 @@ public:
                    Vector<MPI_Request>&                   recv_reqs,
                    int                                    ncomp,
                    int                                    SeqNum) const;
-
+#ifdef USE_MPIACX
     //! Prepost nonblocking receives
     template <typename BUF=value_type>
     void PostRcvs (const MapOfCopyComTagContainers&       RcvTags,
@@ -1241,7 +1241,7 @@ public:
                    Vector<MPIX_Request>&                  recv_reqs,
                    int                                    ncomp,
                    int                                    SeqNum) const;
-
+#endif
     template <typename BUF=value_type, class REQ>
     AMREX_NODISCARD TheFaArenaPointer PostRcvs (const MapOfCopyComTagContainers&       RcvTags,
                    Vector<char*>&                         recv_data,
@@ -1275,12 +1275,13 @@ public:
                           Vector<int> const&         send_rank,
                           Vector<MPI_Request>&       send_reqs,
                           int                        SeqNum);
-
+#ifdef USE_MPIACX
     static void PostSnds (Vector<char*> const&       send_data,
                           Vector<std::size_t> const& send_size,
                           Vector<int> const&         send_rank,
                           Vector<MPIX_Request>&      send_reqs,
                           int                        SeqNum);
+#endif
 #endif
 
     std::unique_ptr<FBData<FAB>> fbd;
