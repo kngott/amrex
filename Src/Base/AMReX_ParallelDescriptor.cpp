@@ -1599,6 +1599,7 @@ Asend<char> (const char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool us
 
 #ifdef USE_MPIACX
     MPIX_Request reqx = MPIX_REQUEST_NULL;
+    auto stream = Gpu::gpuStream();
 #endif
     MPI_Request req = MPI_REQUEST_NULL;
     Message msg;
@@ -1610,7 +1611,7 @@ Asend<char> (const char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool us
                                                n,
                                                Mpi_typemap<char>::type(),
                                                pid, tag, comm, &reqx,
-                                               MPIX_QUEUE_CUDA_STREAM, Gpu::gpuStream()) );
+                                               MPIX_QUEUE_CUDA_STREAM, &stream));
             msg = Message(reqx, Mpi_typemap<char>::type());
         } else
 #endif
@@ -1633,7 +1634,7 @@ Asend<char> (const char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool us
                                                n/sizeof(unsigned long long),
                                                Mpi_typemap<unsigned long long>::type(),
                                                pid, tag, comm, &reqx,
-                                               MPIX_QUEUE_CUDA_STREAM, Gpu::gpuStream()) );
+                                               MPIX_QUEUE_CUDA_STREAM, &stream) );
             msg = Message(reqx, Mpi_typemap<unsigned long long>::type());
         } else
 #endif
@@ -1657,7 +1658,7 @@ Asend<char> (const char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool us
                                                n/sizeof(ParallelDescriptor::lull_t),
                                                Mpi_typemap<ParallelDescriptor::lull_t>::type(),
                                                pid, tag, comm, &reqx,
-                                               MPIX_QUEUE_CUDA_STREAM, Gpu::gpuStream()) );
+                                               MPIX_QUEUE_CUDA_STREAM, &stream) );
             msg = Message(reqx, Mpi_typemap<ParallelDescriptor::lull_t>::type());
         } else
 #endif
@@ -1729,6 +1730,7 @@ Arecv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool use_acx)
 
 #ifdef USE_MPIACX
     MPIX_Request reqx = MPIX_REQUEST_NULL;
+    auto stream = Gpu::gpuStream();
 #endif
     MPI_Request req = MPI_REQUEST_NULL;
     Message msg;
@@ -1740,7 +1742,7 @@ Arecv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool use_acx)
                                                n,
                                                Mpi_typemap<char>::type(),
                                                pid, tag, comm, &reqx,
-                                               MPIX_QUEUE_CUDA_STREAM, Gpu::gpuStream()) );
+                                               MPIX_QUEUE_CUDA_STREAM, &stream) );
             msg = Message(reqx, Mpi_typemap<char>::type());
         } else
 #endif
@@ -1762,7 +1764,7 @@ Arecv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool use_acx)
                                                n/sizeof(unsigned long long),
                                                Mpi_typemap<unsigned long long>::type(),
                                                pid, tag, comm, &reqx,
-                                               MPIX_QUEUE_CUDA_STREAM, Gpu::gpuStream()) );
+                                               MPIX_QUEUE_CUDA_STREAM, &stream) );
             msg = Message(reqx, Mpi_typemap<unsigned long long>::type());
         } else
 #endif
@@ -1784,7 +1786,7 @@ Arecv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool use_acx)
                                                n/sizeof(ParallelDescriptor::lull_t),
                                                Mpi_typemap<ParallelDescriptor::lull_t>::type(),
                                                pid, tag, comm, &reqx,
-                                               MPIX_QUEUE_CUDA_STREAM, Gpu::gpuStream()) );
+                                               MPIX_QUEUE_CUDA_STREAM, &stream) );
             msg = Message(reqx, Mpi_typemap<ParallelDescriptor::lull_t>::type());
         } else
 #endif
