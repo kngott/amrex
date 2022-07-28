@@ -30,6 +30,10 @@ ifeq ($(NERSC_HOST), perlmutter)
   which_site := nersc
   which_computer := perlmutter
 endif
+ifeq ($(NERSC_HOST), alvarez)
+  which_site := nersc
+  which_computer := perlmutter
+endif
 endif
 endif
 endif
@@ -55,6 +59,11 @@ ifdef OLCF_ROCM_ROOT
   ifeq ($(findstring crusher, $(host_name)), crusher)
     which_site := olcf
     which_computer := crusher
+  endif
+
+  ifeq ($(findstring frontier, $(host_name)), frontier)
+    which_site := olcf
+    which_computer := frontier
   endif
 endif
 
