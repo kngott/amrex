@@ -9,6 +9,24 @@
 
 namespace amrex {
 
+// --------------------------------
+
+void Graph::addLayoutData(const amrex::LayoutData<double>& ld, 
+                          const std::string& node_name, 
+                          const std::size_t data_size, 
+                          const std::string& wgts_name, 
+                          const double scaling) 
+{ 
+    // Avoid warning if fab already present, just check weight. 
+    if (not_present(node_name, m_nodes)) { 
+        addFab(ld, node_name, data_size); 
+    } 
+
+    addNodeWeight(node_name, wgts_name, ld, scaling); 
+}
+
+
+// Lowest level addFab.
 void Graph::addFab(const FabArrayBase& fab,
                    const std::string& name,
                    const size_t data_size)
@@ -54,7 +72,8 @@ void Graph::addEdgeList(const std::string& name,
                         const std::string& to_name,
                         const double scaling,
                         const FabArrayBase::CommMetaData& comm_data,
-                        const int ncomp)
+                        const int ncomp,
+                        const size_t comm_type_size)
 {
     // label => snd box
     // weight => bytes sent
@@ -92,11 +111,9 @@ void Graph::addEdgeList(const std::string& name,
     std::vector<double> weights;
     weights.reserve(el.m_size);
 
-    amrex::Print() << "size = " << (N_locs +N_snds) << ": "
-                   << N_locs << " " << N_snds << std::endl;
-
     int from_id = get_index(from_name, m_nodes);
-    int type_size = m_nodes[from_id].m_bytes_per_item;
+    size_t type_size = (comm_type_size == 0) ? m_nodes[from_id].m_bytes_per_item : comm_type_size;
+    el.m_comm_item_size = type_size;
 
     const auto& LocTags = comm_data.m_LocTags;
     const auto& SndTags = comm_data.m_SndTags;
@@ -112,7 +129,6 @@ void Graph::addEdgeList(const std::string& name,
         el.m_to.emplace_back(cct.dstIndex);
         el.m_labels.emplace_back(oss.str());
         weights.emplace_back(bx.numPts()*type_size*ncomp);
-        amrex::Print() << "LOC" << std::endl;
     }
 
     for (const auto& kv: *SndTags) {
@@ -125,7 +141,6 @@ void Graph::addEdgeList(const std::string& name,
             el.m_to.emplace_back(cct.dstIndex);
             el.m_labels.emplace_back(oss.str());
             weights.emplace_back(bx.numPts()*type_size*ncomp);
-            amrex::Print() << "SND" << std::endl;
         }
     }
 
@@ -140,7 +155,8 @@ void Graph::appendEdgeList(const std::string& name,
                            const std::string& to_name,
                            const double scaling,
                            const FabArrayBase::CommMetaData& comm_data,
-                           const int ncomp)
+                           const int ncomp,
+                           const std::size_t comm_size_type)
 {
     int el_index = get_index(name, m_edges);
 
@@ -171,9 +187,6 @@ void Graph::appendEdgeList(const std::string& name,
     el.m_to.reserve(el.m_size);
     el.m_labels.reserve(el.m_size);
 
-    amrex::Print() << "size = " << (N_locs +N_snds) << ": "
-                   << N_locs << " " << N_snds << std::endl;
-
     // Update this edgelist and all with higher indexes.
     for (unsigned int i=el_index; i<m_edges.size(); ++i) {
         m_edges[el_index].m_offset += (N_locs + N_snds);
@@ -183,7 +196,11 @@ void Graph::appendEdgeList(const std::string& name,
     weights.reserve(N_locs + N_snds);
 
     int from_id = get_index(from_name, m_nodes);
-    int type_size = m_nodes[from_id].m_bytes_per_item;
+    AMREX_ASSERT_WITH_MESSAGE((comm_size_type == 0) ? (el.comm_size_type == m_nodes[from_id].m_bytes_per_item)
+                                                    : (el.comm_size_type == comm_size_type),
+                              "Appended edge list has different item sizes. Aborting...");
+
+    size_t type_size = el.m_comm_item_size;
 
     const auto& LocTags = comm_data.m_LocTags;
     const auto& SndTags = comm_data.m_SndTags;
@@ -219,6 +236,22 @@ void Graph::appendEdgeList(const std::string& name,
 }
 
 // --------------------------------
+
+void Graph::addNodeWeight(const std::string& node_name,
+                          const std::string& wgts_name,
+                          const amrex::LayoutData<double>& wgts,
+                          const double scaling,
+                          const bool local)
+{
+    std::vector<double> wgts_v;
+    for (MFIter mfi(wgts); mfi.isValid(); ++mfi) {
+        wgts_v.push_back(wgts[mfi]);
+    }
+
+    addNodeWeight(node_name, wgts_name, wgts_v, scaling, local);
+}
+
+
 
 void Graph::addNodeWeight(const std::string& node_name,
                           const std::string& wgts_name,

@@ -18,11 +18,14 @@
 // TODO: CHECK WHERE IOPROC SHOULD BE DOING THE WORK ONLY.
 //       E.G. GLOBAL WEIGHTS, NODE LIST DEF, ETC.
 
+// TODO: CLEAN UP LOCAL/GLOBAL MARKING METHODOLOGY
+
 // TODO: COMM OPTIMIZATION. COMPLETE MESS, BUT READABLE NOW.
 
 // TODO: CHECKS IF THERE IS NO INFORMATION ON A RANK.
 
 // TODO: MARK ASSEMBLED GRAPHS
+// TODO: CHOOSE WHAT TO RETURN TO NON-IO RANKS (BLANK)?
 
 // TODO: ALLOW SETTING OF IO PROC.
 //       (MULTIPLE SIMULTANEOUS GRAPHS ON DIFFERENT RANKS).
@@ -38,19 +41,25 @@ namespace amrex
         Graph() = default;
         ~Graph() = default;
 
-        // Highest-level, user functions.
-        // Add a fab (node) or comm operation (edge).
+        // Add a node-list, sometimes including a weight,
+        //   through an AMReX object. (FabArray, FabArrayBase, or LayoutData).
+
+        template <typename FAB>
+        void addFab(const FabArray<FAB>& fab,
+                    const std::string& name);
 
         template <typename FAB>
         void addFab(const FabArray<FAB>& fab,
                     const std::string& node_name,
                     const std::vector<double>& weights,
                     const std::string& wgts_name,
-                    const Real scaling);
+                    const double scaling);
 
-        template <typename FAB>
-        void addFab(const FabArray<FAB>& fab,
-                    const std::string& name);
+        void addLayoutData(const amrex::LayoutData<double>& ld,
+                           const std::string& node_name,
+                           const std::size_t data_size,
+                           const std::string& wgts_name,
+                           const double scaling);
 
         void addFab(const FabArrayBase& fab,
                     const std::string& name,
@@ -58,67 +67,74 @@ namespace amrex
 
         // ---------------------------
 
+        // Highest-level, user functions.
+        // Add a fab (node) or comm operation (edge).
+
         template <typename FAB>
         void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling,
-                             const FabArray<FAB>& fab, bool cross = false)
+                             const FabArray<FAB>& fab, bool cross = false, std::size_t buffer_type = 0)
         {
             addFillBoundary(name, nodes, scaling,
-                            fab, 0, fab.nComp(), fab.nGrowVect(), Periodicity::NonPeriodic(), cross);
+                            fab, 0, fab.nComp(), fab.nGrowVect(), Periodicity::NonPeriodic(), cross, buffer_type);
         }
 
         template <typename FAB>
         void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling,
-                             const FabArray<FAB>& fab, const Periodicity& period, bool cross = false)
+                             const FabArray<FAB>& fab, const Periodicity& period, bool cross = false,
+                             std::size_t buffer_type = 0)
         {
             addFillBoundary(name, nodes, scaling,
-                            fab, 0, fab.nComp(), fab.nGrowVect(), period, cross);
+                            fab, 0, fab.nComp(), fab.nGrowVect(), period, cross, buffer_type);
         }
 
         template <typename FAB>
         void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling,
                    const FabArray<FAB>& fab, const IntVect& nghost, Periodicity& period,
-                   bool cross = false)
+                   bool cross = false, std::size_t buffer_type = 0)
         {
             addFillBoundary(name, nodes, scaling,
-                            fab, 0, fab.nComp(), nghost, period, cross);
+                            fab, 0, fab.nComp(), nghost, period, cross, buffer_type);
         }
 
         template <typename FAB>
         void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling,
-                   const FabArray<FAB>& fab, const int scomp, const int ncomp, bool cross = false)
+                   const FabArray<FAB>& fab, const int scomp, const int ncomp, bool cross = false,
+                   std::size_t buffer_type = 0)
         {
             addFillBoundary(name, nodes, scaling,
-                            fab, scomp, ncomp, fab.nGrowVect(), Periodicity::NonPeriodic(), cross);
+                            fab, scomp, ncomp, fab.nGrowVect(), Periodicity::NonPeriodic(), cross, buffer_type);
         }
 
         template <typename FAB>
         void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling,
                    const FabArray<FAB>& fab, const int scomp, const int ncomp,
-                   const Periodicity& period, bool cross = false)
+                   const Periodicity& period, bool cross = false, std::size_t buffer_type = 0)
         {
             addFillBoundary(name, nodes, scaling,
-                            fab, scomp, ncomp, fab.nGrowVect(), period, cross);
+                            fab, scomp, ncomp, fab.nGrowVect(), period, cross, buffer_type);
         }
 
         template <typename FAB>
         void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling,
                    const FabArray<FAB>& fab, const int /* scomp */, const int ncomp,
-                   const IntVect& nghost, const Periodicity& period, bool cross = false)
+                   const IntVect& nghost, const Periodicity& period, bool cross = false,
+                   std::size_t buffer_type = 0)
         {
             if (not_present(nodes, m_nodes)) { addFab(fab, nodes); }
 
             const FabArrayBase::CommMetaData& fb = fab.getFB(nghost, period, cross, false);
-            addEdgeList(name, nodes, nodes, scaling, fb, ncomp);
+            addEdgeList(name, nodes, nodes, scaling, fb, ncomp, buffer_type);
         }
 
-        void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling, const size_t type_size,
+        void addFillBoundary(const std::string& name, const std::string& nodes, const double scaling,
+                   const size_t type_size, const size_t comm_type_size,
                    const FabArrayBase& fab, const int /* scomp */, const int ncomp,
                    const IntVect& nghost, const Periodicity& period, bool cross = false)
         {
             if (not_present(nodes, m_nodes)) { addFab(fab, nodes, type_size); }
 
             const FabArrayBase::CommMetaData& fb = fab.getFB(nghost, period, cross, false);
-            addEdgeList(name, nodes, nodes, scaling, fb, ncomp);
+            addEdgeList(name, nodes, nodes, scaling, fb, ncomp, comm_type_size);
         }
 
         // ..................
@@ -312,29 +328,37 @@ namespace amrex
 
         // Lower-level functions; general implementations.
 
-        void addNodeList(const std::string& name,
-                         const FabArrayBase& fab,
-                         const std::size_t& item_size);
+        void addNodeList (const std::string& name,
+                          const FabArrayBase& fab,
+                          const std::size_t& item_size);
 
-        void addEdgeList(const std::string& name,
-                         const std::string& from_name,
-                         const std::string& to_name,
-                         const double scaling,
-                         const FabArrayBase::CommMetaData& comm_data,
-                         const int ncomp);
+        void addEdgeList (const std::string& name,
+                          const std::string& from_name,
+                          const std::string& to_name,
+                          const double scaling,
+                          const FabArrayBase::CommMetaData& comm_data,
+                          const int ncomp,
+                          const std::size_t comm_size_type = 0);
 
-        void appendEdgeList(const std::string& name,
-                           const std::string& from_name,
-                           const std::string& to_name,
-                           const double scaling,
-                           const FabArrayBase::CommMetaData& comm_data,
-                           const int ncomp);
+        void appendEdgeList (const std::string& name,
+                             const std::string& from_name,
+                             const std::string& to_name,
+                             const double scaling,
+                             const FabArrayBase::CommMetaData& comm_data,
+                             const int ncomp,
+                             const std::size_t comm_size_type = 0);
 
         // ---------------------------
 
         void addNodeWeight(const std::string& node_name,
                            const std::string& wgts_name,
                            const std::vector<double>& wgts,
+                           const double scaling,
+                           const bool local = false);
+
+        void addNodeWeight(const std::string& node_name,
+                           const std::string& wgts_name,
+                           const LayoutData<double>& wgts,
                            const double scaling,
                            const bool local = false);
 
@@ -421,6 +445,8 @@ namespace amrex
             int m_offset = -1;
             int m_size = -1;
 
+            std::size_t m_comm_item_size = 0;
+
             // NodeList.m_id instead? Lookup name at print?
             std::pair<std::string, std::string> m_mynodes;
             std::vector<int> m_from;
@@ -463,27 +489,26 @@ namespace amrex
 
     // ++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+    template<class FAB>
+    void Graph::addFab(const FabArray<FAB>& fab,
+                       const std::string& name)
+    {
+        addFab(fab, name, sizeof(typename FAB::value_type));
+    }
+
     template <typename FAB>
     void Graph::addFab(const FabArray<FAB>& fab,
                        const std::string& node_name,
                        const std::vector<double>& weights,
                        const std::string& wgts_name,
-                       const Real scaling)
+                       const double scaling)
     {
-        addFab(fab, node_name);
-        addNodeWeight(node_name, wgts_name, weights, scaling);
-    }
-
-
-    template<class FAB>
-    void Graph::addFab(const FabArray<FAB>& fab,
-                       const std::string& name)
-    {
-        if (not_present(name, m_nodes))
-        {
-            const std::size_t type_size = sizeof(typename FAB::value_type);
-            addNodeList(name, fab, type_size);
+        // Avoid warning if fab already present, just check weight.
+        if (not_present(node_name, m_nodes)) {
+            addFab(fab, node_name, sizeof(typename FAB::value_type));
         }
+
+        addNodeWeight(node_name, wgts_name, weights, scaling);
     }
 
     // --------------------------------
