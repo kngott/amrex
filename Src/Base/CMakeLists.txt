@@ -73,6 +73,7 @@ target_sources( amrex
    AMReX_DataAllocator.H
    AMReX_BLProfiler.H
    AMReX_BLBackTrace.H
+   AMReX_BLBackTrace.cpp
    AMReX_BLFort.H
    AMReX_NFiles.H
    AMReX_NFiles.cpp
@@ -233,8 +234,6 @@ target_sources( amrex
    # Memory pool -------------------------------------------------------------
    AMReX_MemPool.cpp
    AMReX_MemPool.H
-   # Profiling ---------------------------------------------------------------
-   AMReX_BLBackTrace.cpp
    # Parser ---------------------------------------------------------------
    Parser/AMReX_Parser.cpp
    Parser/AMReX_Parser.H
@@ -306,4 +305,9 @@ endif ()
 # Tiny Profiler
 if (AMReX_TINY_PROFILE)
    target_sources(amrex PRIVATE AMReX_TinyProfiler.cpp AMReX_TinyProfiler.H )
+endif ()
+
+# MPMD
+if (AMReX_MPI)
+   target_sources(amrex PRIVATE AMReX_MPMD.cpp AMReX_MPMD.H )
 endif ()
