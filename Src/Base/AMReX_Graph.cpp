@@ -197,7 +197,7 @@ void Graph::appendEdgeList(const std::string& name,
     weights.reserve(N_locs + N_snds);
 
     AMREX_ASSERT_WITH_MESSAGE((comm_size_type == 0) ? (el.m_comm_item_size == m_nodes[get_index(from_name, m_nodes)].m_bytes_per_item)
-                                                    : (el.m_comm_item_size == comm_type_size),
+                                                    : (el.m_comm_item_size == comm_size_type),
                               "Appended edge list has different item sizes. Aborting...");
 
     size_t type_size = el.m_comm_item_size;
