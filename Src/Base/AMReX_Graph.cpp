@@ -11,18 +11,18 @@ namespace amrex {
 
 // --------------------------------
 
-void Graph::addLayoutData(const amrex::LayoutData<double>& ld, 
-                          const std::string& node_name, 
-                          const std::size_t data_size, 
-                          const std::string& wgts_name, 
-                          const double scaling) 
-{ 
-    // Avoid warning if fab already present, just check weight. 
-    if (not_present(node_name, m_nodes)) { 
-        addFab(ld, node_name, data_size); 
-    } 
+void Graph::addLayoutData(const amrex::LayoutData<double>& ld,
+                          const std::string& node_name,
+                          const std::size_t data_size,
+                          const std::string& wgts_name,
+                          const double scaling)
+{
+    // Avoid warning if fab already present, just check weight.
+    if (not_present(node_name, m_nodes)) {
+        addFab(ld, node_name, data_size);
+    }
 
-    addNodeWeight(node_name, wgts_name, ld, scaling); 
+    addNodeWeight(node_name, wgts_name, ld, scaling);
 }
 
 
@@ -158,6 +158,7 @@ void Graph::appendEdgeList(const std::string& name,
                            const int ncomp,
                            const std::size_t comm_size_type)
 {
+    amrex::ignore_unused(comm_size_type);
     int el_index = get_index(name, m_edges);
 
     if (el_index == -1) {
@@ -195,8 +196,7 @@ void Graph::appendEdgeList(const std::string& name,
     std::vector<double> weights;
     weights.reserve(N_locs + N_snds);
 
-    int from_id = get_index(from_name, m_nodes);
-    AMREX_ASSERT_WITH_MESSAGE((comm_size_type == 0) ? (el.comm_type_size == m_nodes[from_id].m_bytes_per_item)
+    AMREX_ASSERT_WITH_MESSAGE((comm_size_type == 0) ? (el.comm_type_size == m_nodes[get_index(from_name, m_nodes)].m_bytes_per_item)
                                                     : (el.comm_type_size == comm_type_size),
                               "Appended edge list has different item sizes. Aborting...");
 
