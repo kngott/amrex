@@ -350,9 +350,10 @@ namespace amrex
 
         // ---------------------------
 
+        template<class T>
         void addNodeWeight(const std::string& node_name,
                            const std::string& wgts_name,
-                           const std::vector<double>& wgts,
+                           const std::vector<T>& wgts,
                            const double scaling,
                            const bool local = false);
 
@@ -509,6 +510,48 @@ namespace amrex
         }
 
         addNodeWeight(node_name, wgts_name, weights, scaling);
+    }
+
+    // --------------------------------
+
+    template<class T>
+    void Graph::addNodeWeight(const std::string& node_name,
+                              const std::string& wgts_name,
+                              const std::vector<T>& wgts,
+                              const double scaling,
+                              const bool local)
+    {
+        int nl = get_index(node_name, m_nodes);
+        if (nl == -1) {
+            amrex::Print() << " **** WARNING: "
+                           << " Graph.addNodeWeight() called for a nodelist not in the graph -- "
+                           << node_name << ". Returning." << std::endl;
+            return;
+        }
+        if (is_present(wgts_name, m_nodes[nl].m_wgts)) {
+            amrex::Print() << " **** WARNING: "
+                           << " Graph.addNodeWeight() called for a weight already named in the graph -- "
+                           << wgts_name << ". Returning." << std::endl;
+            return;
+        }
+
+        // Check length of weights is correct (total or local)
+        AMREX_ASSERT(long(wgts.size()) == m_nodes[nl].m_fab.size()
+                  || long(wgts.size()) == m_nodes[nl].m_fab.local_size());
+
+        Weight new_wgt;
+        new_wgt.m_name = wgts_name;
+        new_wgt.m_scaling[0] = scaling;
+        new_wgt.m_local = local;
+
+        new_wgt.m_weights.resize(wgts.size());
+        for (int i=0; i<wgts.size(); ++i) {
+            (new_wgt.m_weights)[i] = double(wgts[i]);
+        }
+
+        m_nodes[nl].m_wgts.emplace_back(std::move(new_wgt));
+
+        m_nwgts.push_back(wgts_name);
     }
 
     // --------------------------------
