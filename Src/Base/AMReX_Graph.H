@@ -545,7 +545,7 @@ namespace amrex
         new_wgt.m_local = local;
 
         new_wgt.m_weights.resize(wgts.size());
-        for (int i=0; i<wgts.size(); ++i) {
+        for (unsigned long i=0; i<wgts.size(); ++i) {
             (new_wgt.m_weights)[i] = double(wgts[i]);
         }
 
