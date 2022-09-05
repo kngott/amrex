@@ -144,7 +144,8 @@ namespace amrex
                              const std::string& nodes_src, const double scaling,
                              const FabArray<FAB>& dst, const FabArray<FAB>& src,
                              const Periodicity period = Periodicity::NonPeriodic(),
-                             FabArrayBase::CpOp op = FabArrayBase::COPY)
+                             FabArrayBase::CpOp op = FabArrayBase::COPY,
+                             const std::size_t buffer_size = 0)
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
                             src, dst, 0, 0, dst.nComp(), 0, 0, period, op);
@@ -156,7 +157,8 @@ namespace amrex
                              const FabArray<FAB>& dst, const FabArray<FAB>& src,
                              const int src_comp, const int dst_comp, const int num_comp,
                              const Periodicity period = Periodicity::NonPeriodic(),
-                             FabArrayBase::CpOp op = FabArrayBase::COPY)
+                             FabArrayBase::CpOp op = FabArrayBase::COPY,
+                             const std::size_t buffer_size = 0)
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
                             src, dst, src_comp, dst_comp, num_comp, 0, 0, period, op);
@@ -169,7 +171,8 @@ namespace amrex
                              const int src_comp, const int dst_comp, const int num_comp,
                              const int src_nghost, const int dst_nghost,
                              const Periodicity period = Periodicity::NonPeriodic(),
-                             FabArrayBase::CpOp op = FabArrayBase::COPY)
+                             FabArrayBase::CpOp op = FabArrayBase::COPY,
+                             const std::size_t buffer_size = 0)
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
                             src, dst, src_comp, dst_comp, num_comp,
@@ -182,7 +185,8 @@ namespace amrex
                                     const FabArray<FAB>& dst, const FabArray<FAB>& src,
                                     const int src_comp, const int dst_comp, const int num_comp,
                                     const IntVect& src_nghost, const IntVect& dst_nghost,
-                                    const Periodicity period = Periodicity::NonPeriodic())
+                                    const Periodicity period = Periodicity::NonPeriodic(),
+                                    const std::size_t buffer_size = 0)
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
                             src, dst, src_comp, dst_comp, num_comp,
@@ -199,7 +203,7 @@ namespace amrex
                              FabArrayBase::CpOp /*op*/ = FabArrayBase::COPY,
                              const FabArrayBase::CPC* a_cpc = nullptr,
                              bool to_ghost_cells_only = false,
-                             std::size_t buffer_size = 0)
+                             const std::size_t buffer_size = 0)
         {
             if (not_present(nodes_dst, m_nodes)) { addFab(dst, nodes_dst); }
             if (not_present(nodes_src, m_nodes)) { addFab(src, nodes_src); }
