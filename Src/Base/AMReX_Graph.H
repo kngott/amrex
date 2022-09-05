@@ -199,7 +199,7 @@ namespace amrex
                              FabArrayBase::CpOp /*op*/ = FabArrayBase::COPY,
                              const FabArrayBase::CPC* a_cpc = nullptr,
                              bool to_ghost_cells_only = false,
-                             std::size_t buffer_size)
+                             std::size_t buffer_size = 0)
         {
             if (not_present(nodes_dst, m_nodes)) { addFab(dst, nodes_dst); }
             if (not_present(nodes_src, m_nodes)) { addFab(src, nodes_src); }
