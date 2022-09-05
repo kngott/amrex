@@ -198,15 +198,39 @@ namespace amrex
                              const Periodicity period = Periodicity::NonPeriodic(),
                              FabArrayBase::CpOp /*op*/ = FabArrayBase::COPY,
                              const FabArrayBase::CPC* a_cpc = nullptr,
-                             bool to_ghost_cells_only = false)
+                             bool to_ghost_cells_only = false,
+                             std::size_t buffer_size)
         {
             if (not_present(nodes_dst, m_nodes)) { addFab(dst, nodes_dst); }
             if (not_present(nodes_src, m_nodes)) { addFab(src, nodes_src); }
 
             const FabArrayBase::CommMetaData& pc = (a_cpc) ? *a_cpc :
                          dst.getCPC(dst_nghost, src, src_nghost, period, to_ghost_cells_only);
-            addEdgeList(name, nodes_src, nodes_dst, scaling, pc, num_comp);
+            addEdgeList(name, nodes_src, nodes_dst, scaling, pc, num_comp, buffer_size);
         }
+
+        template <typename FAB>
+        void addParallelCopy(const std::string& name, const std::string& nodes_dst,
+                             const std::string& nodes_src, const double scaling,
+                             const std::size_t& dst_type_size, const std::size_t& src_type_size,
+                             const std::size_t& buffer_size,
+                             const FabArrayBase& dst, const FabArrayBase& src,
+                             const int /*src_comp*/, const int /*dst_comp*/, const int num_comp,
+                             const IntVect& src_nghost, const IntVect& dst_nghost,
+                             const Periodicity period = Periodicity::NonPeriodic(),
+                             FabArrayBase::CpOp /*op*/ = FabArrayBase::COPY,
+                             const FabArrayBase::CPC* a_cpc = nullptr,
+                             bool to_ghost_cells_only = false)
+        {
+            if (not_present(nodes_dst, m_nodes)) { addFab(dst, nodes_dst, dst_type_size); }
+            if (not_present(nodes_src, m_nodes)) { addFab(src, nodes_src, src_type_size); }
+
+            const FabArrayBase::CommMetaData& pc = (a_cpc) ? *a_cpc :
+                         dst.getCPC(dst_nghost, src, src_nghost, period, to_ghost_cells_only);
+            addEdgeList(name, nodes_src, nodes_dst, scaling, pc, num_comp, buffer_size);
+        }
+
+
 
         // ..................
 
