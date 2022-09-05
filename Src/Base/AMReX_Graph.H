@@ -148,7 +148,8 @@ namespace amrex
                              const std::size_t buffer_size = 0)
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
-                            src, dst, 0, 0, dst.nComp(), 0, 0, period, op);
+                            src, dst, 0, 0, dst.nComp(), 0, 0, period, op,
+                            nullptr, false, buffer_size);
         }
 
         template <typename FAB>
@@ -161,7 +162,8 @@ namespace amrex
                              const std::size_t buffer_size = 0)
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
-                            src, dst, src_comp, dst_comp, num_comp, 0, 0, period, op);
+                            src, dst, src_comp, dst_comp, num_comp, 0, 0, period, op,
+                            nullptr, false, buffer_size);
         }
 
         template <typename FAB>
@@ -176,7 +178,8 @@ namespace amrex
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
                             src, dst, src_comp, dst_comp, num_comp,
-                            IntVect(src_nghost), IntVect(dst_nghost), period, op);
+                            IntVect(src_nghost), IntVect(dst_nghost), period, op,
+                            nullptr, false, buffer_size);
         }
 
         template <typename FAB>
@@ -190,7 +193,8 @@ namespace amrex
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
                             src, dst, src_comp, dst_comp, num_comp,
-                            src_nghost, dst_nghost, period, FabArrayBase::COPY, nullptr, true);
+                            src_nghost, dst_nghost, period, FabArrayBase::COPY,
+                            nullptr, true, buffer_size);
         }
 
         template <typename FAB>
