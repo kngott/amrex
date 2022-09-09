@@ -272,7 +272,7 @@ namespace amrex
                             const std::size_t buffer_type = 0)
         {
             addSumBoundary(name, nodes, scaling,
-                           fab, scomp, ncomp, fab.nGrowVect(), nghost, period);
+                           fab, scomp, ncomp, fab.nGrowVect(), nghost, period, buffer_type);
         }
 
         template <typename FAB>
