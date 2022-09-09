@@ -145,11 +145,11 @@ namespace amrex
                              const FabArray<FAB>& dst, const FabArray<FAB>& src,
                              const Periodicity period = Periodicity::NonPeriodic(),
                              FabArrayBase::CpOp op = FabArrayBase::COPY,
-                             const std::size_t buffer_size = 0)
+                             const std::size_t buffer_type = 0)
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
                             src, dst, 0, 0, dst.nComp(), 0, 0, period, op,
-                            nullptr, false, buffer_size);
+                            nullptr, false, buffer_type);
         }
 
         template <typename FAB>
@@ -159,11 +159,11 @@ namespace amrex
                              const int src_comp, const int dst_comp, const int num_comp,
                              const Periodicity period = Periodicity::NonPeriodic(),
                              FabArrayBase::CpOp op = FabArrayBase::COPY,
-                             const std::size_t buffer_size = 0)
+                             const std::size_t buffer_type = 0)
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
                             src, dst, src_comp, dst_comp, num_comp, 0, 0, period, op,
-                            nullptr, false, buffer_size);
+                            nullptr, false, buffer_type);
         }
 
         template <typename FAB>
@@ -174,12 +174,12 @@ namespace amrex
                              const int src_nghost, const int dst_nghost,
                              const Periodicity period = Periodicity::NonPeriodic(),
                              FabArrayBase::CpOp op = FabArrayBase::COPY,
-                             const std::size_t buffer_size = 0)
+                             const std::size_t buffer_type = 0)
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
                             src, dst, src_comp, dst_comp, num_comp,
                             IntVect(src_nghost), IntVect(dst_nghost), period, op,
-                            nullptr, false, buffer_size);
+                            nullptr, false, buffer_type);
         }
 
         template <typename FAB>
@@ -189,12 +189,12 @@ namespace amrex
                                     const int src_comp, const int dst_comp, const int num_comp,
                                     const IntVect& src_nghost, const IntVect& dst_nghost,
                                     const Periodicity period = Periodicity::NonPeriodic(),
-                                    const std::size_t buffer_size = 0)
+                                    const std::size_t buffer_type = 0)
         {
             addParallelCopy(name, nodes_dst, nodes_src, scaling,
                             src, dst, src_comp, dst_comp, num_comp,
                             src_nghost, dst_nghost, period, FabArrayBase::COPY,
-                            nullptr, true, buffer_size);
+                            nullptr, true, buffer_type);
         }
 
         template <typename FAB>
@@ -207,21 +207,21 @@ namespace amrex
                              FabArrayBase::CpOp /*op*/ = FabArrayBase::COPY,
                              const FabArrayBase::CPC* a_cpc = nullptr,
                              bool to_ghost_cells_only = false,
-                             const std::size_t buffer_size = 0)
+                             const std::size_t buffer_type = 0)
         {
             if (not_present(nodes_dst, m_nodes)) { addFab(dst, nodes_dst); }
             if (not_present(nodes_src, m_nodes)) { addFab(src, nodes_src); }
 
             const FabArrayBase::CommMetaData& pc = (a_cpc) ? *a_cpc :
                          dst.getCPC(dst_nghost, src, src_nghost, period, to_ghost_cells_only);
-            addEdgeList(name, nodes_src, nodes_dst, scaling, pc, num_comp, buffer_size);
+            addEdgeList(name, nodes_src, nodes_dst, scaling, pc, num_comp, buffer_type);
         }
 
         template <typename FAB>
         void addParallelCopy(const std::string& name, const std::string& nodes_dst,
                              const std::string& nodes_src, const double scaling,
                              const std::size_t& dst_type_size, const std::size_t& src_type_size,
-                             const std::size_t& buffer_size,
+                             const std::size_t& buffer_type,
                              const FabArrayBase& dst, const FabArrayBase& src,
                              const int /*src_comp*/, const int /*dst_comp*/, const int num_comp,
                              const IntVect& src_nghost, const IntVect& dst_nghost,
@@ -235,7 +235,7 @@ namespace amrex
 
             const FabArrayBase::CommMetaData& pc = (a_cpc) ? *a_cpc :
                          dst.getCPC(dst_nghost, src, src_nghost, period, to_ghost_cells_only);
-            addEdgeList(name, nodes_src, nodes_dst, scaling, pc, num_comp, buffer_size);
+            addEdgeList(name, nodes_src, nodes_dst, scaling, pc, num_comp, buffer_type);
         }
 
 
@@ -245,20 +245,22 @@ namespace amrex
         template <typename FAB>
         void addSumBoundary(const std::string& name, const std::string& nodes, const double scaling,
                             const FabArray<FAB>& fab,
-                            const Periodicity& period = Periodicity::NonPeriodic())
+                            const Periodicity& period = Periodicity::NonPeriodic(),
+                            const std::size_t buffer_type = 0)
         {
             addSumBoundary(name, nodes, scaling,
-                           fab, 0, fab.nComp(), IntVect(0), period);
+                           fab, 0, fab.nComp(), IntVect(0), period, buffer_type);
         }
 
         template <typename FAB>
         void addSumBoundary(const std::string& name, const std::string& nodes, const double scaling,
                             const FabArray<FAB>& fab,
                             const int scomp, const int ncomp,
-                            const Periodicity& period = Periodicity::NonPeriodic())
+                            const Periodicity& period = Periodicity::NonPeriodic(),
+                            const std::size_t buffer_type = 0)
         {
             addSumBoundary(name, nodes, scaling,
-                           fab, scomp, ncomp, IntVect(0), period);
+                           fab, scomp, ncomp, IntVect(0), period, buffer_type);
         }
 
         template <typename FAB>
@@ -266,7 +268,8 @@ namespace amrex
                             const FabArray<FAB>& fab,
                             const int scomp, const int ncomp,
                             const IntVect& nghost,
-                            const Periodicity& period = Periodicity::NonPeriodic())
+                            const Periodicity& period = Periodicity::NonPeriodic(),
+                            const std::size_t buffer_type = 0)
         {
             addSumBoundary(name, nodes, scaling,
                            fab, scomp, ncomp, fab.nGrowVect(), nghost, period);
@@ -277,7 +280,8 @@ namespace amrex
                             const FabArray<FAB>& fab,
                             const int /*scomp*/, const int ncomp,
                             const IntVect& src_nghost, const IntVect& dst_nghost,
-                            const Periodicity& period = Periodicity::NonPeriodic())
+                            const Periodicity& period = Periodicity::NonPeriodic(),
+                            const std::size_t buffer_type = 0)
         {
             // If SumBoundary wouldn't be completed, don't create the edge list.
             //      (interpretted as: the comm doesn't happen, so don't add a list).
@@ -288,7 +292,7 @@ namespace amrex
 
             const FabArrayBase::CommMetaData& pc =
                       fab.getCPC(dst_nghost, fab, src_nghost, period, false);
-            addEdgeList(name, nodes, nodes, scaling, pc, ncomp);
+            addEdgeList(name, nodes, nodes, scaling, pc, ncomp, buffer_type);
         }
 
         // ..................
