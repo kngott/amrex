@@ -427,7 +427,18 @@ Graph::assemble()
         int n_total_edges = 0;
 
         if (is_writer) {
-            n_total_edges = amrex::Scan::ExclusiveSum(n_ranks, edge_count.data(), disp.data());
+            {
+                // ExclusiveSum
+                auto edges_last = edge_count[n_ranks-1];
+#if (__cplusplus >= 201703L) && (!defined(_GLIBCXX_RELEASE) || _GLIBCXX_RELEASE >= 10)
+                // GCC's __cplusplus is not a reliable indication for C++17 support
+                std::exclusive_scan(edge_count.data(), edge_count.data()+n_ranks, disp.data(), 0);
+#else
+                disp[0] = 0;
+                std::partial_sum(edge_count.data(), edge_count.data()+n_ranks-1, disp.data()+1);
+#endif
+                n_total_edges = edges_last + disp[n_ranks-1];
+            }
             el.m_size = n_total_edges;
             el.m_offset = offset_count;
             offset_count += n_total_edges;
@@ -447,8 +458,16 @@ Graph::assemble()
         int n_global_chars = 0;
 
         if (is_writer) {
-            n_global_chars = amrex::Scan::ExclusiveSum(n_ranks, char_sums.data(),
-                                                       label_disp.data());
+            // Exclusive Sum
+            auto last_char = char_sums[n_ranks-1];
+#if (__cplusplus >= 201703L) && (!defined(_GLIBCXX_RELEASE) || _GLIBCXX_RELEASE >= 10)
+            // GCC's __cplusplus is not a reliable indication for C++17 support
+            std::exclusive_scan(char_sums.data(), char_sums.data()+n_ranks, label_disp.data(), 0);
+#else
+            label_disp[0] = 0;
+            std::partial_sum(char_sums.data(), char_sums.data()+n_ranks-1, label_disp.data()+1);
+#endif
+            n_global_chars = last_char + label_disp[n_ranks-1];
         }
 
         std::vector<int> label_sizes(n_total_edges, 0);
