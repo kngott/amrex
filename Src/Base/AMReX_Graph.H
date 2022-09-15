@@ -148,7 +148,7 @@ namespace amrex
 
         template <typename FAB>
         void addFillBoundaryAndSync (const std::string& name, const std::string& nodes, const double scaling,
-                                     const FabArray<FAB>& fab, int scomp, int ncomp, const IntVect& nghost,
+                                     const FabArray<FAB>& fab, int /*scomp*/, int ncomp, const IntVect& nghost,
                                      const Periodicity& period, std::size_t buffer_size = 0)
         {
             if (not_present(nodes, m_nodes)) { addFab(fab, nodes); }
