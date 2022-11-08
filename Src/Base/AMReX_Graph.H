@@ -50,7 +50,7 @@ namespace amrex
             RepeatEntry temp = m_repeat;
             m_repeat = re;
             return temp;
-        };
+        }
 
         // Add a node-list, sometimes including a weight,
         //   through an AMReX object. (FabArray, FabArrayBase, or LayoutData).
@@ -424,7 +424,7 @@ namespace amrex
                            const std::vector<T>& wgts,
                            const double scaling,
                            const bool local = false,
-			   RepeatEntry behavior = RepeatEntry::Invalid);
+                           RepeatEntry behavior = RepeatEntry::Invalid);
 
         void addNodeWeight(const std::string& node_name,
                            const std::string& wgts_name,
