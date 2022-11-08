@@ -15,14 +15,15 @@ void Graph::addLayoutData(const amrex::LayoutData<double>& ld,
                           const std::string& node_name,
                           const std::size_t data_size,
                           const std::string& wgts_name,
-                          const double scaling)
+                          const double scaling,
+                          RepeatEntry behavior)
 {
     // Avoid warning if fab already present, just check weight.
     if (not_present(node_name, m_nodes)) {
         addFab(ld, node_name, data_size);
     }
 
-    addNodeWeight(node_name, wgts_name, ld, scaling);
+    addNodeWeight(node_name, wgts_name, ld, scaling, false, behavior);
 }
 
 
@@ -241,14 +242,15 @@ void Graph::addNodeWeight(const std::string& node_name,
                           const std::string& wgts_name,
                           const amrex::LayoutData<double>& wgts,
                           const double scaling,
-                          const bool local)
+                          const bool local,
+                          RepeatEntry behavior)
 {
     std::vector<double> wgts_v;
     for (MFIter mfi(wgts); mfi.isValid(); ++mfi) {
         wgts_v.push_back(wgts[mfi]);
     }
 
-    addNodeWeight(node_name, wgts_name, wgts_v, scaling, local);
+    addNodeWeight(node_name, wgts_name, wgts_v, scaling, local, behavior);
 }
 
 void Graph::addEdgeWeight(const std::string& edge_name,

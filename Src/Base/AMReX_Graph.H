@@ -34,12 +34,23 @@
 
 namespace amrex
 {
+
     class Graph
     {
         public:
 
         Graph() = default;
         ~Graph() = default;
+
+        // Defines behavior if a node weight with the same name is added.
+        enum struct RepeatEntry { Skip, Replace, Add, New, Invalid };
+
+        RepeatEntry getRepeatEntry () { return m_repeat; }
+        RepeatEntry setRepeatEntry ( const RepeatEntry re ) {
+            RepeatEntry temp = m_repeat;
+            m_repeat = re;
+            return temp;
+        };
 
         // Add a node-list, sometimes including a weight,
         //   through an AMReX object. (FabArray, FabArrayBase, or LayoutData).
@@ -53,13 +64,15 @@ namespace amrex
                     const std::string& node_name,
                     const std::vector<double>& weights,
                     const std::string& wgts_name,
-                    const double scaling);
+                    const double scaling,
+                    RepeatEntry behavior = RepeatEntry::Invalid);
 
         void addLayoutData(const amrex::LayoutData<double>& ld,
                            const std::string& node_name,
                            const std::size_t data_size,
                            const std::string& wgts_name,
-                           const double scaling);
+                           const double scaling,
+                           RepeatEntry behavior = RepeatEntry::Invalid);
 
         void addFab(const FabArrayBase& fab,
                     const std::string& name,
@@ -410,13 +423,15 @@ namespace amrex
                            const std::string& wgts_name,
                            const std::vector<T>& wgts,
                            const double scaling,
-                           const bool local = false);
+                           const bool local = false,
+			   RepeatEntry behavior = RepeatEntry::Invalid);
 
         void addNodeWeight(const std::string& node_name,
                            const std::string& wgts_name,
                            const LayoutData<double>& wgts,
                            const double scaling,
-                           const bool local = false);
+                           const bool local = false,
+                           RepeatEntry behavior = RepeatEntry::Invalid);
 
         void addEdgeWeight(const std::string& edge_name,
                            const std::string& wgts_name,
@@ -512,8 +527,7 @@ namespace amrex
             std::vector<Weight> m_wgts;
         };
 
-//        private:
-
+        //  private:
         // -----------------
         // Lookup functions
 
@@ -541,6 +555,8 @@ namespace amrex
 
         std::vector<NodeList> m_nodes;
         std::vector<EdgeList> m_edges;
+
+        RepeatEntry m_repeat = RepeatEntry::Skip;
     };
 
     // ++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -557,14 +573,16 @@ namespace amrex
                        const std::string& node_name,
                        const std::vector<double>& weights,
                        const std::string& wgts_name,
-                       const double scaling)
+                       const double scaling,
+                       RepeatEntry behavior)
+
     {
         // Avoid warning if fab already present, just check weight.
         if (not_present(node_name, m_nodes)) {
             addFab(fab, node_name, sizeof(typename FAB::value_type));
         }
 
-        addNodeWeight(node_name, wgts_name, weights, scaling);
+        addNodeWeight(node_name, wgts_name, weights, scaling, false, behavior);
     }
 
     // --------------------------------
@@ -574,39 +592,72 @@ namespace amrex
                               const std::string& wgts_name,
                               const std::vector<T>& wgts,
                               const double scaling,
-                              const bool local)
+                              const bool local,
+                              RepeatEntry behavior)
     {
         int nl = get_index(node_name, m_nodes);
         if (nl == -1) {
+            // Error out?
             amrex::Print() << " **** WARNING: "
                            << " Graph.addNodeWeight() called for a nodelist not in the graph -- "
                            << node_name << ". Returning." << std::endl;
             return;
         }
-        if (is_present(wgts_name, m_nodes[nl].m_wgts)) {
+
+        if ((behavior == RepeatEntry::Invalid) && (m_repeat == RepeatEntry::Invalid)) {
             amrex::Print() << " **** WARNING: "
-                           << " Graph.addNodeWeight() called for a weight already named in the graph -- "
-                           << wgts_name << ". Returning." << std::endl;
+                           << " RepeatEntry is Invalid. Returning." << std::endl;
             return;
         }
+        if (behavior == RepeatEntry::Invalid) { behavior = m_repeat; }
 
         // Check length of weights is correct (total or local)
         AMREX_ASSERT(long(wgts.size()) == m_nodes[nl].m_fab.size()
                   || long(wgts.size()) == m_nodes[nl].m_fab.local_size());
 
-        Weight new_wgt;
-        new_wgt.m_name = wgts_name;
-        new_wgt.m_scaling[0] = scaling;
-        new_wgt.m_local = local;
 
-        new_wgt.m_weights.resize(wgts.size());
-        for (unsigned long i=0; i<wgts.size(); ++i) {
-            (new_wgt.m_weights)[i] = double(wgts[i]);
+        std::string my_name = wgts_name;
+        int wl = get_index(my_name, m_nodes[nl].m_wgts);
+
+        // If already present and "New", find new name and treat as though it doesn't exist.
+        if ((wl != -1) && (behavior == RepeatEntry::New)) {
+            int name_id = 2;
+            while( is_present(wgts_name+"-"+std::to_string(name_id), m_nodes[nl].m_wgts) )
+                { name_id++; }
+            my_name = wgts_name + "-" + std::to_string(name_id);
+            wl = -1;
         }
 
-        m_nodes[nl].m_wgts.emplace_back(std::move(new_wgt));
+        // If doesn't already exist, all the same.
+        if (wl == -1) {
+            Weight& wgt = m_nodes[nl].m_wgts.emplace_back();
+            wgt.m_name = my_name;
+            wgt.m_local = local;
+            wgt.m_weights = wgts;
+            wgt.m_scaling[0] = scaling;
+            wl = m_nodes[nl].m_wgts.size() - 1;
 
-        m_nwgts.push_back(wgts_name);
+            m_nwgts.push_back(my_name);
+        } else {
+            if (behavior == RepeatEntry::Skip) { return; }
+
+            Weight& wgt = m_nodes[nl].m_wgts[wl];
+
+            if (behavior == RepeatEntry::Replace) {
+                // Do not replace "name", that's a new entry.
+                wgt.m_local = local;
+                wgt.m_weights = wgts;
+                wgt.m_scaling[0] = scaling;
+            }
+            else {  // Remaining is add
+                if ((wgts.size() != wgt.m_weights.size()) || (local != wgt.m_local))
+                    { amrex::Print() << "Invalid add attempted. Returning... " << std::endl; }
+                wgt.m_scaling[0] += scaling;
+                for (unsigned long i=0; i<wgts.size(); ++i) {
+                    (wgt.m_weights)[i] += double(wgts[i]);
+                }
+            }
+        }
     }
 
     // --------------------------------
