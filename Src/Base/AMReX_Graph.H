@@ -633,7 +633,10 @@ namespace amrex
             Weight& wgt = m_nodes[nl].m_wgts.emplace_back();
             wgt.m_name = my_name;
             wgt.m_local = local;
-            wgt.m_weights = wgts;
+            wgt.m_weights.resize(wgts.size());
+            for (unsigned long i=0; i<wgts.size(); ++i) {
+                (wgt.m_weights)[i] = double(wgts);
+            }
             wgt.m_scaling[0] = scaling;
             wl = m_nodes[nl].m_wgts.size() - 1;
 
@@ -646,7 +649,10 @@ namespace amrex
             if (behavior == RepeatEntry::Replace) {
                 // Do not replace "name", that's a new entry.
                 wgt.m_local = local;
-                wgt.m_weights = wgts;
+                wgt.m_weights.resize(wgts.size());
+                for (unsigned long i=0; i<wgts.size(); ++i) {
+                    (wgt.m_weights)[i] = double(wgts);
+                }
                 wgt.m_scaling[0] = scaling;
             }
             else {  // Remaining is add
