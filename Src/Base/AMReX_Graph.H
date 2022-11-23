@@ -635,7 +635,7 @@ namespace amrex
             wgt.m_local = local;
             wgt.m_weights.resize(wgts.size());
             for (unsigned long i=0; i<wgts.size(); ++i) {
-                (wgt.m_weights)[i] = double(wgts);
+                (wgt.m_weights)[i] = double(wgts[i]);
             }
             wgt.m_scaling[0] = scaling;
             wl = m_nodes[nl].m_wgts.size() - 1;
@@ -651,7 +651,7 @@ namespace amrex
                 wgt.m_local = local;
                 wgt.m_weights.resize(wgts.size());
                 for (unsigned long i=0; i<wgts.size(); ++i) {
-                    (wgt.m_weights)[i] = double(wgts);
+                    (wgt.m_weights)[i] = double(wgts[i]);
                 }
                 wgt.m_scaling[0] = scaling;
             }
