@@ -209,6 +209,7 @@ while ( false )
     inline int MinTag () noexcept { return m_MinTag; }
     inline int MaxTag () noexcept { return m_MaxTag; }
 
+    extern AMREX_EXPORT MPI_Info m_info;
     extern AMREX_EXPORT MPI_Comm m_comm;
     inline MPI_Comm Communicator () noexcept { return m_comm; }
 

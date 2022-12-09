@@ -63,6 +63,7 @@ namespace amrex { namespace ParallelDescriptor {
 
     ProcessTeam m_Team;
 
+    MPI_Info m_info = MPI_INFO_NULL;    // info for MPI_COMM_WORLD communicator
     MPI_Comm m_comm = MPI_COMM_NULL;    // communicator for all ranks, probably MPI_COMM_WORLD
 
 #ifdef AMREX_USE_MPI
@@ -293,6 +294,28 @@ StartParallel (int* argc, char*** argv, MPI_Comm a_mpi_comm)
         MPI_Init(argc, argv);
 #endif
 
+// ************************
+#ifdef MPI_USE_INFO
+    MPI_Comm icomm = MPI_COMM_WORLD;
+    BL_MPI_REQUIRE( MPI_Info_create(&m_info) );
+
+#ifdef MPI_NO_ANY
+    BL_MPI_REQUIRE(MPI_Info_set(m_info,"mpi_assert_no_any_tag", "true"));
+    BL_MPI_REQUIRE(MPI_Info_set(m_info,"mpi_assert_no_any_source", "true"));
+#endif
+#ifdef MPI_OVERTAKING
+    BL_MPI_REQUIRE(MPI_Info_set(m_info,"mpi_assert_allow_overtaking", "true"));
+#endif
+#ifdef MPI_EXACT_LENGTH
+    BL_MPI_REQUIRE(MPI_Info_set(m_info,"mpi_assert_exact_length", "true"));
+#endif
+
+    BL_MPI_REQUIRE(MPI_Comm_dup_with_info(icomm, m_info, &m_comm));
+#else
+    m_comm = MPI_COMM_WORLD;
+
+#endif
+// ************************
         m_comm = MPI_COMM_WORLD;
         call_mpi_finalize = 1;
     } else {
@@ -380,6 +403,9 @@ EndParallel ()
 
     if (!call_mpi_finalize) {
         BL_MPI_REQUIRE( MPI_Comm_free(&m_comm) );
+#ifdef MPI_USE_INFO
+        BL_MPI_REQUIRE( MPI_Info_free(&m_info) );
+#endif
     }
     m_comm = MPI_COMM_NULL;
 
