@@ -316,7 +316,6 @@ StartParallel (int* argc, char*** argv, MPI_Comm a_mpi_comm)
 
 #endif
 // ************************
-        m_comm = MPI_COMM_WORLD;
         call_mpi_finalize = 1;
     } else {
         MPI_Comm_dup(a_mpi_comm, &m_comm);
