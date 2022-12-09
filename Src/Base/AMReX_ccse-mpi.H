@@ -47,6 +47,7 @@ namespace ParallelDescriptor
 
 typedef int MPI_Op;
 typedef int MPI_Comm;
+typedef int MPI_Info;
 typedef int MPI_Group;
 typedef int MPI_Datatype;
 struct MPI_Status {};
