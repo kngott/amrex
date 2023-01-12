@@ -295,6 +295,10 @@ StartParallel (int* argc, char*** argv, MPI_Comm a_mpi_comm)
 
         m_comm = MPI_COMM_WORLD;
         call_mpi_finalize = 1;
+
+#ifdef USE_MPIACX
+        MPIX_Init();
+#endif
     } else {
         MPI_Comm_dup(a_mpi_comm, &m_comm);
         call_mpi_finalize = 0;
@@ -386,6 +390,9 @@ EndParallel ()
     ParallelContext::pop();
 
     if (call_mpi_finalize) {
+#ifdef USE_MPIACX
+        MPIX_Finalize();
+#endif
         MPI_Finalize();
     }
 }

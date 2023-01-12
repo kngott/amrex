@@ -9,9 +9,18 @@
 // By placing <mpi.h> here we make it easier to recompile with or w/o MPI.
 //
 
+#ifndef USE_MPIACX
+    typedef int MPIX_Request;
+    const int MPIX_REQUEST_NULL = 0;
+#endif
+
+
 #ifdef BL_USE_MPI
 
 #include <mpi.h>
+#ifdef USE_MPIACX
+    #include <mpi-acx.h>
+#endif
 
 namespace amrex {
 namespace ParallelDescriptor
