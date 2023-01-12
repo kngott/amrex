@@ -196,6 +196,30 @@ else
   USE_MPI := FALSE
 endif
 
+ifdef USE_MPIACX
+  USE_MPIACX := $(strip $(USE_MPIACX))
+  ifeq ($(USE_MPIACX),TRUE)
+    ifeq ($(USE_CUDA),FALSE)
+      $(error MPI-ACX can only be used with CUDA)
+    endif
+    ifndef MPIACX_HOME
+      $(error Define MPIACX_HOME to use MPI-ACX)
+    endif
+
+    USE_MPI := TRUE
+    MPI_THREAD_MULTIPLE := TRUE
+    DEFINES += -DUSE_MPIACX 
+
+    MPIACX_HOME := $(strip $(MPIACX_HOME))
+    MPIACX_INCLUDE := $(MPIACX_HOME)/include
+    INCLUDE_LOCATIONS += $(MPIACX_INCLUDE)
+    LIBRARY_LOCATIONS += $(MPIACX_HOME)
+    LIBRARIES += -lmpi-acx
+  else
+    USE_MPIACX := FALSE
+  endif
+endif
+
 ifdef MPI_THREAD_MULTIPLE
   MPI_THREAD_MULTIPLE := $(strip $(MPI_THREAD_MULTIPLE))
   MPI_THREAD_MULTIPLE_UPDATE_SUFFIX ?= TRUE
