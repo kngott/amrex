@@ -64,6 +64,10 @@ namespace ParallelDescriptor
             m_finished(false),
             m_type(type_),
             m_req(req_) {}
+        Message (MPIX_Request req_, MPI_Datatype type_) :
+            m_finished(false),
+            m_type(type_),
+            m_xreq(req_) {}
         Message (MPI_Status stat_, MPI_Datatype type_) :
             m_finished(true),
             m_type(type_),
@@ -74,7 +78,8 @@ namespace ParallelDescriptor
         int tag () const;
         int pid () const;
         MPI_Datatype type () const { return m_type; }
-        MPI_Request  req () const { return m_req; }
+        MPI_Request  req  () const { return m_req; }
+        MPIX_Request xreq () const { return m_xreq; }
         MPI_Status   stat () const { return m_stat; }
 
     private:
@@ -82,6 +87,7 @@ namespace ParallelDescriptor
         bool               m_finished;
         MPI_Datatype       m_type;
         MPI_Request        m_req;
+        MPIX_Request       m_xreq;
         mutable MPI_Status m_stat;
     };
 
