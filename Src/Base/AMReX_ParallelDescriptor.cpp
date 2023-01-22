@@ -1602,42 +1602,88 @@ alignof_comm_data (std::size_t nbytes)
 
 template <>
 Message
-Asend<char> (const char* buf, size_t n, int pid, int tag, MPI_Comm comm)
+Asend<char> (const char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool use_acx)
 {
     BL_PROFILE_T_S("ParallelDescriptor::Asend(TsiiM)", char);
     BL_COMM_PROFILE(BLProfiler::AsendTsiiM, n * sizeof(char), pid, tag);
+
+    amrex::ignore_unused(use_acx);
+
+#ifdef USE_MPIACX
+    MPIX_Request xreq = MPIX_REQUEST_NULL;
+    auto stream = Gpu::gpuStream();
+#endif
 
     MPI_Request req;
     Message msg;
     const int comm_data_type = ParallelDescriptor::select_comm_data_type(n);
     if (comm_data_type == 1) {
-        BL_MPI_REQUIRE( MPI_Isend(const_cast<char*>(buf),
-                                  n,
-                                  Mpi_typemap<char>::type(),
-                                  pid, tag, comm, &req) );
-        msg = Message(req, Mpi_typemap<char>::type());
+#ifdef USE_MPIACX
+        if (use_acx) {
+            BL_MPI_REQUIRE( MPIX_Isend_enqueue(const_cast<char*>(buf),
+                                               n,
+                                               Mpi_typemap<char>::type(),
+                                               pid, tag, comm, &xreq,
+                                               MPIX_QUEUE_CUDA_STREAM, &stream) );
+            msg = Message(xreq, Mpi_typemap<char>::type());
+        } else
+#endif
+        {
+            BL_MPI_REQUIRE( MPI_Isend(const_cast<char*>(buf),
+                                      n,
+                                      Mpi_typemap<char>::type(),
+                                      pid, tag, comm, &req) );
+            msg = Message(req, Mpi_typemap<char>::type());
+        }
     } else if (comm_data_type == 2) {
         if (!amrex::is_aligned(buf, alignof(unsigned long long))
             || (n % sizeof(unsigned long long)) != 0) {
             amrex::Abort("Message size is too big as char, and it cannot be sent as unsigned long long.");
         }
-        BL_MPI_REQUIRE( MPI_Isend(const_cast<unsigned long long*>
-                                     (reinterpret_cast<unsigned long long const*>(buf)),
-                                  n/sizeof(unsigned long long),
-                                  Mpi_typemap<unsigned long long>::type(),
-                                  pid, tag, comm, &req) );
-        msg = Message(req, Mpi_typemap<unsigned long long>::type());
+#ifdef USE_MPIACX
+        if (use_acx) {
+            BL_MPI_REQUIRE( MPI_Isend_enqueue(const_cast<unsigned long long*>
+                                                 (reinterpret_cast<unsigned long long const*>(buf)),
+                                              n/sizeof(unsigned long long),
+                                              Mpi_typemap<unsigned long long>::type(),
+                                              pid, tag, comm, &xreq,
+                                              MPIX_QUEUE_CUDA_STREAM, &stream) );
+            msg = Message(xreq, Mpi_typemap<unsigned long long>::type());
+        } else
+#endif
+        {
+            BL_MPI_REQUIRE( MPI_Isend(const_cast<unsigned long long*>
+                                         (reinterpret_cast<unsigned long long const*>(buf)),
+                                      n/sizeof(unsigned long long),
+                                      Mpi_typemap<unsigned long long>::type(),
+                                      pid, tag, comm, &req) );
+            msg = Message(req, Mpi_typemap<unsigned long long>::type());
+        }
     } else if (comm_data_type == 3) {
         if (!amrex::is_aligned(buf, alignof(ParallelDescriptor::lull_t))
             || (n % sizeof(ParallelDescriptor::lull_t)) != 0) {
             amrex::Abort("Message size is too big as char or unsigned long long, and it cannot be sent as ParallelDescriptor::lull_t");
         }
-        BL_MPI_REQUIRE( MPI_Isend(const_cast<ParallelDescriptor::lull_t*>
-                                     (reinterpret_cast<ParallelDescriptor::lull_t const*>(buf)),
-                                  n/sizeof(ParallelDescriptor::lull_t),
-                                  Mpi_typemap<ParallelDescriptor::lull_t>::type(),
-                                  pid, tag, comm, &req) );
-        msg = Message(req, Mpi_typemap<ParallelDescriptor::lull_t>::type());
+#ifdef USE_MPIACX
+        if (use_acx) {
+            BL_MPI_REQUIRE( MPI_Isend_enqueue(const_cast<ParallelDescriptor::lull_t*>
+                                                 (reinterpret_cast<ParallelDescriptor::lull_t const*>(buf)),
+                                              n/sizeof(ParallelDescriptor::lull_t),
+                                              Mpi_typemap<ParallelDescriptor::lull_t>::type(),
+                                              pid, tag, comm, &xreq,
+                                              MPIX_QUEUE_CUDA_STREAM, &stream) );
+            msg = Message(xreq, Mpi_typemap<ParallelDescriptor::lull_t>::type());
+        } else
+#endif
+        {
+            BL_MPI_REQUIRE( MPI_Isend(const_cast<ParallelDescriptor::lull_t*>
+                                         (reinterpret_cast<ParallelDescriptor::lull_t const*>(buf)),
+                                      n/sizeof(ParallelDescriptor::lull_t),
+                                      Mpi_typemap<ParallelDescriptor::lull_t>::type(),
+                                      pid, tag, comm, &req) );
+            msg = Message(req, Mpi_typemap<ParallelDescriptor::lull_t>::type());
+
+        }
     } else {
         amrex::Abort("TODO: message size is too big");
     }
@@ -1689,40 +1735,84 @@ Send<char> (const char* buf, size_t n, int pid, int tag, MPI_Comm comm)
 
 template <>
 Message
-Arecv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm)
+Arecv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool use_acx)
 {
     BL_PROFILE_T_S("ParallelDescriptor::Arecv(TsiiM)", char);
     BL_COMM_PROFILE(BLProfiler::ArecvTsiiM, n * sizeof(char), pid, tag);
+
+#ifdef USE_MPIACX
+    MPIX_Request xreq = MPIX_REQUEST_NULL;
+    auto stream = Gpu::gpuStream();
+#endif
 
     MPI_Request req;
     Message msg;
     const int comm_data_type = ParallelDescriptor::select_comm_data_type(n);
     if (comm_data_type == 1) {
-        BL_MPI_REQUIRE( MPI_Irecv(buf,
-                                  n,
-                                  Mpi_typemap<char>::type(),
-                                  pid, tag, comm, &req) );
-        msg = Message(req, Mpi_typemap<char>::type());
+#ifdef USE_MPIACX
+        if (use_acx) {
+            BL_MPI_REQUIRE( MPI_Irecv_enqueue(buf,
+                                              n,
+                                              Mpi_typemap<char>::type(),
+                                              pid, tag, comm, &xreq,
+                                              MPIX_QUEUE_CUDA_STREAM, &stream) );
+            msg = Message(xreq, Mpi_typemap<char>::type());
+        } else
+#endif
+        {
+            BL_MPI_REQUIRE( MPI_Irecv(buf,
+                                      n,
+                                      Mpi_typemap<char>::type(),
+                                      pid, tag, comm, &req) );
+            msg = Message(req, Mpi_typemap<char>::type());
+        }
     } else if (comm_data_type == 2) {
         if (!amrex::is_aligned(buf, alignof(unsigned long long))
             || (n % sizeof(unsigned long long)) != 0) {
             amrex::Abort("Message size is too big as char, and it cannot be received as unsigned long long.");
         }
-        BL_MPI_REQUIRE( MPI_Irecv((unsigned long long *)buf,
-                                  n/sizeof(unsigned long long),
-                                  Mpi_typemap<unsigned long long>::type(),
-                                  pid, tag, comm, &req) );
-        msg = Message(req, Mpi_typemap<unsigned long long>::type());
+#ifdef USE_MPIACX
+        if (use_acx)
+        {
+            BL_MPI_REQUIRE( MPI_Irecv_enqueue((unsigned long long *)buf,
+                                              n/sizeof(unsigned long long),
+                                              Mpi_typemap<unsigned long long>::type(),
+                                              pid, tag, comm, &xreq,
+                                              MPIX_QUEUE_CUDA_STREAM, &stream) );
+            msg = Message(xreq, Mpi_typemap<unsigned long long>::type());
+        } else
+#endif
+        {
+            BL_MPI_REQUIRE( MPI_Irecv((unsigned long long *)buf,
+                                      n/sizeof(unsigned long long),
+                                      Mpi_typemap<unsigned long long>::type(),
+                                      pid, tag, comm, &req) );
+            msg = Message(req, Mpi_typemap<unsigned long long>::type());
+        }
+
     } else if (comm_data_type == 3) {
         if (!amrex::is_aligned(buf, alignof(ParallelDescriptor::lull_t))
             || (n % sizeof(ParallelDescriptor::lull_t)) != 0) {
             amrex::Abort("Message size is too big as char or unsigned long long, and it cannot be received as ParallelDescriptor::lull_t");
         }
-        BL_MPI_REQUIRE( MPI_Irecv((ParallelDescriptor::lull_t *)buf,
-                                  n/sizeof(ParallelDescriptor::lull_t),
-                                  Mpi_typemap<ParallelDescriptor::lull_t>::type(),
-                                  pid, tag, comm, &req) );
-        msg = Message(req, Mpi_typemap<ParallelDescriptor::lull_t>::type());
+#ifdef USE_MPIACX
+        if (use_acx)
+        {
+            BL_MPI_REQUIRE( MPI_Irecv_enqueue((ParallelDescriptor::lull_t *)buf,
+                                              n/sizeof(ParallelDescriptor::lull_t),
+                                              Mpi_typemap<ParallelDescriptor::lull_t>::type(),
+                                              pid, tag, comm, &xreq,
+                                              MPIX_QUEUE_CUDA_STREAM, &stream) );
+            msg = Message(xreq, Mpi_typemap<ParallelDescriptor::lull_t>::type());
+        } else
+#endif
+        {
+            BL_MPI_REQUIRE( MPI_Irecv((ParallelDescriptor::lull_t *)buf,
+                                      n/sizeof(ParallelDescriptor::lull_t),
+                                      Mpi_typemap<ParallelDescriptor::lull_t>::type(),
+                                      pid, tag, comm, &req) );
+            msg = Message(req, Mpi_typemap<ParallelDescriptor::lull_t>::type());
+        }
     } else {
         amrex::Abort("Message size is too big");
     }

@@ -64,10 +64,12 @@ namespace ParallelDescriptor
             m_finished(false),
             m_type(type_),
             m_req(req_) {}
+#ifdef USE_MPIACX
         Message (MPIX_Request req_, MPI_Datatype type_) :
             m_finished(false),
             m_type(type_),
             m_xreq(req_) {}
+#endif
         Message (MPI_Status stat_, MPI_Datatype type_) :
             m_finished(true),
             m_type(type_),
@@ -79,7 +81,9 @@ namespace ParallelDescriptor
         int pid () const;
         MPI_Datatype type () const { return m_type; }
         MPI_Request  req  () const { return m_req; }
+#ifdef USE_MPIACX
         MPIX_Request xreq () const { return m_xreq; }
+#endif
         MPI_Status   stat () const { return m_stat; }
 
     private:
@@ -87,7 +91,9 @@ namespace ParallelDescriptor
         bool               m_finished;
         MPI_Datatype       m_type;
         MPI_Request        m_req;
+#ifdef USE_MPIACX
         MPIX_Request       m_xreq;
+#endif
         mutable MPI_Status m_stat;
     };
 
@@ -605,11 +611,11 @@ while ( false )
     template <class T> Message Asend(const std::vector<T>& buf, int pid, int tag);
 
     template <class T> Message Arecv(T*, size_t n, int pid, int tag);
-    template <class T> Message Arecv(T*, size_t n, int pid, int tag, MPI_Comm comm);
+    template <class T> Message Arecv(T*, size_t n, int pid, int tag, MPI_Comm comm, bool use_acx = false);
     template <class T> Message Arecv(std::vector<T>& buf, int pid, int tag);
 
     template <class T> Message Send(const T* buf, size_t n, int dst_pid, int tag);
-    template <class T> Message Send(const T* buf, size_t n, int dst_pid, int tag, MPI_Comm comm);
+    template <class T> Message Send(const T* buf, size_t n, int dst_pid, int tag, MPI_Comm comm, bool use_acx = false);
     template <class T> Message Send(const std::vector<T>& buf, int dst_pid, int tag);
 
     template <class T> Message Recv(T*, size_t n, int pid, int tag);
@@ -680,7 +686,7 @@ ParallelDescriptor::Asend (const T* buf, size_t n, int dst_pid, int tag)
 namespace ParallelDescriptor {  // Have to use namespace here to work around a gcc bug
 template <>
 Message
-Asend<char> (const char* buf, size_t n, int dst_pid, int tag, MPI_Comm comm);
+Asend<char> (const char* buf, size_t n, int dst_pid, int tag, MPI_Comm comm, bool use_acx);
 
 template <class T>
 Message
@@ -769,7 +775,7 @@ ParallelDescriptor::Arecv (T* buf, size_t n, int src_pid, int tag)
 namespace ParallelDescriptor {  // Have to use namespace here to work around a gcc bug
 template <>
 Message
-Arecv<char> (char* buf, size_t n, int src_pid, int tag, MPI_Comm comm);
+Arecv<char> (char* buf, size_t n, int src_pid, int tag, MPI_Comm comm, bool use_acx);
 
 template <class T>
 Message
