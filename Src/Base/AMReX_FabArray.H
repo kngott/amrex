@@ -167,7 +167,7 @@ struct FBData {
     Vector<char*>       send_data;
     Vector<MPI_Request> send_reqs;
     int                 tag;
-
+    bool                async = false;
 };
 
 // Data used in non-blocking parallel copy.
@@ -1361,7 +1361,7 @@ public:
                           int                        SeqNum);
 #endif
 
-    std::unique_ptr<FBData<FAB>> fbd;
+    std::queue<std::unique_ptr<FBData<FAB>>> fbdq;
     std::unique_ptr<PCData<FAB>> pcd;
 
     // Pointer to temporary fab used in non-blocking amrex::OverrideSync

@@ -8,7 +8,8 @@ void
 FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
                             const Periodicity& period, bool cross,
                             bool enforce_periodicity_only,
-                            bool override_sync)
+                            bool override_sync,
+                            bool async)
 {
     BL_PROFILE_SYNC_START_TIMED("SyncBeforeComms: FB");
     BL_PROFILE("FillBoundary_nowait()");
@@ -75,11 +76,16 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
         return;
     }
 
-    fbd = std::make_unique<FBData<FAB>>();
+    // NEED TO MOVE ABOVE THIS, AND CHECK FOR ABOVE CONDITION IN FINISH.
+    // BE SURE TO DELETE AND REMOVE THE DATA OBJECT.
+    // CHECK 1 PROC IN FINISH? SAME LOGIC HERE AS THERE, ESSENTIALLY.
+    fbdq.emplace();
+    auto fbd = fbdq.back();
     fbd->fb    = &TheFB;
     fbd->scomp = scomp;
     fbd->ncomp = ncomp;
     fbd->tag   = SeqNum;
+    fbd->async = async;
 
     //
     // Post rcvs. Allocate one chunk of space to hold'm all.
@@ -174,6 +180,7 @@ FabArray<FAB>::FillBoundary_finish ()
 
     if (!fbd) { n_filled = IntVect::TheZeroVector(); return; }
 
+    auto fbd = fbdq.front();
     const FB* TheFB = fbd->fb;
     const int N_rcvs = TheFB->m_RcvTags->size();
     if (N_rcvs > 0)
@@ -228,8 +235,18 @@ FabArray<FAB>::FillBoundary_finish ()
 
         if (fbd->the_recv_data)
         {
-            amrex::The_FA_Arena()->free(fbd->the_recv_data);
-            fbd->the_recv_data = nullptr;
+#ifdef USE_MPIACX
+            if (async) {
+                // Want it to immediately destruct and add the callback function to the stream here.
+                // If this throws a compiler error or warning, just name the Elixir.
+                Elixir(static_cast<void*>(fbd->the_recv_data), amrex::The_FA_Arena());
+            } else
+#else
+            {
+                amrex::The_FA_Arena()->free(fbd->the_recv_data);
+                fbd->the_recv_data = nullptr;
+            }
+#endif
         }
     }
 
@@ -237,11 +254,25 @@ FabArray<FAB>::FillBoundary_finish ()
     if (N_snds > 0) {
         Vector<MPI_Status> stats(fbd->send_reqs.size());
         ParallelDescriptor::Waitall(fbd->send_reqs, stats);
-        amrex::The_FA_Arena()->free(fbd->the_send_data);
-        fbd->the_send_data = nullptr;
+#ifdef USE_MPIACX
+        if (async) {
+            Elixir(static_cast<void*>(fbd->the_send_data), amrex::The_FA_Arena());
+        } else
+#else
+        {
+            amrex::The_FA_Arena()->free(fbd->the_send_data);
+            fbd->the_send_data = nullptr;
+        }
+#endif
     }
 
+#ifdef USE_MPIACX
+    // CUDA HOST FUNC TO DO THE BELOW.
+#else
+    // Order?
     fbd.reset();
+    fbdq.pop();
+#endif
 
 #endif
 }
