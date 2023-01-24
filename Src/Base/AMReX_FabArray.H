@@ -47,6 +47,7 @@
 #include <algorithm>
 #include <set>
 #include <string>
+#include <queue>
 
 namespace amrex {
 
@@ -1120,7 +1121,8 @@ public:
     void FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
                       const Periodicity& period, bool cross,
                       bool enforce_periodicity_only = false,
-                      bool override_sync = false);
+                      bool override_sync = false,
+                      bool async = false);
 
     void FB_local_copy_cpu (const FB& TheFB, int scomp, int ncomp);
     void PC_local_cpu (const CPC& thecpc, FabArray<FAB> const& src,

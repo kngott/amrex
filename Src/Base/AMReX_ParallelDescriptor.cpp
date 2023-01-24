@@ -7,6 +7,7 @@
 #include <AMReX_Print.H>
 #include <AMReX_TypeTraits.H>
 #include <AMReX_Arena.H>
+#include <AMReX_Gpu.H>
 
 #ifdef BL_USE_MPI
 #include <AMReX_ccse-mpi.H>
@@ -1642,12 +1643,12 @@ Asend<char> (const char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool us
         }
 #ifdef USE_MPIACX
         if (use_acx) {
-            BL_MPI_REQUIRE( MPI_Isend_enqueue(const_cast<unsigned long long*>
-                                                 (reinterpret_cast<unsigned long long const*>(buf)),
-                                              n/sizeof(unsigned long long),
-                                              Mpi_typemap<unsigned long long>::type(),
-                                              pid, tag, comm, &xreq,
-                                              MPIX_QUEUE_CUDA_STREAM, &stream) );
+            BL_MPI_REQUIRE( MPIX_Isend_enqueue(const_cast<unsigned long long*>
+                                                  (reinterpret_cast<unsigned long long const*>(buf)),
+                                               n/sizeof(unsigned long long),
+                                               Mpi_typemap<unsigned long long>::type(),
+                                               pid, tag, comm, &xreq,
+                                               MPIX_QUEUE_CUDA_STREAM, &stream) );
             msg = Message(xreq, Mpi_typemap<unsigned long long>::type());
         } else
 #endif
@@ -1666,12 +1667,12 @@ Asend<char> (const char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool us
         }
 #ifdef USE_MPIACX
         if (use_acx) {
-            BL_MPI_REQUIRE( MPI_Isend_enqueue(const_cast<ParallelDescriptor::lull_t*>
-                                                 (reinterpret_cast<ParallelDescriptor::lull_t const*>(buf)),
-                                              n/sizeof(ParallelDescriptor::lull_t),
-                                              Mpi_typemap<ParallelDescriptor::lull_t>::type(),
-                                              pid, tag, comm, &xreq,
-                                              MPIX_QUEUE_CUDA_STREAM, &stream) );
+            BL_MPI_REQUIRE( MPIX_Isend_enqueue(const_cast<ParallelDescriptor::lull_t*>
+                                                  (reinterpret_cast<ParallelDescriptor::lull_t const*>(buf)),
+                                               n/sizeof(ParallelDescriptor::lull_t),
+                                               Mpi_typemap<ParallelDescriptor::lull_t>::type(),
+                                               pid, tag, comm, &xreq,
+                                               MPIX_QUEUE_CUDA_STREAM, &stream) );
             msg = Message(xreq, Mpi_typemap<ParallelDescriptor::lull_t>::type());
         } else
 #endif
@@ -1751,11 +1752,11 @@ Arecv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool use_acx)
     if (comm_data_type == 1) {
 #ifdef USE_MPIACX
         if (use_acx) {
-            BL_MPI_REQUIRE( MPI_Irecv_enqueue(buf,
-                                              n,
-                                              Mpi_typemap<char>::type(),
-                                              pid, tag, comm, &xreq,
-                                              MPIX_QUEUE_CUDA_STREAM, &stream) );
+            BL_MPI_REQUIRE( MPIX_Irecv_enqueue(buf,
+                                               n,
+                                               Mpi_typemap<char>::type(),
+                                               pid, tag, comm, &xreq,
+                                               MPIX_QUEUE_CUDA_STREAM, &stream) );
             msg = Message(xreq, Mpi_typemap<char>::type());
         } else
 #endif
@@ -1774,11 +1775,11 @@ Arecv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool use_acx)
 #ifdef USE_MPIACX
         if (use_acx)
         {
-            BL_MPI_REQUIRE( MPI_Irecv_enqueue((unsigned long long *)buf,
-                                              n/sizeof(unsigned long long),
-                                              Mpi_typemap<unsigned long long>::type(),
-                                              pid, tag, comm, &xreq,
-                                              MPIX_QUEUE_CUDA_STREAM, &stream) );
+            BL_MPI_REQUIRE( MPIX_Irecv_enqueue((unsigned long long *)buf,
+                                               n/sizeof(unsigned long long),
+                                               Mpi_typemap<unsigned long long>::type(),
+                                               pid, tag, comm, &xreq,
+                                               MPIX_QUEUE_CUDA_STREAM, &stream) );
             msg = Message(xreq, Mpi_typemap<unsigned long long>::type());
         } else
 #endif
@@ -1798,11 +1799,11 @@ Arecv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool use_acx)
 #ifdef USE_MPIACX
         if (use_acx)
         {
-            BL_MPI_REQUIRE( MPI_Irecv_enqueue((ParallelDescriptor::lull_t *)buf,
-                                              n/sizeof(ParallelDescriptor::lull_t),
-                                              Mpi_typemap<ParallelDescriptor::lull_t>::type(),
-                                              pid, tag, comm, &xreq,
-                                              MPIX_QUEUE_CUDA_STREAM, &stream) );
+            BL_MPI_REQUIRE( MPIX_Irecv_enqueue((ParallelDescriptor::lull_t *)buf,
+                                               n/sizeof(ParallelDescriptor::lull_t),
+                                               Mpi_typemap<ParallelDescriptor::lull_t>::type(),
+                                               pid, tag, comm, &xreq,
+                                               MPIX_QUEUE_CUDA_STREAM, &stream) );
             msg = Message(xreq, Mpi_typemap<ParallelDescriptor::lull_t>::type());
         } else
 #endif

@@ -607,7 +607,7 @@ while ( false )
     inline int SeqNum () noexcept { return ParallelContext::get_inc_mpi_tag(); }
 
     template <class T> Message Asend(const T*, size_t n, int pid, int tag);
-    template <class T> Message Asend(const T*, size_t n, int pid, int tag, MPI_Comm comm);
+    template <class T> Message Asend(const T*, size_t n, int pid, int tag, MPI_Comm comm, bool use_acx = false);
     template <class T> Message Asend(const std::vector<T>& buf, int pid, int tag);
 
     template <class T> Message Arecv(T*, size_t n, int pid, int tag);
@@ -615,7 +615,7 @@ while ( false )
     template <class T> Message Arecv(std::vector<T>& buf, int pid, int tag);
 
     template <class T> Message Send(const T* buf, size_t n, int dst_pid, int tag);
-    template <class T> Message Send(const T* buf, size_t n, int dst_pid, int tag, MPI_Comm comm, bool use_acx = false);
+    template <class T> Message Send(const T* buf, size_t n, int dst_pid, int tag, MPI_Comm comm);
     template <class T> Message Send(const std::vector<T>& buf, int dst_pid, int tag);
 
     template <class T> Message Recv(T*, size_t n, int pid, int tag);
@@ -690,7 +690,7 @@ Asend<char> (const char* buf, size_t n, int dst_pid, int tag, MPI_Comm comm, boo
 
 template <class T>
 Message
-Asend (const T* buf, size_t n, int dst_pid, int tag, MPI_Comm comm)
+Asend (const T* buf, size_t n, int dst_pid, int tag, MPI_Comm comm, bool use_acx)
 {
     static_assert(!std::is_same<char,T>::value, "Asend: char version has been specialized");
 
@@ -779,7 +779,7 @@ Arecv<char> (char* buf, size_t n, int src_pid, int tag, MPI_Comm comm, bool use_
 
 template <class T>
 Message
-Arecv (T* buf, size_t n, int src_pid, int tag, MPI_Comm comm)
+Arecv (T* buf, size_t n, int src_pid, int tag, MPI_Comm comm, bool /*use_acx*/)
 {
     static_assert(!std::is_same<char,T>::value, "Arecv: char version has been specialized");
 

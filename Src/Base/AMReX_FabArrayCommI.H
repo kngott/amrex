@@ -80,7 +80,7 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
     // BE SURE TO DELETE AND REMOVE THE DATA OBJECT.
     // CHECK 1 PROC IN FINISH? SAME LOGIC HERE AS THERE, ESSENTIALLY.
     fbdq.emplace();
-    auto fbd = fbdq.back();
+    std::unique_ptr<FBData<FAB>>& fbd = fbdq.back();
     fbd->fb    = &TheFB;
     fbd->scomp = scomp;
     fbd->ncomp = ncomp;
@@ -178,11 +178,14 @@ FabArray<FAB>::FillBoundary_finish ()
     BL_PROFILE("FillBoundary_finish()");
     BL_PROFILE_SYNC_STOP();
 
+    std::unique_ptr<FBData<FAB>>& fbd = fbdq.front();
+
     if (!fbd) { n_filled = IntVect::TheZeroVector(); return; }
 
-    auto fbd = fbdq.front();
     const FB* TheFB = fbd->fb;
     const int N_rcvs = TheFB->m_RcvTags->size();
+    bool async = fbd->async;
+
     if (N_rcvs > 0)
     {
         Vector<const CopyComTagsContainer*> recv_cctc(N_rcvs,nullptr);
@@ -238,15 +241,13 @@ FabArray<FAB>::FillBoundary_finish ()
 #ifdef USE_MPIACX
             if (async) {
                 // Want it to immediately destruct and add the callback function to the stream here.
-                // If this throws a compiler error or warning, just name the Elixir.
-                Elixir(static_cast<void*>(fbd->the_recv_data), amrex::The_FA_Arena());
+                Elixir free_recv(static_cast<void*>(fbd->the_recv_data), amrex::The_FA_Arena());
             } else
-#else
+#endif
             {
                 amrex::The_FA_Arena()->free(fbd->the_recv_data);
                 fbd->the_recv_data = nullptr;
             }
-#endif
         }
     }
 
@@ -256,14 +257,13 @@ FabArray<FAB>::FillBoundary_finish ()
         ParallelDescriptor::Waitall(fbd->send_reqs, stats);
 #ifdef USE_MPIACX
         if (async) {
-            Elixir(static_cast<void*>(fbd->the_send_data), amrex::The_FA_Arena());
+            Elixir free_send(static_cast<void*>(fbd->the_send_data), amrex::The_FA_Arena());
         } else
-#else
+#endif
         {
             amrex::The_FA_Arena()->free(fbd->the_send_data);
             fbd->the_send_data = nullptr;
         }
-#endif
     }
 
 #ifdef USE_MPIACX
@@ -864,7 +864,7 @@ FabArray<FAB>::FillBoundary_test ()
     // We only test if no DEBUG because in DEBUG we check the status later.
     // If Test is done here, the status check will fail.
     int flag;
-    ParallelDescriptor::Test(fbd->recv_reqs, flag, fbd->recv_stat);
+    ParallelDescriptor::Test(fbdq.back()->recv_reqs, flag, fbdq.back()->recv_stat);
 #endif
 }
 
