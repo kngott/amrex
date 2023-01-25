@@ -148,9 +148,9 @@ tagparfor_call_f (
 
 template <class TagType, class F>
 void
-ParallelFor_doit (Vector<TagType> const& tags, F && f, bool sync = true)
+ParallelFor_doit (Vector<TagType> const& tags, F && f, bool async = false)
 {
-    amrex::ignore_unused(sync);
+    amrex::ignore_unused(async);
 
     const int ntags = tags.size();
     if (ntags == 0) return;
@@ -220,7 +220,7 @@ ParallelFor_doit (Vector<TagType> const& tags, F && f, bool sync = true)
     });
 
 #ifdef AMREX_USE_CUDA
-    if (!sync) {
+    if (async) {
         char** p = static_cast<char**>(std::malloc(2*sizeof(char*)));
         p[0] = d_buffer;
         p[1] = h_buffer;
