@@ -642,6 +642,7 @@ while ( false )
 
     void Wait     (MPI_Request& req, MPI_Status& status);
     void Waitall  (Vector<MPI_Request>& reqs, Vector<MPI_Status>& status);
+    void Waitall  (Vector<MPIX_Request>& reqs, Vector<MPI_Status>& status);
     void Waitany  (Vector<MPI_Request>& reqs, int &index, MPI_Status& status);
     void Waitsome (Vector<MPI_Request>&, int&, Vector<int>&, Vector<MPI_Status>&);
 

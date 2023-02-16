@@ -1052,6 +1052,21 @@ Waitall (Vector<MPI_Request>& reqs, Vector<MPI_Status>& status)
 }
 
 void
+Waitall (Vector<MPIX_Request>& reqs, Vector<MPI_Status>& status)
+{
+    BL_ASSERT(status.size() >= reqs.size());
+
+    auto stream = Gpu::gpuStream();
+
+    MPIX_Waitall_enqueue(reqs.size(),
+                         reqs.dataPtr(),
+                         status.dataPtr(),
+                         MPIX_QUEUE_CUDA_STREAM,
+                         &stream);
+}
+
+
+void
 Waitany (Vector<MPI_Request>& reqs, int &index, MPI_Status& status)
 {
     BL_PROFILE_S("ParallelDescriptor::Waitany()");
