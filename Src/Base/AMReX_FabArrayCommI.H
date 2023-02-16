@@ -2,6 +2,45 @@
 #include <AMReX_FBI.H>
 #include <AMReX_PCI.H>
 
+#if defined(AMREX_USE_GPU) && !defined(AMREX_USE_DPCPP)
+
+template <class FAB>
+#if defined(AMREX_USE_HIP)
+void amrex_fbdata_delete ( hipStream_t /*stream*/,  hipError_t /*error*/, void* p)
+#elif defined(AMREX_USE_CUDA)
+void CUDART_CB amrex_fbdata_delete (void* p)
+#endif
+{
+//    amrex::Print() << "Delete" << std::endl;
+
+    amrex::FabArray<FAB>* fab = reinterpret_cast<amrex::FabArray<FAB>*>(p);
+    fab->delete_fbd();
+
+//    amrex::Print() << "Delete done" << std::endl;
+}
+
+template <class FAB>
+#if defined(AMREX_USE_HIP)
+void amrex_checkrecvs ( hipStream_t /*stream*/,  hipError_t /*error*/, void* p)
+#elif defined(AMREX_USE_CUDA)
+void CUDART_CB amrex_checkrcvstats (void* p)
+#endif
+{
+//    amrex::Print() << "Check Rcvs" << std::endl;
+
+    auto fbd = reinterpret_cast<std::unique_ptr<FBData<FAB>>*>(p);
+
+    if (!CheckRcvStats((*fbd)->recv_stat, (*fbd)->recv_size, (*fbd)->tag))
+    {
+        amrex::Abort("FillBoundary_finish failed with wrong message size");
+    }
+//    amrex::Print() << "Check Rcvs done" << std::endl;
+
+}
+
+
+#endif
+
 template <class FAB>
 template <typename BUF, class F, typename std::enable_if<IsBaseFab<F>::value,int>::type Z>
 void
@@ -14,8 +53,16 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
     BL_PROFILE_SYNC_START_TIMED("SyncBeforeComms: FB");
     BL_PROFILE("FillBoundary_nowait()");
 
-    AMREX_ASSERT_WITH_MESSAGE(!fbd, "FillBoundary_nowait() called when comm operation already in progress.");
     AMREX_ASSERT(!enforce_periodicity_only || !override_sync);
+
+#ifndef USE_MPIACX
+    async = false;
+#endif
+
+//    amrex::Print() << "A" << std::endl;
+
+    // If no work is done, fbdq.front()->TheFB = nullptr
+    std::unique_ptr<FBData<FAB>>& fbd = new_fbd(); 
 
     bool work_to_do;
     if (enforce_periodicity_only) {
@@ -47,7 +94,7 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
             else
 #endif
             {
-                FB_local_copy_gpu(TheFB, scomp, ncomp);
+                FB_local_copy_gpu(TheFB, scomp, ncomp, async);
             }
         }
         else
@@ -76,27 +123,45 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
         return;
     }
 
-    // NEED TO MOVE ABOVE THIS, AND CHECK FOR ABOVE CONDITION IN FINISH.
-    // BE SURE TO DELETE AND REMOVE THE DATA OBJECT.
-    // CHECK 1 PROC IN FINISH? SAME LOGIC HERE AS THERE, ESSENTIALLY.
-    fbdq.emplace();
-    std::unique_ptr<FBData<FAB>>& fbd = fbdq.back();
+//    amrex::Print() << "B" << std::endl;
+
+//    std::unique_ptr<FBData<FAB>>& fbd = fbdq.back();
     fbd->fb    = &TheFB;
     fbd->scomp = scomp;
     fbd->ncomp = ncomp;
     fbd->tag   = SeqNum;
     fbd->async = async;
 
+//    amrex::Print() << "tag_nowait = " << fbd->tag << std::endl;
+
     //
     // Post rcvs. Allocate one chunk of space to hold'm all.
     //
 
+    Vector<MPI_Request>&  recv_reqs = fbd->recv_reqs;
+#ifdef USE_MPIACX
+    Vector<MPIX_Request>& recv_xreqs = fbd->recv_xreqs;
+#endif
+
+//    amrex::Print() << "C" << std::endl;
+
     if (N_rcvs > 0) {
-        PostRcvs<BUF>(*TheFB.m_RcvTags, fbd->the_recv_data,
-                      fbd->recv_data, fbd->recv_size, fbd->recv_from, fbd->recv_reqs,
-                      ncomp, SeqNum);
+#ifdef USE_MPIACX
+        if (async) {
+            PostRcvs<BUF>(*TheFB.m_RcvTags, fbd->the_recv_data,
+                          fbd->recv_data, fbd->recv_size, fbd->recv_from, fbd->recv_xreqs,
+                          ncomp, SeqNum, async);
+        } else
+#endif
+        {
+            PostRcvs<BUF>(*TheFB.m_RcvTags, fbd->the_recv_data,
+                          fbd->recv_data, fbd->recv_size, fbd->recv_from, fbd->recv_reqs,
+                          ncomp, SeqNum, async);
+        }
         fbd->recv_stat.resize(N_rcvs);
     }
+
+//    amrex::Print() << "D" << std::endl;
 
     //
     // Post send's
@@ -106,12 +171,23 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
     Vector<std::size_t>                 send_size;
     Vector<int>                         send_rank;
     Vector<MPI_Request>&                send_reqs = fbd->send_reqs;
+#ifdef USE_MPIACX
+    Vector<MPIX_Request>&               send_xreqs = fbd->send_xreqs;
+#endif
     Vector<const CopyComTagsContainer*> send_cctc;
 
     if (N_snds > 0)
     {
-        PrepareSendBuffers<BUF>(*TheFB.m_SndTags, the_send_data, send_data, send_size, send_rank,
-                           send_reqs, send_cctc, ncomp);
+#ifdef USE_MPIACX
+        if (async) {
+            PrepareSendBuffers<BUF>(*TheFB.m_SndTags, the_send_data, send_data, send_size, send_rank,
+                               send_xreqs, send_cctc, ncomp);
+        } else
+#endif
+        {
+            PrepareSendBuffers<BUF>(*TheFB.m_SndTags, the_send_data, send_data, send_size, send_rank,
+                               send_reqs, send_cctc, ncomp);
+        }
 
 #ifdef AMREX_USE_GPU
         if (Gpu::inLaunchRegion())
@@ -123,7 +199,7 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
             else
 #endif
             {
-                pack_send_buffer_gpu<BUF>(*this, scomp, ncomp, send_data, send_size, send_cctc);
+                pack_send_buffer_gpu<BUF>(*this, scomp, ncomp, send_data, send_size, send_cctc, async);
             }
         }
         else
@@ -132,11 +208,23 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
             pack_send_buffer_cpu<BUF>(*this, scomp, ncomp, send_data, send_size, send_cctc);
         }
 
-        AMREX_ASSERT(send_reqs.size() == N_snds);
-        PostSnds(send_data, send_size, send_rank, send_reqs, SeqNum);
+#ifdef USE_MPIACX
+        if (async) {
+            AMREX_ASSERT(send_xreqs.size() == N_snds);
+            PostSnds(send_data, send_size, send_rank, send_xreqs, SeqNum);
+        } else
+#endif
+        {
+            AMREX_ASSERT(send_reqs.size() == N_snds);
+            PostSnds(send_data, send_size, send_rank, send_reqs, SeqNum);
+        }
     }
 
+//    amrex::Print() << "E" << std::endl;
+
     FillBoundary_test();
+
+//    amrex::Print() << "E" << std::endl;
 
     //
     // Do the local work.  Hope for a bit of communication/computation overlap.
@@ -153,7 +241,7 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
             else
 #endif
             {
-                FB_local_copy_gpu(TheFB, scomp, ncomp);
+                FB_local_copy_gpu(TheFB, scomp, ncomp, async);
             }
         }
         else
@@ -165,6 +253,8 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
         FillBoundary_test();
     }
 
+//    amrex::Print() << "F" << std::endl;
+
 #endif /*BL_USE_MPI*/
 }
 
@@ -173,16 +263,24 @@ template <typename BUF, class F, typename std::enable_if<IsBaseFab<F>::value,int
 void
 FabArray<FAB>::FillBoundary_finish ()
 {
+    std::unique_ptr<FBData<FAB>>& fbd = lookup_fbd();
+    const FB* TheFB = fbd->fb;
+
+//    amrex::Print() << "tag_finish = " << fbd->tag << std::endl;
+
+//    amrex::Print() << "G" << std::endl;
+
+    if (!TheFB) {
+        n_filled = IntVect::TheZeroVector();
+        fbd.reset();
+        fbdq.pop_front();
+        return;
+    }
+
 #ifdef AMREX_USE_MPI
 
     BL_PROFILE("FillBoundary_finish()");
     BL_PROFILE_SYNC_STOP();
-
-    std::unique_ptr<FBData<FAB>>& fbd = fbdq.front();
-
-    if (!fbd) { n_filled = IntVect::TheZeroVector(); return; }
-
-    const FB* TheFB = fbd->fb;
     const int N_rcvs = TheFB->m_RcvTags->size();
     bool async = fbd->async;
 
@@ -200,15 +298,29 @@ FabArray<FAB>::FillBoundary_finish ()
 
         int actual_n_rcvs = N_rcvs - std::count(fbd->recv_data.begin(), fbd->recv_data.end(), nullptr);
 
+//        amrex::Print() << "H" << std::endl;
+
         if (actual_n_rcvs > 0) {
-            ParallelDescriptor::Waitall(fbd->recv_reqs, fbd->recv_stat);
+#ifdef USE_MPIACX
+            if (async) {
+                ParallelDescriptor::Waitall(fbd->recv_xreqs, fbd->recv_stat);
 #ifdef AMREX_DEBUG
-            if (!CheckRcvStats(fbd->recv_stat, fbd->recv_size, fbd->tag))
-            {
-                amrex::Abort("FillBoundary_finish failed with wrong message size");
-            }
+                AMREX_CUDA_SAFE_CALL( cudaLaunchHostFunc(Gpu::gpuStream(), amrex_checkrcvstats<FAB>, &fbd) );
 #endif
-        }
+            } else
+#endif
+            {
+                ParallelDescriptor::Waitall(fbd->recv_reqs, fbd->recv_stat);
+#ifdef AMREX_DEBUG
+                if (!CheckRcvStats(fbd->recv_stat, fbd->recv_size, fbd->tag))
+                {
+                    amrex::Abort("FillBoundary_finish failed with wrong message size");
+                }
+#endif
+            }
+
+//            amrex::Print() << "I" << std::endl;
+       }
 
         bool is_thread_safe = TheFB->m_threadsafe_rcv;
 
@@ -226,7 +338,7 @@ FabArray<FAB>::FillBoundary_finish ()
 #endif
             {
                 unpack_recv_buffer_gpu<BUF>(*this, fbd->scomp, fbd->ncomp, fbd->recv_data, fbd->recv_size,
-                                            recv_cctc, FabArrayBase::COPY, is_thread_safe);
+                                            recv_cctc, FabArrayBase::COPY, is_thread_safe, async);
             }
         }
         else
@@ -236,11 +348,13 @@ FabArray<FAB>::FillBoundary_finish ()
                                         recv_cctc, FabArrayBase::COPY, is_thread_safe);
         }
 
+//        amrex::Print() << "J" << std::endl;
+
         if (fbd->the_recv_data)
         {
 #ifdef USE_MPIACX
             if (async) {
-                // Want it to immediately destruct and add the callback function to the stream here.
+                // Want it to immediately add the cleanup function to the stream here.
                 Elixir free_recv(static_cast<void*>(fbd->the_recv_data), amrex::The_FA_Arena());
             } else
 #endif
@@ -249,30 +363,38 @@ FabArray<FAB>::FillBoundary_finish ()
                 fbd->the_recv_data = nullptr;
             }
         }
+
+//        amrex::Print() << "K" << std::endl;
     }
 
     const int N_snds = TheFB->m_SndTags->size();
     if (N_snds > 0) {
-        Vector<MPI_Status> stats(fbd->send_reqs.size());
-        ParallelDescriptor::Waitall(fbd->send_reqs, stats);
 #ifdef USE_MPIACX
         if (async) {
+            Vector<MPI_Status> stats(fbd->send_xreqs.size());
+            ParallelDescriptor::Waitall(fbd->send_xreqs, stats);
             Elixir free_send(static_cast<void*>(fbd->the_send_data), amrex::The_FA_Arena());
         } else
 #endif
         {
+            Vector<MPI_Status> stats(fbd->send_reqs.size());
+            ParallelDescriptor::Waitall(fbd->send_reqs, stats);
             amrex::The_FA_Arena()->free(fbd->the_send_data);
             fbd->the_send_data = nullptr;
         }
     }
 
+//    amrex::Print() << "L" << std::endl;
+
 #ifdef USE_MPIACX
-    // CUDA HOST FUNC TO DO THE BELOW.
-#else
-    // Order?
-    fbd.reset();
-    fbdq.pop();
+    if (async) {
+         AMREX_CUDA_SAFE_CALL( cudaLaunchHostFunc(Gpu::gpuStream(), amrex_fbdata_delete<FAB>, this) );
+    } else
 #endif
+    {
+        delete_fbd();
+    }
+//    amrex::Print() << "M" << std::endl;
 
 #endif
 }
@@ -644,13 +766,13 @@ FabArray<FAB>::copyTo (FAB& dest, int scomp, int dcomp, int ncomp, int nghost) c
 
 #ifdef BL_USE_MPI
 template <class FAB>
-template <typename BUF>
+template <typename BUF, class REQ>
 AMREX_NODISCARD TheFaArenaPointer
 FabArray<FAB>::PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
                                    Vector<char*>&                       send_data,
                                    Vector<std::size_t>&                 send_size,
                                    Vector<int>&                         send_rank,
-                                   Vector<MPI_Request>&                 send_reqs,
+                                   Vector<REQ>&                         send_reqs,
                                    Vector<const CopyComTagsContainer*>& send_cctc,
                                    int                                  ncomp) const
 {
@@ -660,14 +782,14 @@ FabArray<FAB>::PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
 }
 
 template <class FAB>
-template <typename BUF>
+template <typename BUF, class REQ>
 void
 FabArray<FAB>::PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
                                    char*&                               the_send_data,
                                    Vector<char*>&                       send_data,
                                    Vector<std::size_t>&                 send_size,
                                    Vector<int>&                         send_rank,
-                                   Vector<MPI_Request>&                 send_reqs,
+                                   Vector<REQ>&                         send_reqs,
                                    Vector<const CopyComTagsContainer*>& send_cctc,
                                    int                                  ncomp) const
 {
@@ -709,7 +831,7 @@ FabArray<FAB>::PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
         send_data.push_back(nullptr);
         send_size.push_back(nbytes);
         send_rank.push_back(kv.first);
-        send_reqs.push_back(MPI_REQUEST_NULL);
+        send_reqs.push_back(0);
         send_cctc.push_back(&cctc);
     }
 
@@ -746,6 +868,28 @@ FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
 }
 
 template <class FAB>
+void
+FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
+                         Vector<std::size_t> const& send_size,
+                         Vector<int> const&         send_rank,
+                         Vector<MPIX_Request>&      send_reqs,
+                         int                        SeqNum)
+{
+    MPI_Comm comm = ParallelContext::CommunicatorSub();
+
+    const int N_snds = send_reqs.size();
+    for (int j = 0; j < N_snds; ++j)
+    {
+        if (send_size[j] > 0) {
+            const int rank = ParallelContext::global_to_local_rank(send_rank[j]);
+            send_reqs[j] = ParallelDescriptor::Asend
+                (send_data[j], send_size[j], rank, SeqNum, comm, true).xreq();
+        }
+    }
+}
+
+
+template <class FAB>
 template <typename BUF>
 TheFaArenaPointer FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&       RcvTags,
                    Vector<char*>&                         recv_data,
@@ -753,10 +897,27 @@ TheFaArenaPointer FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&     
                    Vector<int>&                           recv_from,
                    Vector<MPI_Request>&                   recv_reqs,
                    int                                    ncomp,
-                   int                                    SeqNum) const
+                   int                                    SeqNum,
+                   bool                                   async) const
 {
     char* pointer = nullptr;
-    PostRcvs(RcvTags, pointer, recv_data, recv_size, recv_from, recv_reqs, ncomp, SeqNum);
+    PostRcvs(RcvTags, pointer, recv_data, recv_size, recv_from, recv_reqs, ncomp, SeqNum, async);
+    return TheFaArenaPointer(pointer);
+}
+
+template <class FAB>
+template <typename BUF>
+TheFaArenaPointer FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&       RcvTags,
+                   Vector<char*>&                         recv_data,
+                   Vector<std::size_t>&                   recv_size,
+                   Vector<int>&                           recv_from,
+                   Vector<MPIX_Request>&                  recv_reqs,
+                   int                                    ncomp,
+                   int                                    SeqNum,
+                   bool                                   async) const
+{
+    char* pointer = nullptr;
+    PostRcvs(RcvTags, pointer, recv_data, recv_size, recv_from, recv_reqs, ncomp, SeqNum, async);
     return TheFaArenaPointer(pointer);
 }
 
@@ -770,7 +931,8 @@ FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&  RcvTags,
                          Vector<int>&                      recv_from,
                          Vector<MPI_Request>&              recv_reqs,
                          int                               ncomp,
-                         int                               SeqNum) const
+                         int                               SeqNum,
+                         bool                              async) const
 {
     recv_data.clear();
     recv_size.clear();
@@ -779,6 +941,7 @@ FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&  RcvTags,
 
     Vector<std::size_t> offset;
     std::size_t TotalRcvsVolume = 0;
+
     for (const auto& kv : RcvTags) // loop over senders
     {
         std::size_t nbytes = 0;
@@ -822,11 +985,86 @@ FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&  RcvTags,
             {
                 const int rank = ParallelContext::global_to_local_rank(recv_from[i]);
                 recv_reqs[i] = ParallelDescriptor::Arecv
-                    (recv_data[i], recv_size[i], rank, SeqNum, comm).req();
+                    (recv_data[i], recv_size[i], rank, SeqNum, comm, async).req();
             }
         }
     }
 }
+
+template <class FAB>
+template <typename BUF>
+void
+FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&  RcvTags,
+                         char*&                            the_recv_data,
+                         Vector<char*>&                    recv_data,
+                         Vector<std::size_t>&              recv_size,
+                         Vector<int>&                      recv_from,
+                         Vector<MPIX_Request>&             recv_reqs,
+                         int                               ncomp,
+                         int                               SeqNum,
+                         bool                              async) const
+{
+    recv_data.clear();
+    recv_size.clear();
+    recv_from.clear();
+    recv_reqs.clear();
+
+    Vector<std::size_t> offset;
+    std::size_t TotalRcvsVolume = 0;
+
+    for (const auto& kv : RcvTags) // loop over senders
+    {
+        std::size_t nbytes = 0;
+        for (auto const& cct : kv.second)
+        {
+            nbytes += cct.dbox.numPts() * ncomp * sizeof(BUF);
+        }
+
+        std::size_t acd = ParallelDescriptor::alignof_comm_data(nbytes);
+        nbytes = amrex::aligned_size(acd, nbytes);  // so that nbytes are aligned
+
+        // Also need to align the offset properly
+        TotalRcvsVolume = amrex::aligned_size(std::max(alignof(BUF),acd),
+                                              TotalRcvsVolume);
+
+        offset.push_back(TotalRcvsVolume);
+        TotalRcvsVolume += nbytes;
+
+        recv_data.push_back(nullptr);
+        recv_size.push_back(nbytes);
+        recv_from.push_back(kv.first);
+        recv_reqs.push_back(MPIX_REQUEST_NULL);
+    }
+
+    const int nrecv = recv_from.size();
+
+    MPI_Comm comm = ParallelContext::CommunicatorSub();
+
+    if (TotalRcvsVolume == 0)
+    {
+        the_recv_data = nullptr;
+    }
+    else
+    {
+        the_recv_data = static_cast<char*>(amrex::The_FA_Arena()->alloc(TotalRcvsVolume));
+
+        for (int i = 0; i < nrecv; ++i)
+        {
+            recv_data[i] = the_recv_data + offset[i];
+            if (recv_size[i] > 0)
+            {
+                const int rank = ParallelContext::global_to_local_rank(recv_from[i]);
+                recv_reqs[i] = ParallelDescriptor::Arecv
+                    (recv_data[i], recv_size[i], rank, SeqNum, comm, async).xreq();
+            }
+        }
+    }
+}
+
+
+
+
+
 #endif
 
 template <class FAB>
