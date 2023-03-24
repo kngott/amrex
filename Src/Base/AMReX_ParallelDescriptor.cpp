@@ -1062,7 +1062,7 @@ Waitall (Vector<MPI_Request>& reqs, Vector<MPI_Status>& status)
                                 status.dataPtr()) );
     BL_COMM_PROFILE_WAITSOME(BLProfiler::Waitall, reqs, status.size(), status, false);
 }
-
+#ifdef USE_MPIACX
 void
 Waitall (Vector<MPIX_Request>& reqs, Vector<MPI_Status>& status)
 {
@@ -1076,7 +1076,7 @@ Waitall (Vector<MPIX_Request>& reqs, Vector<MPI_Status>& status)
                          MPIX_QUEUE_CUDA_STREAM,
                          &stream);
 }
-
+#endif
 
 void
 Waitany (Vector<MPI_Request>& reqs, int &index, MPI_Status& status)

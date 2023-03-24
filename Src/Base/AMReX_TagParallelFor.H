@@ -220,7 +220,7 @@ ParallelFor_doit (Vector<TagType> const& tags, F && f, bool async = false)
 #endif
     });
 
-#ifdef USE_MPIACX 
+#ifdef USE_MPIACX
     if (async) {
         char** p = static_cast<char**>(std::malloc(2*sizeof(char*)));
         p[0] = d_buffer;

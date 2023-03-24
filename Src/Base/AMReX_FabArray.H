@@ -165,12 +165,16 @@ struct FBData {
     Vector<char*>        recv_data;
     Vector<std::size_t>  recv_size;
     Vector<MPI_Request>  recv_reqs;
+#ifdef USE_MPIACX
     Vector<MPIX_Request> recv_xreqs;
+#endif
     Vector<MPI_Status>   recv_stat;
     //
     Vector<char*>        send_data;
     Vector<MPI_Request>  send_reqs;
+#ifdef USE_MPIACX
     Vector<MPIX_Request> send_xreqs;
+#endif
     int                  tag;
     bool                 async = false;
 };
@@ -1332,7 +1336,7 @@ public:
                    int                                    ncomp,
                    int                                    SeqNum,
                    bool                                   async = false) const;
-
+#ifdef USE_MPIACX
     template <typename BUF=value_type>
     void PostRcvs (const MapOfCopyComTagContainers&       RcvTags,
                    char*&                                 the_recv_data,
@@ -1343,7 +1347,7 @@ public:
                    int                                    ncomp,
                    int                                    SeqNum,
                    bool                                   async = false) const;
-
+#endif
     template <typename BUF=value_type>
     AMREX_NODISCARD TheFaArenaPointer PostRcvs (const MapOfCopyComTagContainers&       RcvTags,
                    Vector<char*>&                         recv_data,
@@ -1353,7 +1357,7 @@ public:
                    int                                    ncomp,
                    int                                    SeqNum,
                    bool                                   async = false) const;
-
+#ifdef USE_MPIACX
     template <typename BUF=value_type>
     AMREX_NODISCARD TheFaArenaPointer PostRcvs (const MapOfCopyComTagContainers&       RcvTags,
                    Vector<char*>&                         recv_data,
@@ -1363,7 +1367,7 @@ public:
                    int                                    ncomp,
                    int                                    SeqNum,
                    bool                                   async = false) const;
-
+#endif
     template <typename BUF=value_type, class REQ>
     void PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
                              char*&                               the_send_data,
@@ -1388,12 +1392,13 @@ public:
                           Vector<int> const&         send_rank,
                           Vector<MPI_Request>&       send_reqs,
                           int                        SeqNum);
-
+#ifdef USE_MPIACX
     static void PostSnds (Vector<char*> const&       send_data,
                           Vector<std::size_t> const& send_size,
                           Vector<int> const&         send_rank,
                           Vector<MPIX_Request>&      send_reqs,
                           int                        SeqNum);
+#endif
 
 #endif
 
