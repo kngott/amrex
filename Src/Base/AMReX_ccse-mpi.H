@@ -16,8 +16,7 @@
     #include <mpi-acx.h>
 #endif
 
-namespace amrex {
-namespace ParallelDescriptor
+namespace amrex::ParallelDescriptor
 {
     using lull_t = unsigned long long[8];
 
@@ -44,7 +43,6 @@ namespace ParallelDescriptor
     template <> MPI_Datatype Mpi_typemap<double>::type();
     template <> MPI_Datatype Mpi_typemap<lull_t>::type();
 }
-}
 
 #else
 
@@ -67,8 +65,7 @@ const int MPI_MAX_PROCESSOR_NAME = 64;
 const int MPI_MINLOC = 0;
 const int MPI_MAXLOC = 0;
 
-namespace amrex {
-namespace ParallelDescriptor
+namespace amrex::ParallelDescriptor
 {
     template <class T>
     //! Communication datatype (note: this structure also works without MPI)
@@ -76,7 +73,6 @@ namespace ParallelDescriptor
     {
         static MPI_Datatype type();
     };
-}
 }
 
 #endif /*BL_USE_MPI*/

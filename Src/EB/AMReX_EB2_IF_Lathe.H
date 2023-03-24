@@ -10,7 +10,7 @@
 
 // For all implicit functions, >0: body; =0: boundary; <0: fluid
 
-namespace amrex { namespace EB2 {
+namespace amrex::EB2 {
 
 template <class F>
 class LatheIF
@@ -19,11 +19,6 @@ public:
 
     LatheIF (F&& a_f) : m_f(std::move(a_f)) {}
     LatheIF (F const& a_f) : m_f(a_f) {}
-
-    LatheIF (const LatheIF& rhs) = default;
-    LatheIF (LatheIF&& rhs) = default;
-    LatheIF& operator= (const LatheIF& rhs) = delete;
-    LatheIF& operator= (LatheIF&& rhs) = delete;
 
     inline Real operator() (const RealArray& p) const noexcept
     {
@@ -63,6 +58,6 @@ lathe (F&& f)
     return LatheIF<typename std::decay<F>::type>(std::forward<F>(f));
 }
 
-}}
+}
 
 #endif

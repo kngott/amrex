@@ -9,8 +9,7 @@
 #include <AMReX_Arena.H>
 #include <cstdlib>
 
-namespace amrex {
-namespace Gpu {
+namespace amrex::Gpu {
 
 struct Managed {
 
@@ -106,8 +105,8 @@ private:
 #else
 
     DeviceScalar (T init_val) : d(init_val) {}
-    DeviceScalar () {}
-    ~DeviceScalar () {}
+    DeviceScalar () = default;
+    ~DeviceScalar () = default;
 
     T* dataPtr () { return &d; }
     T const* dataPtr () const { return &d; }
@@ -267,7 +266,7 @@ struct SharedMemory<bool>
 
 #endif
 
-}}  //namespace
+}  //namespace
 
 
 #endif

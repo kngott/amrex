@@ -9,7 +9,7 @@
 
 // For all implicit functions, >0: body; =0: boundary; <0: fluid
 
-namespace amrex { namespace EB2 {
+namespace amrex::EB2 {
 
 template <class F>
 class ScaleIF
@@ -32,11 +32,6 @@ public:
           m_sfinv{1.0_rt/a_scalefactor[0], 1.0_rt/a_scalefactor[1], 0.0_rt}
 #endif
         {}
-
-    ScaleIF (const ScaleIF& rhs) = default;
-    ScaleIF (ScaleIF&& rhs) = default;
-    ScaleIF& operator= (const ScaleIF& rhs) = delete;
-    ScaleIF& operator= (ScaleIF&& rhs) = delete;
 
     template <class U=F, typename std::enable_if<IsGPUable<U>::value,int>::type = 0>
     AMREX_GPU_HOST_DEVICE inline
@@ -71,6 +66,6 @@ scale (F&&f, const RealArray& scalefactor)
     return ScaleIF<typename std::decay<F>::type>(std::forward<F>(f),scalefactor);
 }
 
-}}
+}
 
 #endif
