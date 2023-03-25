@@ -1767,6 +1767,8 @@ Arecv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm, bool use_acx)
     BL_PROFILE_T_S("ParallelDescriptor::Arecv(TsiiM)", char);
     BL_COMM_PROFILE(BLProfiler::ArecvTsiiM, n * sizeof(char), pid, tag);
 
+    amrex::ignore_unused(use_acx);
+
 #ifdef USE_MPIACX
     MPIX_Request xreq = MPIX_REQUEST_NULL;
     auto stream = Gpu::gpuStream();
