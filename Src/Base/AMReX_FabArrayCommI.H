@@ -149,13 +149,13 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
 #ifdef USE_MPIACX
         if (async) {
             PostRcvs<BUF>(*TheFB.m_RcvTags, fbd->the_recv_data,
-                          fbd->recv_data, fbd->recv_size, fbd->recv_from, fbd->recv_xreqs,
+                          fbd->recv_data, fbd->recv_size, fbd->recv_from, recv_xreqs,
                           ncomp, SeqNum, async);
         } else
 #endif
         {
             PostRcvs<BUF>(*TheFB.m_RcvTags, fbd->the_recv_data,
-                          fbd->recv_data, fbd->recv_size, fbd->recv_from, fbd->recv_reqs,
+                          fbd->recv_data, fbd->recv_size, fbd->recv_from, recv_reqs,
                           ncomp, SeqNum, async);
         }
         fbd->recv_stat.resize(N_rcvs);
@@ -283,6 +283,7 @@ FabArray<FAB>::FillBoundary_finish ()
     BL_PROFILE_SYNC_STOP();
     const auto N_rcvs = static_cast<int>(TheFB->m_RcvTags->size());
     bool async = fbd->async;
+    amrex::ignore_unused(async);
 
     if (N_rcvs > 0)
     {
@@ -868,6 +869,7 @@ FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
     }
 }
 
+#ifdef USE_MPIACX
 template <class FAB>
 void
 FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
@@ -888,7 +890,7 @@ FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
         }
     }
 }
-
+#endif
 
 template <class FAB>
 template <typename BUF>
@@ -906,6 +908,7 @@ TheFaArenaPointer FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&     
     return TheFaArenaPointer(pointer);
 }
 
+#ifdef USE_MPIACX
 template <class FAB>
 template <typename BUF>
 TheFaArenaPointer FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&       RcvTags,
@@ -921,6 +924,7 @@ TheFaArenaPointer FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&     
     PostRcvs(RcvTags, pointer, recv_data, recv_size, recv_from, recv_reqs, ncomp, SeqNum, async);
     return TheFaArenaPointer(pointer);
 }
+#endif
 
 template <class FAB>
 template <typename BUF>
@@ -992,6 +996,7 @@ FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&  RcvTags,
     }
 }
 
+#ifdef USE_MPIACX
 template <class FAB>
 template <typename BUF>
 void
@@ -1037,7 +1042,7 @@ FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&  RcvTags,
         recv_reqs.push_back(MPIX_REQUEST_NULL);
     }
 
-    const int nrecv = recv_from.size();
+    const long nrecv = recv_from.size();
 
     MPI_Comm comm = ParallelContext::CommunicatorSub();
 
@@ -1061,10 +1066,7 @@ FabArray<FAB>::PostRcvs (const MapOfCopyComTagContainers&  RcvTags,
         }
     }
 }
-
-
-
-
+#endif
 
 #endif
 

@@ -697,7 +697,7 @@ Asend<char> (const char* buf, size_t n, int dst_pid, int tag, MPI_Comm comm, boo
 
 template <class T>
 Message
-Asend (const T* buf, size_t n, int dst_pid, int tag, MPI_Comm comm, bool use_acx)
+Asend (const T* buf, size_t n, int dst_pid, int tag, MPI_Comm comm, bool /*use_acx*/)
 {
     static_assert(!std::is_same<char,T>::value, "Asend: char version has been specialized");
 
