@@ -59,8 +59,6 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
     async = false;
 #endif
 
-//    amrex::Print() << "A" << std::endl;
-
     // If no work is done, fbdq.front()->TheFB = nullptr
     std::unique_ptr<FBData<FAB>>& fbd = new_fbd();
     amrex::ignore_unused(fbd);
@@ -125,16 +123,11 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
         return;
     }
 
-//    amrex::Print() << "B" << std::endl;
-
-//    std::unique_ptr<FBData<FAB>>& fbd = fbdq.back();
     fbd->fb    = &TheFB;
     fbd->scomp = scomp;
     fbd->ncomp = ncomp;
     fbd->tag   = SeqNum;
     fbd->async = async;
-
-//    amrex::Print() << "tag_nowait = " << fbd->tag << std::endl;
 
     //
     // Post rcvs. Allocate one chunk of space to hold'm all.
@@ -144,8 +137,6 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
 #ifdef USE_MPIACX
     Vector<MPIX_Request>& recv_xreqs = fbd->recv_xreqs;
 #endif
-
-//    amrex::Print() << "C" << std::endl;
 
     if (N_rcvs > 0) {
 #ifdef USE_MPIACX
@@ -162,8 +153,6 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
         }
         fbd->recv_stat.resize(N_rcvs);
     }
-
-//    amrex::Print() << "D" << std::endl;
 
     //
     // Post send's
@@ -222,11 +211,7 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
         }
     }
 
-//    amrex::Print() << "E" << std::endl;
-
     FillBoundary_test();
-
-//    amrex::Print() << "E" << std::endl;
 
     //
     // Do the local work.  Hope for a bit of communication/computation overlap.
@@ -255,8 +240,6 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
         FillBoundary_test();
     }
 
-//    amrex::Print() << "F" << std::endl;
-
 #endif /*BL_USE_MPI*/
 }
 
@@ -268,14 +251,9 @@ FabArray<FAB>::FillBoundary_finish ()
     std::unique_ptr<FBData<FAB>>& fbd = lookup_fbd();
     const FB* TheFB = fbd->fb;
 
-//    amrex::Print() << "tag_finish = " << fbd->tag << std::endl;
-
-//    amrex::Print() << "G" << std::endl;
-
     if (!TheFB) {
         n_filled = IntVect::TheZeroVector();
-        fbd.reset();
-        fbdq.pop_front();
+        delete_fbd();
         return;
     }
 
@@ -301,8 +279,6 @@ FabArray<FAB>::FillBoundary_finish ()
 
         int actual_n_rcvs = N_rcvs - std::count(fbd->recv_data.begin(), fbd->recv_data.end(), nullptr);
 
-//        amrex::Print() << "H" << std::endl;
-
         if (actual_n_rcvs > 0) {
 #ifdef USE_MPIACX
             if (async) {
@@ -321,8 +297,6 @@ FabArray<FAB>::FillBoundary_finish ()
                 }
 #endif
             }
-
-//            amrex::Print() << "I" << std::endl;
        }
 
         bool is_thread_safe = TheFB->m_threadsafe_rcv;
@@ -351,8 +325,6 @@ FabArray<FAB>::FillBoundary_finish ()
                                         recv_cctc, FabArrayBase::COPY, is_thread_safe);
         }
 
-//        amrex::Print() << "J" << std::endl;
-
         if (fbd->the_recv_data)
         {
 #ifdef USE_MPIACX
@@ -366,8 +338,6 @@ FabArray<FAB>::FillBoundary_finish ()
                 fbd->the_recv_data = nullptr;
             }
         }
-
-//        amrex::Print() << "K" << std::endl;
     }
 
     const auto N_snds = static_cast<int>(TheFB->m_SndTags->size());
@@ -387,8 +357,6 @@ FabArray<FAB>::FillBoundary_finish ()
         }
     }
 
-//    amrex::Print() << "L" << std::endl;
-
 #ifdef USE_MPIACX
     if (async) {
          AMREX_CUDA_SAFE_CALL( cudaLaunchHostFunc(Gpu::gpuStream(), amrex_fbdata_delete<FAB>, this) );
@@ -397,7 +365,6 @@ FabArray<FAB>::FillBoundary_finish ()
     {
         delete_fbd();
     }
-//    amrex::Print() << "M" << std::endl;
 
 #endif
 }
