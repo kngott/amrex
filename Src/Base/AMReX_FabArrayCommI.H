@@ -63,6 +63,8 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
 
     // If no work is done, fbdq.front()->TheFB = nullptr
     std::unique_ptr<FBData<FAB>>& fbd = new_fbd();
+    amrex::ignore_unused(fbd);
+    amrex::ignore_unused(async);
 
     bool work_to_do;
     if (enforce_periodicity_only) {
