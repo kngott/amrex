@@ -833,7 +833,7 @@ FabArray<FAB>::PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
         send_data.push_back(nullptr);
         send_size.push_back(nbytes);
         send_rank.push_back(kv.first);
-        send_reqs.push_back(0);
+        send_reqs.push_back(nullptr);
         send_cctc.push_back(&cctc);
     }
 
