@@ -211,7 +211,9 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
         }
     }
 
-    FillBoundary_test();
+    if (!async) {
+        FillBoundary_test();
+    }
 
     //
     // Do the local work.  Hope for a bit of communication/computation overlap.
@@ -237,7 +239,9 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
             FB_local_copy_cpu(TheFB, scomp, ncomp);
         }
 
-        FillBoundary_test();
+        if (!async) {
+            FillBoundary_test();
+        }
     }
 
 #endif /*BL_USE_MPI*/
@@ -802,7 +806,11 @@ FabArray<FAB>::PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
         send_data.push_back(nullptr);
         send_size.push_back(nbytes);
         send_rank.push_back(kv.first);
-        send_reqs.push_back(MPI_REQUEST_NULL);
+        if constexpr (std::is_same_v<REQ, MPIX_Request>) {
+            send_reqs.push_back(MPIX_REQUEST_NULL);
+        } else if constexpr (std::is_same_v<REQ, MPI_Request>) {
+            send_reqs.push_back(MPI_REQUEST_NULL);
+        }
         send_cctc.push_back(&cctc);
     }
 

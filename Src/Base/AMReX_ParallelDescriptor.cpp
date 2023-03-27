@@ -299,9 +299,6 @@ StartParallel (int* argc, char*** argv, MPI_Comm a_mpi_comm)
         m_comm = MPI_COMM_WORLD;
         call_mpi_finalize = 1;
 
-#ifdef USE_MPIACX
-        MPIX_Init();
-#endif
     } else {
         MPI_Comm_dup(a_mpi_comm, &m_comm);
         call_mpi_finalize = 0;
@@ -1493,6 +1490,13 @@ ReadAndBcastFile (const std::string& filename, Vector<char>& charBuf,
 void
 Initialize ()
 {
+// Done here to init after GPU Devices.
+#ifdef USE_MPIACX
+    if (call_mpi_finalize) {
+        MPIX_Init();
+    }
+#endif
+
 #ifndef BL_AMRPROF
     ParmParse pp("amrex");
     pp.queryAdd("use_gpu_aware_mpi", use_gpu_aware_mpi);
