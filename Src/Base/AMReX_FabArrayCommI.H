@@ -11,12 +11,8 @@ void amrex_fbdata_delete ( hipStream_t /*stream*/,  hipError_t /*error*/, void* 
 void CUDART_CB amrex_fbdata_delete (void* p)
 #endif
 {
-//    amrex::Print() << "Delete" << std::endl;
-
     amrex::FabArray<FAB>* fab = reinterpret_cast<amrex::FabArray<FAB>*>(p);
     fab->delete_fbd();
-
-//    amrex::Print() << "Delete done" << std::endl;
 }
 
 template <class FAB>
@@ -26,16 +22,12 @@ void amrex_checkrecvs ( hipStream_t /*stream*/,  hipError_t /*error*/, void* p)
 void CUDART_CB amrex_checkrcvstats (void* p)
 #endif
 {
-//    amrex::Print() << "Check Rcvs" << std::endl;
-
     auto fbd = reinterpret_cast<std::unique_ptr<FBData<FAB>>*>(p);
 
     if (!CheckRcvStats((*fbd)->recv_stat, (*fbd)->recv_size, (*fbd)->tag))
     {
         amrex::Abort("FillBoundary_finish failed with wrong message size");
     }
-//    amrex::Print() << "Check Rcvs done" << std::endl;
-
 }
 
 
@@ -806,9 +798,12 @@ FabArray<FAB>::PrepareSendBuffers (const MapOfCopyComTagContainers&     SndTags,
         send_data.push_back(nullptr);
         send_size.push_back(nbytes);
         send_rank.push_back(kv.first);
+#ifdef USE_MPIACX
         if constexpr (std::is_same_v<REQ, MPIX_Request>) {
             send_reqs.push_back(MPIX_REQUEST_NULL);
-        } else if constexpr (std::is_same_v<REQ, MPI_Request>) {
+        } else if constexpr (std::is_same_v<REQ, MPI_Request>)
+#endif
+        {
             send_reqs.push_back(MPI_REQUEST_NULL);
         }
         send_cctc.push_back(&cctc);
