@@ -340,8 +340,7 @@ FabArray<FAB>::FillBoundary_finish ()
     if (N_snds > 0) {
 #ifdef USE_MPIACX
         if (async) {
-            Vector<MPI_Status> stats(fbd->send_xreqs.size());
-            ParallelDescriptor::Waitall(fbd->send_xreqs, stats);
+            ParallelDescriptor::Waitall(fbd->send_xreqs);
             Elixir free_send(static_cast<void*>(fbd->the_send_data), amrex::The_FA_Arena());
         } else
 #endif

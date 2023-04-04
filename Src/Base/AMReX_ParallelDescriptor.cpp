@@ -1061,6 +1061,18 @@ Waitall (Vector<MPI_Request>& reqs, Vector<MPI_Status>& status)
 }
 #ifdef USE_MPIACX
 void
+Waitall (Vector<MPIX_Request>& reqs)
+{
+    auto stream = Gpu::gpuStream();
+
+    MPIX_Waitall_enqueue(reqs.size(),
+                         reqs.dataPtr(),
+                         MPI_STATUSES_IGNORE,
+                         MPIX_QUEUE_CUDA_STREAM,
+                         &stream);
+}
+
+void
 Waitall (Vector<MPIX_Request>& reqs, Vector<MPI_Status>& status)
 {
     BL_ASSERT(status.size() >= reqs.size());
@@ -1269,6 +1281,10 @@ second () noexcept
 
 void
 Wait (MPI_Request& /*req*/, MPI_Status& /*status*/)
+{}
+
+void
+Waitall (Vector<MPI_Request>& /*reqs*/)
 {}
 
 void
