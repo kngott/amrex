@@ -81,12 +81,35 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
     fbd->ncomp = ncomp;
     fbd->tag   = SeqNum;
 
+#endif /*BL_USE_MPI*/
+}
+
+template <class FAB>
+template <typename BUF, class F, typename std::enable_if<IsBaseFab<F>::value,int>::type Z>
+void
+FabArray<FAB>::FBEP_launch ()
+{
+#if BL_USE_MPI 
+
+    if (!fbd) { return; }
+
+    BL_PROFILE("FBEP_launch()");
+    BL_PROFILE_SYNC_STOP();
+
+    const FB* TheFB = fbd->fb;
+    const int ncomp = fbd->ncomp;
+    const int scomp = fbd->scomp;
+    const int SeqNum = fbd->tag; 
+
+    const int N_rcvs = TheFB->m_RcvTags->size();
+    const int N_snds = TheFB->m_SndTags->size();
+
     //
     // Post rcvs. Allocate one chunk of space to hold'm all.
     //
 
     if (N_rcvs > 0) {
-        PostRcvs<BUF>(*TheFB.m_RcvTags, fbd->the_recv_data,
+        PostRcvs<BUF>(*(TheFB->m_RcvTags), fbd->the_recv_data,
                       fbd->recv_data, fbd->recv_size, fbd->recv_from, fbd->recv_reqs,
                       ncomp, SeqNum);
         fbd->recv_stat.resize(N_rcvs);
@@ -104,7 +127,7 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
 
     if (N_snds > 0)
     {
-        PrepareSendBuffers<BUF>(*TheFB.m_SndTags, the_send_data, send_data, send_size, send_rank,
+        PrepareSendBuffers<BUF>(*(TheFB->m_SndTags), the_send_data, send_data, send_size, send_rank,
                            send_reqs, send_cctc, ncomp);
 
 #ifdef AMREX_USE_GPU
@@ -112,7 +135,7 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
         {
 #if defined(__CUDACC__) && defined(AMREX_USE_CUDA)
             if (Gpu::inGraphRegion()) {
-                FB_pack_send_buffer_cuda_graph(TheFB, scomp, ncomp, send_data, send_size, send_cctc);
+                FB_pack_send_buffer_cuda_graph(*TheFB, scomp, ncomp, send_data, send_size, send_cctc);
             }
             else
 #endif
@@ -132,9 +155,27 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
 
     FillBoundary_test();
 
-    //
-    // Do the local work.  Hope for a bit of communication/computation overlap.
-    //
+#endif
+}
+
+
+
+template <class FAB>
+template <typename BUF, class F, typename std::enable_if<IsBaseFab<F>::value,int>::type Z>
+void
+FabArray<FAB>::FBEP_local ()
+{
+#ifdef AMREX_USE_MPI
+    if (!fbd) { return; }
+
+    BL_PROFILE("FillBoundary_local()");
+    BL_PROFILE_SYNC_STOP();
+
+    const FB* TheFB = fbd->fb;
+    const int scomp = fbd->scomp;
+    const int ncomp = fbd->ncomp;
+    const auto N_locs = static_cast<int>(TheFB->m_LocTags->size());
+
     if (N_locs > 0)
     {
 #ifdef AMREX_USE_GPU
@@ -142,37 +183,38 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
         {
 #if defined(__CUDACC__) && defined(AMREX_USE_CUDA)
             if (Gpu::inGraphRegion()) {
-                FB_local_copy_cuda_graph_n(TheFB, scomp, ncomp);
+                FB_local_copy_cuda_graph_n(*TheFB, scomp, ncomp);
             }
             else
 #endif
             {
-                FB_local_copy_gpu(TheFB, scomp, ncomp);
+                FB_local_copy_gpu(*TheFB, scomp, ncomp);
             }
         }
         else
 #endif
         {
-            FB_local_copy_cpu(TheFB, scomp, ncomp);
+            FB_local_copy_cpu(*TheFB, scomp, ncomp);
         }
 
         FillBoundary_test();
     }
 
-#endif /*BL_USE_MPI*/
+#endif
 }
+
 
 template <class FAB>
 template <typename BUF, class F, typename std::enable_if<IsBaseFab<F>::value,int>::type Z>
 void
-FabArray<FAB>::FillBoundary_finish ()
+FabArray<FAB>::FBEP_finish ()
 {
 #ifdef AMREX_USE_MPI
 
+    if (!fbd) { n_filled = IntVect::TheZeroVector(); return; }
+
     BL_PROFILE("FillBoundary_finish()");
     BL_PROFILE_SYNC_STOP();
-
-    if (!fbd) { n_filled = IntVect::TheZeroVector(); return; }
 
     const FB* TheFB = fbd->fb;
     const auto N_rcvs = static_cast<int>(TheFB->m_RcvTags->size());
@@ -191,6 +233,7 @@ FabArray<FAB>::FillBoundary_finish ()
         int actual_n_rcvs = N_rcvs - std::count(fbd->recv_data.begin(), fbd->recv_data.end(), nullptr);
 
         if (actual_n_rcvs > 0) {
+            BL_PROFILE("FBEP_Waitall only");
             ParallelDescriptor::Waitall(fbd->recv_reqs, fbd->recv_stat);
 #ifdef AMREX_DEBUG
             if (!CheckRcvStats(fbd->recv_stat, fbd->recv_size, fbd->tag))
@@ -233,7 +276,24 @@ FabArray<FAB>::FillBoundary_finish ()
         }
     }
 
+#endif
+}
+
+template <class FAB>
+template <typename BUF, class F, typename std::enable_if<IsBaseFab<F>::value,int>::type Z>
+void
+FabArray<FAB>::FBEP_cleanup ()
+{
+#ifdef AMREX_USE_MPI
+
+    if (!fbd) { return; }
+
+    BL_PROFILE("FillBoundary_cleanup()");
+    BL_PROFILE_SYNC_STOP();
+
+    const FB* TheFB = fbd->fb;
     const auto N_snds = static_cast<int>(TheFB->m_SndTags->size());
+
     if (N_snds > 0) {
         Vector<MPI_Status> stats(fbd->send_reqs.size());
         ParallelDescriptor::Waitall(fbd->send_reqs, stats);
@@ -245,6 +305,8 @@ FabArray<FAB>::FillBoundary_finish ()
 
 #endif
 }
+
+
 
 // \cond CODEGEN
 template <class FAB>
@@ -879,7 +941,8 @@ FillBoundary (Vector<MF*> const& mf, Vector<int> const& scomp,
               Vector<Periodicity> const& period, Vector<int> const& cross = {})
 {
     BL_PROFILE("FillBoundary(Vector)");
-#if 1
+#if 0
+
     const int N = mf.size();
     for (int i = 0; i < N; ++i) {
         mf[i]->FillBoundary_nowait(scomp[i], ncomp[i], nghost[i], period[i],
@@ -890,6 +953,9 @@ FillBoundary (Vector<MF*> const& mf, Vector<int> const& scomp,
     }
 
 #else
+
+    BL_PROFILE_VAR("FB_Prep", fbtimer);
+
     using FAB = typename MF::FABType::value_type;
     using T   = typename FAB::value_type;
 
@@ -1091,6 +1157,8 @@ FillBoundary (Vector<MF*> const& mf, Vector<int> const& scomp,
         FabArray<FAB>::PostSnds(send_data, send_size, send_rank, send_reqs, SeqNum);
     }
 
+    BL_PROFILE_VAR_STOP(fbtimer);
+
 #if !defined(AMREX_DEBUG)
     int recv_flag;
     ParallelDescriptor::Test(recv_reqs, recv_flag, recv_stat);
@@ -1106,7 +1174,7 @@ FillBoundary (Vector<MF*> const& mf, Vector<int> const& scomp,
     if (N_rcvs > 0) {
         ParallelDescriptor::Waitall(recv_reqs, recv_stat);
 #ifdef AMREX_DEBUG
-        if (!FabArrayBase::CheckRcvStats(recv_stat, recv_size, SeqNum)) {
+        if (!CheckRcvStats(recv_stat, recv_size, SeqNum)) {
             amrex::Abort("FillBoundary(vector) failed with wrong message size");
         }
 #endif

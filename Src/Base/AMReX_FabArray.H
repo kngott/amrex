@@ -1124,6 +1124,22 @@ public:
                       bool enforce_periodicity_only = false,
                       bool override_sync = false);
 
+    template <typename BUF=value_type,
+              class F=FAB, typename std::enable_if<IsBaseFab<F>::value,int>::type = 0>
+    void FBEP_local ();
+
+    template <typename BUF=value_type,
+              class F=FAB, typename std::enable_if<IsBaseFab<F>::value,int>::type = 0>
+    void FBEP_launch ();
+
+    template <typename BUF=value_type,
+              class F=FAB, typename std::enable_if<IsBaseFab<F>::value,int>::type = 0>
+    void FBEP_finish ();
+
+    template <typename BUF=value_type,
+              class F=FAB, typename std::enable_if<IsBaseFab<F>::value,int>::type = 0>
+    void FBEP_cleanup ();
+
     void FB_local_copy_cpu (const FB& TheFB, int scomp, int ncomp);
     void PC_local_cpu (const CPC& thecpc, FabArray<FAB> const& src,
                        int scomp, int dcomp, int ncomp, CpOp op);
@@ -3090,6 +3106,15 @@ void
 FabArray<FAB>::FillBoundary_nowait (int scomp, int ncomp, bool cross)
 {
     FillBoundary_nowait<BUF>(scomp, ncomp, nGrowVect(), Periodicity::NonPeriodic(), cross);
+}
+
+
+template <class FAB>
+template <typename BUF, class F, typename std::enable_if<IsBaseFab<F>::value,int>::type Z>
+void
+FabArray<FAB>::FillBoundary_finish ()
+{
+    FBEP_finish<BUF>();
 }
 
 template <class FAB>
