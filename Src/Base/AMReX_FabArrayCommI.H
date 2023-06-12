@@ -89,7 +89,7 @@ template <typename BUF, class F, typename std::enable_if<IsBaseFab<F>::value,int
 void
 FabArray<FAB>::FBEP_launch ()
 {
-#if BL_USE_MPI 
+#if BL_USE_MPI
 
     if (!fbd) { return; }
 
@@ -99,7 +99,7 @@ FabArray<FAB>::FBEP_launch ()
     const FB* TheFB = fbd->fb;
     const int ncomp = fbd->ncomp;
     const int scomp = fbd->scomp;
-    const int SeqNum = fbd->tag; 
+    const int SeqNum = fbd->tag;
 
     const int N_rcvs = TheFB->m_RcvTags->size();
     const int N_snds = TheFB->m_SndTags->size();
@@ -1122,6 +1122,74 @@ FillBoundary (Vector<MF*> const& mf, Vector<int> const& scomp,
                         for (auto const& cct : it->second) {
                             auto const& sfab = (*mf[imf])[cct.srcIndex];
                             send_offset[i].push_back(nbytes);
+                            send_tags.push_back({amrex::makeArray4<T>(nullptr,cct.sbox,ncomp[imf]),
+                                                 sfab.const_array(scomp[imf],ncomp[imf]),
+                                                 cct.sbox, Dim3{0,0,0}});
+                            nbytes += sfab.nBytes(cct.sbox,ncomp[imf]);
+                        }
+                    }
+                }
+            }
+
+            std::size_t acd = ParallelDescriptor::alignof_comm_data(nbytes);
+            nbytes = amrex::aligned_size(acd, nbytes); // so that bytes are aligned
+
+            // Also need to align the offset properly
+            TotalSndsVolume = amrex::aligned_size(std::max(alignof(T),acd), TotalSndsVolume);
+
+            offset.push_back(TotalSndsVolume);
+            TotalSndsVolume += nbytes;
+
+            send_size.push_back(nbytes);
+        }
+
+        the_send_data = static_cast<char*>(amrex::The_FA_Arena()->alloc(TotalSndsVolume));
+        int k = 0;
+        for (int i = 0; i < nsend; ++i) {
+            send_data[i] = the_send_data + offset[i];
+            for (int j = 0, nj = send_offset[i].size(); j < nj; ++j) {
+                send_tags[k++].dfab.p = (T*)(send_data[i] + send_offset[i][j]);
+            }
+        }
+
+        detail::fbv_copy(send_tags);
+
+        FabArray<FAB>::PostSnds(send_data, send_size, send_rank, send_reqs, SeqNum);
+    }
+
+    BL_PROFILE_VAR_STOP(fbtimer);
+
+#if !defined(AMREX_DEBUG)
+    int recv_flag;
+    ParallelDescriptor::Test(recv_reqs, recv_flag, recv_stat);
+#endif
+
+    if (N_locs > 0) {
+        detail::fbv_copy(local_tags);
+#if !defined(AMREX_DEBUG)
+        ParallelDescriptor::Test(recv_reqs, recv_flag, recv_stat);
+#endif
+    }
+
+    if (N_rcvs > 0) {
+        ParallelDescriptor::Waitall(recv_reqs, recv_stat);
+#ifdef AMREX_DEBUG
+        if (!CheckRcvStats(recv_stat, recv_size, SeqNum)) {
+            amrex::Abort("FillBoundary(vector) failed with wrong message size");
+        }
+#endif
+
+        detail::fbv_copy(recv_tags);
+
+        amrex::The_FA_Arena()->free(the_recv_data);
+    }
+
+    if (N_snds > 0) {
+        Vector<MPI_Status> stats(send_reqs.size());
+        ParallelDescriptor::Waitall(send_reqs, stats);
+        amrex::The_FA_Arena()->free(the_send_data);
+    }
+
                             send_tags.push_back({amrex::makeArray4<T>(nullptr,cct.sbox,ncomp[imf]),
                                                  sfab.const_array(scomp[imf],ncomp[imf]),
                                                  cct.sbox, Dim3{0,0,0}});
