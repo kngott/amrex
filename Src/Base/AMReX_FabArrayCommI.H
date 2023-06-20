@@ -89,7 +89,7 @@ template <typename BUF, class F, typename std::enable_if<IsBaseFab<F>::value,int
 void
 FabArray<FAB>::FBEP_launch ()
 {
-#if BL_USE_MPI
+#ifdef BL_USE_MPI
 
     if (!fbd) { return; }
 
