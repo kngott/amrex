@@ -101,8 +101,8 @@ FabArray<FAB>::FBEP_launch ()
     const int scomp = fbd->scomp;
     const int SeqNum = fbd->tag;
 
-    const int N_rcvs = TheFB->m_RcvTags->size();
-    const int N_snds = TheFB->m_SndTags->size();
+    const auto N_rcvs = TheFB->m_RcvTags->size();
+    const auto N_snds = TheFB->m_SndTags->size();
 
     //
     // Post rcvs. Allocate one chunk of space to hold'm all.
@@ -1027,7 +1027,7 @@ FillBoundary (Vector<MF*> const& mf, Vector<int> const& scomp,
             }
         }
         amrex::RemoveDuplicates(recv_from);
-        const int nrecv = recv_from.size();
+        const auto nrecv = recv_from.size();
 
         recv_reqs.resize(nrecv, MPI_REQUEST_NULL);
         recv_stat.resize(nrecv);
@@ -1078,7 +1078,7 @@ FillBoundary (Vector<MF*> const& mf, Vector<int> const& scomp,
             const int rank = ParallelContext::global_to_local_rank(recv_from[i]);
             recv_reqs[i] = ParallelDescriptor::Arecv
                 (p, recv_size[i], rank, SeqNum, comm).req();
-            for (int j = 0, nj = recv_offset[i].size(); j < nj; ++j) {
+            for (amrex::Long j = 0, nj = recv_offset[i].size(); j < nj; ++j) {
                 recv_tags[k++].sfab.p = (T const*)(p + recv_offset[i][j]);
             }
         }
@@ -1099,7 +1099,7 @@ FillBoundary (Vector<MF*> const& mf, Vector<int> const& scomp,
             }
         }
         amrex::RemoveDuplicates(send_rank);
-        const int nsend = send_rank.size();
+        const auto nsend = send_rank.size();
 
         send_data.resize(nsend, nullptr);
         send_reqs.resize(nsend, MPI_REQUEST_NULL);
@@ -1147,7 +1147,7 @@ FillBoundary (Vector<MF*> const& mf, Vector<int> const& scomp,
         int k = 0;
         for (int i = 0; i < nsend; ++i) {
             send_data[i] = the_send_data + offset[i];
-            for (int j = 0, nj = send_offset[i].size(); j < nj; ++j) {
+            for (amrex::Long j = 0, nj = send_offset[i].size(); j < nj; ++j) {
                 send_tags[k++].dfab.p = (T*)(send_data[i] + send_offset[i][j]);
             }
         }
