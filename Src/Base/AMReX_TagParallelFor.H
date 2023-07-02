@@ -182,6 +182,8 @@ ParallelFor_doit (Vector<TagType> const& tags, F && f)
     constexpr int nwarps_per_block = nthreads/Gpu::Device::warp_size;
     int nblocks = (ntotwarps + nwarps_per_block-1) / nwarps_per_block;
 
+    /* GPUSUBMIT THIS*/
+
     amrex::launch(nblocks, nthreads, Gpu::gpuStream(),
 #ifdef AMREX_USE_SYCL
     [=] AMREX_GPU_DEVICE (sycl::nd_item<1> const& item) noexcept
@@ -216,9 +218,14 @@ ParallelFor_doit (Vector<TagType> const& tags, F && f)
 #endif
     });
 
+
+    /* Not needed */    
     Gpu::streamSynchronize();
+
+    /* CPUSUBMIT THIS */
     The_Pinned_Arena()->free(h_buffer);
     The_Arena()->free(d_buffer);
+
 }
 
 }
