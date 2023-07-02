@@ -47,6 +47,7 @@
 #include <algorithm>
 #include <set>
 #include <string>
+#include <queue>
 
 namespace amrex {
 
@@ -1363,13 +1364,40 @@ public:
                           int                        SeqNum);
 #endif
 
-    std::unique_ptr<FBData<FAB>> fbd;
+    int fbdq_index = 0;
+    std::mutex fbdq_mutex;
+    std::deque<std::unique_ptr<FBData<FAB>>> fbdq;
     std::unique_ptr<PCData<FAB>> pcd;
 
     // Pointer to temporary fab used in non-blocking amrex::OverrideSync
     std::unique_ptr< FabArray<FAB> > os_temp;
 
+    std::unique_ptr<FBData<FAB>>& new_fbd ()
+    {
+        std::scoped_lock lock(fbdq_mutex);
+        return (fbdq.emplace_back(std::make_unique<FBData<FAB>>()));
+    }
 
+    std::unique_ptr<FBData<FAB>>& lookup_fbd ()
+    {
+        std::scoped_lock lock(fbdq_mutex);
+
+        auto it = fbdq.begin();
+        std::advance(it, fbdq_index);
+        fbdq_index++;
+        return *it;
+    }
+
+    void delete_fbd ()
+    {
+        std::scoped_lock lock(fbdq_mutex);
+
+        auto& fbd = fbdq.front();
+        fbd.reset();
+        fbdq.pop_front();
+
+        fbdq_index--;
+    }
 
     /**
      * \brief y += a*x

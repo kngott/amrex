@@ -16,6 +16,10 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
     AMREX_ASSERT_WITH_MESSAGE(!fbd, "FillBoundary_nowait() called when comm operation already in progress.");
     AMREX_ASSERT(!enforce_periodicity_only || !override_sync);
 
+    // If no work is done, fbdq.front()->TheFB = nullptr
+    std::unique_ptr<FBData<FAB>>& fbd = new_fbd();
+    amrex::ignore_unused(fbd);
+
     bool work_to_do;
     if (enforce_periodicity_only) {
         work_to_do = period.isAnyPeriodic();
@@ -75,7 +79,6 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
         return;
     }
 
-    fbd = std::make_unique<FBData<FAB>>();
     fbd->fb    = &TheFB;
     fbd->scomp = scomp;
     fbd->ncomp = ncomp;
@@ -167,14 +170,20 @@ template <typename BUF, class F, typename std::enable_if<IsBaseFab<F>::value,int
 void
 FabArray<FAB>::FillBoundary_finish ()
 {
+    std::unique_ptr<FBData<FAB>>& fbd = lookup_fbd();
+    const FB* TheFB = fbd->fb;
+
+    if (!TheFB) {
+        n_filled = IntVect::TheZeroVector();
+        delete_fbd();
+        return;
+    }
+
 #ifdef AMREX_USE_MPI
 
     BL_PROFILE("FillBoundary_finish()");
     BL_PROFILE_SYNC_STOP();
 
-    if (!fbd) { n_filled = IntVect::TheZeroVector(); return; }
-
-    const FB* TheFB = fbd->fb;
     const auto N_rcvs = static_cast<int>(TheFB->m_RcvTags->size());
     if (N_rcvs > 0)
     {
@@ -241,7 +250,7 @@ FabArray<FAB>::FillBoundary_finish ()
         fbd->the_send_data = nullptr;
     }
 
-    fbd.reset();
+    delete_fbd();
 
 #endif
 }
