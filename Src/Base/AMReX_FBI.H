@@ -318,8 +318,6 @@ FabArray<FAB>::FB_local_copy_gpu (const FB& TheFB, int scomp, int ncomp)
         });
     }
 
-    /* GPUSUBMIT THIS */
-
     if (is_thread_safe) {
         detail::fab_to_fab<value_type, value_type>(loc_copy_tags, scomp, scomp,
             ncomp, detail::CellStore<value_type, value_type>());

@@ -13,7 +13,6 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
     BL_PROFILE_SYNC_START_TIMED("SyncBeforeComms: FB");
     BL_PROFILE("FillBoundary_nowait()");
 
-    AMREX_ASSERT_WITH_MESSAGE(!fbd, "FillBoundary_nowait() called when comm operation already in progress.");
     AMREX_ASSERT(!enforce_periodicity_only || !override_sync);
 
     // If no work is done, fbdq.front()->TheFB = nullptr

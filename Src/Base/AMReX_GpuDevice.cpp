@@ -4,6 +4,7 @@
 #include <AMReX_ParmParse.H>
 #include <AMReX_Print.H>
 #include <AMReX_GpuLaunch.H>
+#include <AMReX_BackgroundStream.H>
 
 #include <iostream>
 #include <map>
@@ -71,6 +72,7 @@ dim3 Device::numThreadsOverride = dim3(0, 0, 0);
 dim3 Device::numBlocksOverride  = dim3(0, 0, 0);
 unsigned int Device::max_blocks_per_launch = 2560;
 
+BackgroundStream    Device::bgs;
 Vector<gpuStream_t> Device::gpu_stream_pool;
 Vector<gpuStream_t> Device::gpu_stream;
 gpuDeviceProp_t     Device::device_prop;

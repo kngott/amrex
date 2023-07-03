@@ -2,6 +2,8 @@
 #define AMREX_GPU_DEVICE_H_
 #include <AMReX_Config.H>
 
+#include <AMReX_BackgroundStream.H>
+
 #include <AMReX.H>
 #include <AMReX_Extension.H>
 #include <AMReX_Utility.H>
@@ -56,6 +58,8 @@ public:
 
 #if defined(AMREX_USE_GPU)
     static gpuStream_t gpuStream () noexcept { return gpu_stream[OpenMP::get_thread_num()]; }
+
+    static BackgroundStream& bg_stream () { return bgs; }
 #ifdef AMREX_USE_CUDA
     /** for backward compatibility */
     static cudaStream_t cudaStream () noexcept { return gpu_stream[OpenMP::get_thread_num()]; }
@@ -187,6 +191,7 @@ private:
     // The non-owning gpu_stream is used to store the current stream that will be used.
     // gpu_stream is a vector so that it's thread safe to write to it.
     static AMREX_EXPORT Vector<gpuStream_t> gpu_stream; // The size of this is omp_max_threads
+    static AMREX_EXPORT BackgroundStream bgs;
     static AMREX_EXPORT gpuDeviceProp_t device_prop;
     static AMREX_EXPORT int memory_pools_supported;
     static AMREX_EXPORT unsigned int max_blocks_per_launch;
@@ -206,6 +211,13 @@ gpuStream () noexcept
 {
     return Device::gpuStream();
 }
+
+inline BackgroundStream&
+bg_stream () noexcept
+{
+    return Device::bg_stream();
+}
+
 #endif
 
 inline int

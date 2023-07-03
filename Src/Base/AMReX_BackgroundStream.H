@@ -3,7 +3,8 @@
 
 #include <AMReX_BackgroundThread.H>
 #include <AMReX_Config.H>
-#include <AMReX_Gpu.H>
+
+#include <cuda.h>
 
 #include <algorithm>
 #include <condition_variable>

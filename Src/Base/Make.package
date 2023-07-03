@@ -167,6 +167,9 @@ C$(AMREX_BASE)_headers += AMReX_FabArray.H AMReX_FACopyDescriptor.H AMReX_FabArr
 C$(AMREX_BASE)_headers += AMReX_FabArrayCommI.H AMReX_FBI.H AMReX_PCI.H AMReX_FabArrayUtility.H
 C$(AMREX_BASE)_headers += AMReX_LayoutData.H
 
+C$(AMREX_BASE)_headers += AMReX_BackgroundStream.H AMReX_FabArrayCommI_Stream.H
+C$(AMREX_BASE)_sources += AMReX_BackgroundStream.cpp
+
 #
 # Geometry / Coordinate system routines.
 #

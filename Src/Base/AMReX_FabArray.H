@@ -1005,7 +1005,13 @@ public:
               class F=FAB, typename std::enable_if<IsBaseFab<F>::value,int>::type = 0>
     void FillBoundary_finish ();
 
+    template <typename BUF=value_type,
+              class F=FAB, typename std::enable_if<IsBaseFab<F>::value,int>::type = 0>
+    void FillBoundary_finish_stream ();
+
     void FillBoundary_test ();
+
+    void FillBoundary_test_stream ();
 
 
     /**
@@ -1124,6 +1130,13 @@ public:
                       const Periodicity& period, bool cross,
                       bool enforce_periodicity_only = false,
                       bool override_sync = false);
+
+    template <typename BUF=value_type,
+              class F=FAB, typename std::enable_if<IsBaseFab<F>::value,int>::type = 0>
+    void FBEP_nowait_stream (int scomp, int ncomp, const IntVect& nghost,
+                             const Periodicity& period, bool cross,
+                             bool enforce_periodicity_only = false,
+                             bool override_sync = false);
 
     void FB_local_copy_cpu (const FB& TheFB, int scomp, int ncomp);
     void PC_local_cpu (const CPC& thecpc, FabArray<FAB> const& src,
@@ -1364,6 +1377,56 @@ public:
                           int                        SeqNum);
 #endif
 
+#ifdef BL_USE_MPI
+
+    //! Prepost nonblocking receives
+    template <typename BUF=value_type>
+    void PostRcvs_stream (const MapOfCopyComTagContainers&       RcvTags,
+                          char*&                                 the_recv_data,
+                          Vector<char*>&                         recv_data,
+                          Vector<std::size_t>&                   recv_size,
+                          Vector<int>&                           recv_from,
+                          Vector<MPI_Request>&                   recv_reqs,
+                          int                                    ncomp,
+                          int                                    SeqNum) const;
+
+    template <typename BUF=value_type>
+    AMREX_NODISCARD TheFaArenaPointer PostRcvs_stream (const MapOfCopyComTagContainers&       RcvTags,
+                          Vector<char*>&                         recv_data,
+                          Vector<std::size_t>&                   recv_size,
+                          Vector<int>&                           recv_from,
+                          Vector<MPI_Request>&                   recv_reqs,
+                          int                                    ncomp,
+                          int                                    SeqNum) const;
+
+    template <typename BUF=value_type>
+    void PrepareSendBuffers_stream (const MapOfCopyComTagContainers&     SndTags,
+                                    char*&                               the_send_data,
+                                    Vector<char*>&                       send_data,
+                                    Vector<std::size_t>&                 send_size,
+                                    Vector<int>&                         send_rank,
+                                    Vector<MPI_Request>&                 send_reqs,
+                                    Vector<const CopyComTagsContainer*>& send_cctc,
+                                    int                                  ncomp) const;
+
+    template <typename BUF=value_type>
+    AMREX_NODISCARD TheFaArenaPointer PrepareSendBuffers_stream (const MapOfCopyComTagContainers&     SndTags,
+                                    Vector<char*>&                       send_data,
+                                    Vector<std::size_t>&                 send_size,
+                                    Vector<int>&                         send_rank,
+                                    Vector<MPI_Request>&                 send_reqs,
+                                    Vector<const CopyComTagsContainer*>& send_cctc,
+                                    int                                  ncomp) const;
+
+    static void PostSnds_stream (Vector<char*> const&       send_data,
+                                 Vector<std::size_t> const& send_size,
+                                 Vector<int> const&         send_rank,
+                                 Vector<MPI_Request>&       send_reqs,
+                                 int                        SeqNum);
+#endif
+
+
+
     int fbdq_index = 0;
     std::mutex fbdq_mutex;
     std::deque<std::unique_ptr<FBData<FAB>>> fbdq;
@@ -1452,6 +1515,7 @@ public:
 
 
 #include <AMReX_FabArrayCommI.H>
+#include <AMReX_FabArrayCommI_Stream.H>
 
 template <class FAB>
 bool
