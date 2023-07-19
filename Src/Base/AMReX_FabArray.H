@@ -971,6 +971,9 @@ public:
     void FillBoundary (const Periodicity& period, bool cross = false);
 
     template <typename BUF=value_type>
+    void FillBoundary_stream (const Periodicity& period, bool cross = false);
+
+    template <typename BUF=value_type>
     void FillBoundary (const IntVect& nghost, const Periodicity& period, bool cross = false);
 
     //! Same as FillBoundary(), but only copies ncomp components starting at scomp.
@@ -1009,9 +1012,9 @@ public:
               class F=FAB, typename std::enable_if<IsBaseFab<F>::value,int>::type = 0>
     void FillBoundary_finish_stream ();
 
-    void FillBoundary_test ();
+    void FillBoundary_test (Vector<MPI_Request>& reqs, Vector<MPI_Status>& stat);
 
-    void FillBoundary_test_stream ();
+    void FillBoundary_test_stream (Vector<MPI_Request>& reqs, Vector<MPI_Status>& stat);
 
 
     /**
@@ -1150,7 +1153,7 @@ public:
 
 #ifdef AMREX_USE_GPU
 
-    void FB_local_copy_gpu (const FB& TheFB, int scomp, int ncomp);
+    void FB_local_copy_gpu (const FB& TheFB, int scomp, int ncomp, bool background = false);
     void PC_local_gpu (const CPC& thecpc, FabArray<FAB> const& src,
                        int scomp, int dcomp, int ncomp, CpOp op);
 
@@ -1187,14 +1190,15 @@ public:
     static void pack_send_buffer_gpu (FabArray<FAB> const& src, int scomp, int ncomp,
                                       Vector<char*> const& send_data,
                                       Vector<std::size_t> const& send_size,
-                                      Vector<const CopyComTagsContainer*> const& send_cctc);
+                                      Vector<const CopyComTagsContainer*> const& send_cctc,
+                                      bool background = false);
 
     template <typename BUF = value_type>
     static void unpack_recv_buffer_gpu (FabArray<FAB>& dst, int dcomp, int ncomp,
                                         Vector<char*> const& recv_data,
                                         Vector<std::size_t> const& recv_size,
                                         Vector<const CopyComTagsContainer*> const& recv_cctc,
-                                        CpOp op, bool is_thread_safe);
+                                        CpOp op, bool is_thread_safe, bool background = false);
 
 #endif
 
@@ -1422,7 +1426,7 @@ public:
                                  Vector<std::size_t> const& send_size,
                                  Vector<int> const&         send_rank,
                                  Vector<MPI_Request>&       send_reqs,
-                                 int                        SeqNum);
+                                 int&                       SeqNum);
 #endif
 
 
@@ -3096,6 +3100,18 @@ FabArray<FAB>::FillBoundary (const Periodicity& period, bool cross)
     if ( n_grow.max() > 0 ) {
         FillBoundary_nowait<BUF>(0, nComp(), n_grow, period, cross);
         FillBoundary_finish<BUF>();
+    }
+}
+
+template <class FAB>
+template <typename BUF>
+void
+FabArray<FAB>::FillBoundary_stream (const Periodicity& period, bool cross)
+{
+    BL_PROFILE("FabArray::FillBoundary()");
+    if ( n_grow.max() > 0 ) {
+        FBEP_nowait_stream<BUF>(0, nComp(), nGrowVect(), period, cross);
+        FillBoundary_finish_stream<BUF>();
     }
 }
 

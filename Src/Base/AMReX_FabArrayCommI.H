@@ -49,6 +49,7 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
             else
 #endif
             {
+                BL_PROFILE("Locals()");
                 FB_local_copy_gpu(TheFB, scomp, ncomp);
             }
         }
@@ -88,6 +89,7 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
     //
 
     if (N_rcvs > 0) {
+        BL_PROFILE("PostRcvs()");
         PostRcvs<BUF>(*TheFB.m_RcvTags, fbd->the_recv_data,
                       fbd->recv_data, fbd->recv_size, fbd->recv_from, fbd->recv_reqs,
                       ncomp, SeqNum);
@@ -106,6 +108,8 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
 
     if (N_snds > 0)
     {
+        BL_PROFILE("PreparePackPostSnds()");
+
         PrepareSendBuffers<BUF>(*TheFB.m_SndTags, the_send_data, send_data, send_size, send_rank,
                            send_reqs, send_cctc, ncomp);
 
@@ -132,7 +136,7 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
         PostSnds(send_data, send_size, send_rank, send_reqs, SeqNum);
     }
 
-    FillBoundary_test();
+    FillBoundary_test(fbd->recv_reqs, fbd->recv_stat);
 
     //
     // Do the local work.  Hope for a bit of communication/computation overlap.
@@ -149,6 +153,7 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
             else
 #endif
             {
+                BL_PROFILE("Locals()");
                 FB_local_copy_gpu(TheFB, scomp, ncomp);
             }
         }
@@ -158,7 +163,7 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
             FB_local_copy_cpu(TheFB, scomp, ncomp);
         }
 
-        FillBoundary_test();
+        FillBoundary_test(fbd->recv_reqs, fbd->recv_stat);
     }
 
 #endif /*BL_USE_MPI*/
@@ -199,6 +204,8 @@ FabArray<FAB>::FillBoundary_finish ()
         int actual_n_rcvs = N_rcvs - std::count(fbd->recv_data.begin(), fbd->recv_data.end(), nullptr);
 
         if (actual_n_rcvs > 0) {
+            BL_PROFILE("Waitall(Recvs)");
+
             ParallelDescriptor::Waitall(fbd->recv_reqs, fbd->recv_stat);
 #ifdef AMREX_DEBUG
             if (!CheckRcvStats(fbd->recv_stat, fbd->recv_size, fbd->tag))
@@ -223,6 +230,7 @@ FabArray<FAB>::FillBoundary_finish ()
             else
 #endif
             {
+                BL_PROFILE("Unpack");
                 unpack_recv_buffer_gpu<BUF>(*this, fbd->scomp, fbd->ncomp, fbd->recv_data, fbd->recv_size,
                                             recv_cctc, FabArrayBase::COPY, is_thread_safe);
             }
@@ -836,13 +844,15 @@ FabArray<FAB>::Redistribute (const FabArray<FAB>& src,
 
 template <class FAB>
 void
-FabArray<FAB>::FillBoundary_test ()
+FabArray<FAB>::FillBoundary_test (Vector<MPI_Request>& reqs, Vector<MPI_Status>& stat)
 {
+    amrex::ignore_unused(reqs, stat);
+
 #if defined(AMREX_USE_MPI) && !defined(AMREX_DEBUG)
     // We only test if no DEBUG because in DEBUG we check the status later.
     // If Test is done here, the status check will fail.
     int flag;
-    ParallelDescriptor::Test(fbd->recv_reqs, flag, fbd->recv_stat);
+    ParallelDescriptor::Test(reqs, flag, stat);
 #endif
 }
 

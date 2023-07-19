@@ -51,7 +51,7 @@ struct CellAtomicAdd
 template <class T0, class T1, class F>
 void
 fab_to_fab (Vector<Array4CopyTag<T0, T1> > const& copy_tags, int scomp, int dcomp, int ncomp,
-            F && f)
+            F && f, bool background = false)
 {
     detail::ParallelFor_doit(copy_tags,
         [=] AMREX_GPU_DEVICE (
@@ -66,7 +66,7 @@ fab_to_fab (Vector<Array4CopyTag<T0, T1> > const& copy_tags, int scomp, int dcom
                       tag.sfab(i+tag.offset.x,j+tag.offset.y,k+tag.offset.z,n+scomp));
                 }
             }
-        });
+        }, background);
 }
 
 template <class T0, class T1, class F>
@@ -170,36 +170,36 @@ template <typename T0, typename T1,
           std::enable_if_t<amrex::IsStoreAtomic<T0>::value,int> = 0>
 void
 fab_to_fab_atomic_cpy (Vector<Array4CopyTag<T0, T1> > const& copy_tags, int scomp,
-                       int dcomp, int ncomp, Vector<Array4Tag<int> > const&)
+                       int dcomp, int ncomp, Vector<Array4Tag<int> > const&, bool background = false)
 {
-    fab_to_fab<T0, T1>(copy_tags, scomp, dcomp, ncomp, CellStore<T0, T1>());
+    fab_to_fab<T0, T1>(copy_tags, scomp, dcomp, ncomp, CellStore<T0, T1>(), background);
 }
 
 template <typename T0, typename T1,
           std::enable_if_t<!amrex::IsStoreAtomic<T0>::value,int> = 0>
 void
 fab_to_fab_atomic_cpy (Vector<Array4CopyTag<T0, T1> > const& copy_tags, int scomp,
-                       int dcomp, int ncomp, Vector<Array4Tag<int> > const& masks)
+                       int dcomp, int ncomp, Vector<Array4Tag<int> > const& masks, bool background = false)
 {
-    fab_to_fab(copy_tags, scomp, dcomp, ncomp, CellStore<T0, T1>(), masks);
+    fab_to_fab(copy_tags, scomp, dcomp, ncomp, CellStore<T0, T1>(), masks, background);
 }
 
 template <typename T0, typename T1,
           std::enable_if_t<amrex::HasAtomicAdd<T0>::value,int> = 0>
 void
 fab_to_fab_atomic_add (Vector<Array4CopyTag<T0, T1> > const& copy_tags, int scomp,
-                       int dcomp, int ncomp, Vector<Array4Tag<int> > const&)
+                       int dcomp, int ncomp, Vector<Array4Tag<int> > const&, bool background = false)
 {
-    fab_to_fab(copy_tags, scomp, dcomp, ncomp, CellAtomicAdd<T0, T1>());
+    fab_to_fab(copy_tags, scomp, dcomp, ncomp, CellAtomicAdd<T0, T1>(), background);
 }
 
 template <typename T0, typename T1,
           std::enable_if_t<!amrex::HasAtomicAdd<T0>::value,int> = 0>
 void
 fab_to_fab_atomic_add (Vector<Array4CopyTag<T0, T1> > const& copy_tags, int scomp,
-                       int dcomp, int ncomp, Vector<Array4Tag<int> > const& masks)
+                       int dcomp, int ncomp, Vector<Array4Tag<int> > const& masks, bool background = false)
 {
-    fab_to_fab(copy_tags, scomp, dcomp, ncomp, CellAdd<T0, T1>(), masks);
+    fab_to_fab(copy_tags, scomp, dcomp, ncomp, CellAdd<T0, T1>(), masks, background);
 }
 
 #endif /* AMREX_USE_GPU */
@@ -269,7 +269,7 @@ FabArray<FAB>::FB_local_copy_cpu (const FB& TheFB, int scomp, int ncomp)
 
 template <class FAB>
 void
-FabArray<FAB>::FB_local_copy_gpu (const FB& TheFB, int scomp, int ncomp)
+FabArray<FAB>::FB_local_copy_gpu (const FB& TheFB, int scomp, int ncomp, bool background)
 {
     auto const& LocTags = *(TheFB.m_LocTags);
     int N_locs = LocTags.size();
@@ -315,15 +315,15 @@ FabArray<FAB>::FB_local_copy_gpu (const FB& TheFB, int scomp, int ncomp)
         [=] AMREX_GPU_DEVICE (int i, int j, int k, Array4Tag<int> const& msk) noexcept
         {
             msk.dfab(i,j,k) = 0;
-        });
+        }, background);
     }
 
     if (is_thread_safe) {
         detail::fab_to_fab<value_type, value_type>(loc_copy_tags, scomp, scomp,
-            ncomp, detail::CellStore<value_type, value_type>());
+            ncomp, detail::CellStore<value_type, value_type>(), background);
     } else {
         detail::fab_to_fab_atomic_cpy<value_type, value_type>(
-            loc_copy_tags, scomp, scomp, ncomp, masks);
+            loc_copy_tags, scomp, scomp, ncomp, masks, background);
     }
 }
 
@@ -730,7 +730,8 @@ void
 FabArray<FAB>::pack_send_buffer_gpu (FabArray<FAB> const& src, int scomp, int ncomp,
                                      Vector<char*> const& send_data,
                                      Vector<std::size_t> const& send_size,
-                                     Vector<CopyComTagsContainer const*> const& send_cctc)
+                                     Vector<CopyComTagsContainer const*> const& send_cctc,
+                                     bool background)
 {
     amrex::ignore_unused(send_size);
 
@@ -773,7 +774,8 @@ FabArray<FAB>::pack_send_buffer_gpu (FabArray<FAB> const& src, int scomp, int nc
     }
 
     detail::fab_to_fab<BUF, value_type>(snd_copy_tags, scomp, 0, ncomp,
-                                        detail::CellStore<BUF, value_type>());
+                                        detail::CellStore<BUF, value_type>(), background);
+    // THIS MUST ALSO BE CHANGED FOR STREAM, IF EVER USED (CPUSUBMIT THIS CLEANUP)
 
     // There is Gpu::streamSynchronize in fab_to_fab.
 
@@ -791,7 +793,7 @@ FabArray<FAB>::unpack_recv_buffer_gpu (FabArray<FAB>& dst, int dcomp, int ncomp,
                                        Vector<char*> const& recv_data,
                                        Vector<std::size_t> const& recv_size,
                                        Vector<CopyComTagsContainer const*> const& recv_cctc,
-                                       CpOp op, bool is_thread_safe)
+                                       CpOp op, bool is_thread_safe, bool background)
 {
     amrex::ignore_unused(recv_size);
 
@@ -861,29 +863,30 @@ FabArray<FAB>::unpack_recv_buffer_gpu (FabArray<FAB>& dst, int dcomp, int ncomp,
         [=] AMREX_GPU_DEVICE (int i, int j, int k, Array4Tag<int> const& msk) noexcept
         {
             msk.dfab(i,j,k) = 0;
-        });
+        }, background);
     }
 
     if (op == FabArrayBase::COPY)
     {
         if (is_thread_safe) {
             detail::fab_to_fab<value_type, BUF>(
-                recv_copy_tags, 0, dcomp, ncomp, detail::CellStore<value_type, BUF>());
+                recv_copy_tags, 0, dcomp, ncomp, detail::CellStore<value_type, BUF>(), background);
         } else {
             detail::fab_to_fab_atomic_cpy<value_type, BUF>(
-                recv_copy_tags, 0, dcomp, ncomp, masks);
+                recv_copy_tags, 0, dcomp, ncomp, masks, background);
         }
     }
     else
     {
         if (is_thread_safe) {
             detail::fab_to_fab<value_type, BUF>(
-                recv_copy_tags, 0, dcomp, ncomp, detail::CellAdd<value_type, BUF>());
+                recv_copy_tags, 0, dcomp, ncomp, detail::CellAdd<value_type, BUF>(), background);
         } else {
             detail::fab_to_fab_atomic_add<value_type, BUF>(
-                recv_copy_tags, 0, dcomp, ncomp, masks);
+                recv_copy_tags, 0, dcomp, ncomp, masks, background);
         }
     }
+    // THIS MUST ALSO BE CHANGED FOR STREAM, IF EVER USED (CPUSUBMIT THIS CLEANUP)
 
     // There is Gpu::streamSynchronize in fab_to_fab.
 

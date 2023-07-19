@@ -12,7 +12,7 @@ FabArray<FAB>::FBEP_nowait_stream (int scomp, int ncomp, const IntVect& nghost,
                                    bool override_sync)
 {
     BL_PROFILE_SYNC_START_TIMED("SyncBeforeComms: FB");
-    BL_PROFILE("FillBoundary_nowait()");
+    BL_PROFILE("FillBoundaryStream_nowait()");
 
     AMREX_ASSERT(!enforce_periodicity_only || !override_sync);
 
@@ -50,7 +50,7 @@ FabArray<FAB>::FBEP_nowait_stream (int scomp, int ncomp, const IntVect& nghost,
             else
 #endif
             {
-                FB_local_copy_gpu(TheFB, scomp, ncomp);
+                FB_local_copy_gpu(TheFB, scomp, ncomp, true);
             }
         }
         else
@@ -89,9 +89,11 @@ FabArray<FAB>::FBEP_nowait_stream (int scomp, int ncomp, const IntVect& nghost,
     //
 
     if (N_rcvs > 0) {
-        PostRcvs<BUF>(*TheFB.m_RcvTags, fbd->the_recv_data,
-                      fbd->recv_data, fbd->recv_size, fbd->recv_from, fbd->recv_reqs,
-                      ncomp, SeqNum);
+        BL_PROFILE("PostRcvs()");
+
+        PostRcvs_stream<BUF>(*TheFB.m_RcvTags, fbd->the_recv_data,
+                             fbd->recv_data, fbd->recv_size, fbd->recv_from, fbd->recv_reqs,
+                             ncomp, SeqNum);
         fbd->recv_stat.resize(N_rcvs);
     }
 
@@ -107,8 +109,10 @@ FabArray<FAB>::FBEP_nowait_stream (int scomp, int ncomp, const IntVect& nghost,
 
     if (N_snds > 0)
     {
-        PrepareSendBuffers<BUF>(*TheFB.m_SndTags, the_send_data, send_data, send_size, send_rank,
-                           send_reqs, send_cctc, ncomp);
+        BL_PROFILE("PreparePackPostSnds()");
+
+        PrepareSendBuffers_stream<BUF>(*TheFB.m_SndTags, the_send_data, send_data, send_size, send_rank,
+                                       send_reqs, send_cctc, ncomp);
 
 #ifdef AMREX_USE_GPU
         if (Gpu::inLaunchRegion())
@@ -120,7 +124,7 @@ FabArray<FAB>::FBEP_nowait_stream (int scomp, int ncomp, const IntVect& nghost,
             else
 #endif
             {
-                pack_send_buffer_gpu<BUF>(*this, scomp, ncomp, send_data, send_size, send_cctc);
+                pack_send_buffer_gpu<BUF>(*this, scomp, ncomp, send_data, send_size, send_cctc, true);
             }
         }
         else
@@ -130,16 +134,19 @@ FabArray<FAB>::FBEP_nowait_stream (int scomp, int ncomp, const IntVect& nghost,
         }
 
         AMREX_ASSERT(send_reqs.size() == N_snds);
-        PostSnds(send_data, send_size, send_rank, send_reqs, SeqNum);
+        PostSnds_stream(send_data, send_size, send_rank, send_reqs, fbd->tag);
     }
 
-    FillBoundary_test_stream();
+    FillBoundary_test_stream(fbd->recv_reqs, fbd->recv_stat);
 
     //
     // Do the local work.  Hope for a bit of communication/computation overlap.
     //
     if (N_locs > 0)
     {
+        BL_PROFILE("Locals()");
+
+
 #ifdef AMREX_USE_GPU
         if (Gpu::inLaunchRegion())
         {
@@ -150,7 +157,7 @@ FabArray<FAB>::FBEP_nowait_stream (int scomp, int ncomp, const IntVect& nghost,
             else
 #endif
             {
-                FB_local_copy_gpu(TheFB, scomp, ncomp);
+                FB_local_copy_gpu(TheFB, scomp, ncomp, true);
             }
         }
         else
@@ -159,7 +166,7 @@ FabArray<FAB>::FBEP_nowait_stream (int scomp, int ncomp, const IntVect& nghost,
             FB_local_copy_cpu(TheFB, scomp, ncomp);
         }
 
-        FillBoundary_test_stream();
+        FillBoundary_test_stream(fbd->recv_reqs, fbd->recv_stat);
     }
 
 #endif /*BL_USE_MPI*/
@@ -181,7 +188,7 @@ FabArray<FAB>::FillBoundary_finish_stream ()
 
 #ifdef AMREX_USE_MPI
 
-    BL_PROFILE("FillBoundary_finish()");
+    BL_PROFILE("FillBoundaryStream_finish()");
     BL_PROFILE_SYNC_STOP();
 
     const auto N_rcvs = static_cast<int>(TheFB->m_RcvTags->size());
@@ -198,17 +205,26 @@ FabArray<FAB>::FillBoundary_finish_stream ()
         }
 
         int actual_n_rcvs = N_rcvs - std::count(fbd->recv_data.begin(), fbd->recv_data.end(), nullptr);
-
         if (actual_n_rcvs > 0) {
-            /* CPUSUBMIT THIS */
 
-            ParallelDescriptor::Waitall(fbd->recv_reqs, fbd->recv_stat);
+            /* CPUSUBMIT THIS */
+            Gpu::bg_stream().cpuSubmit( [&] {
+
+                amrex::Print() << "Waitall Start" << std::endl;
+                AMREX_GPU_ERROR_CHECK();
+                amrex::Print() << "Waitall A" << std::endl;
+
+                ParallelDescriptor::Waitall(fbd->recv_reqs, fbd->recv_stat);
 #ifdef AMREX_DEBUG
-            if (!CheckRcvStats(fbd->recv_stat, fbd->recv_size, fbd->tag))
-            {
-                amrex::Abort("FillBoundary_finish failed with wrong message size");
-            }
+                if (!CheckRcvStats(fbd->recv_stat, fbd->recv_size, fbd->tag))
+                {
+                    amrex::Abort("FillBoundary_finish failed with wrong message size");
+                }
 #endif
+                amrex::Print() << "Waitall A" << std::endl;
+                AMREX_GPU_ERROR_CHECK();
+                amrex::Print() << "Waitall End" << std::endl;
+            });
         }
 
         bool is_thread_safe = TheFB->m_threadsafe_rcv;
@@ -227,7 +243,7 @@ FabArray<FAB>::FillBoundary_finish_stream ()
 #endif
             {
                 unpack_recv_buffer_gpu<BUF>(*this, fbd->scomp, fbd->ncomp, fbd->recv_data, fbd->recv_size,
-                                            recv_cctc, FabArrayBase::COPY, is_thread_safe);
+                                            recv_cctc, FabArrayBase::COPY, is_thread_safe, true);
             }
         }
         else
@@ -237,15 +253,57 @@ FabArray<FAB>::FillBoundary_finish_stream ()
                                         recv_cctc, FabArrayBase::COPY, is_thread_safe);
         }
 
-        /* CPUSUBMIT THIS */
-
-
+#if 0
         if (fbd->the_recv_data)
         {
+            /* CPUSUBMIT THIS */
+            Gpu::bg_stream().cpuSubmit( [=] {
+                amrex::The_Comms_Arena()->free(fbd->the_recv_data);
+                fbd->the_recv_data = nullptr;
+            });
+        }
+#endif
+    }
+
+    const auto N_snds = static_cast<int>(TheFB->m_SndTags->size());
+
+    Gpu::bg_stream().cpuSubmit( [&, N_snds, N_rcvs] {
+
+        if ((N_rcvs > 0) && (fbd->the_recv_data)) {
             amrex::The_Comms_Arena()->free(fbd->the_recv_data);
             fbd->the_recv_data = nullptr;
         }
-    }
+
+        if (N_snds > 0) {
+            Vector<MPI_Status> stats(fbd->send_reqs.size());
+            amrex::Print() << " WaitS Start" << std::endl;
+            AMREX_GPU_ERROR_CHECK();
+            amrex::Print() << " WaitS A " << std::endl;
+
+            ParallelDescriptor::Waitall(fbd->send_reqs, stats);
+
+            amrex::Print() << " WaitS B" << std::endl;
+            AMREX_GPU_ERROR_CHECK();
+            amrex::Print() << " WaitS Done" << std::endl;
+
+            amrex::The_Comms_Arena()->free(fbd->the_send_data);
+            fbd->the_send_data = nullptr;
+
+            AMREX_GPU_ERROR_CHECK();
+            amrex::Print() << " WaitS Done" << std::endl;
+
+        }
+
+        AMREX_GPU_ERROR_CHECK();
+        amrex::Print() << " Delete fbd Start" << std::endl;
+
+        delete_fbd();
+
+        AMREX_GPU_ERROR_CHECK();
+        amrex::Print() << " Delete fbd End" << std::endl;
+    });
+
+#if 0
 
     const auto N_snds = static_cast<int>(TheFB->m_SndTags->size());
     if (N_snds > 0) {
@@ -259,6 +317,7 @@ FabArray<FAB>::FillBoundary_finish_stream ()
 
     /* CPUSUBMIT THIS */
     delete_fbd();
+#endif
 
 #endif
 }
@@ -337,12 +396,14 @@ FabArray<FAB>::PrepareSendBuffers_stream (const MapOfCopyComTagContainers&     S
     if (total_volume > 0)
     {
         the_send_data = static_cast<char*>(amrex::The_Comms_Arena()->alloc(total_volume));
+
         for (int i = 0, N = static_cast<int>(send_size.size()); i < N; ++i) {
             send_data[i] = the_send_data + offset[i];
         }
     } else {
         the_send_data = nullptr;
     }
+
 }
 
 template <class FAB>
@@ -351,22 +412,25 @@ FabArray<FAB>::PostSnds_stream (Vector<char*> const&       send_data,
                                 Vector<std::size_t> const& send_size,
                                 Vector<int> const&         send_rank,
                                 Vector<MPI_Request>&       send_reqs,
-                                int                        SeqNum)
+                                int&                       SeqNum)
 {
-    MPI_Comm comm = ParallelContext::CommunicatorSub();
+    /* CPUSUBMIT THIS */
+    // Copy of send_size and send_rank unnecessary. Move &/or transfer ownership?
+    // (This is the last place those vectors are used.)
+    Gpu::bg_stream().cpuSubmit( [&, send_size, send_rank] {
 
-    const auto N_snds = static_cast<int>(send_reqs.size());
+        const auto N_snds = static_cast<int>(send_reqs.size());
+        MPI_Comm comm = ParallelContext::CommunicatorSub();
 
-    /* CPUSUBMIT THIS */ 
-
-    for (int j = 0; j < N_snds; ++j)
-    {
-        if (send_size[j] > 0) {
-            const int rank = ParallelContext::global_to_local_rank(send_rank[j]);
-            send_reqs[j] = ParallelDescriptor::Asend
-                (send_data[j], send_size[j], rank, SeqNum, comm).req();
+        for (int j = 0; j < N_snds; ++j)
+        {
+            if (send_size[j] > 0) {
+                const int rank = ParallelContext::global_to_local_rank(send_rank[j]);
+                send_reqs[j] = ParallelDescriptor::Asend
+                    (send_data[j], send_size[j], rank, SeqNum, comm).req();
+            }
         }
-    }
+    });
 }
 
 template <class FAB>
@@ -455,13 +519,24 @@ FabArray<FAB>::PostRcvs_stream (const MapOfCopyComTagContainers&  RcvTags,
 
 template <class FAB>
 void
-FabArray<FAB>::FillBoundary_test_stream ()
+FabArray<FAB>::FillBoundary_test_stream (Vector<MPI_Request>& reqs, Vector<MPI_Status>& stat)
 {
+    amrex::ignore_unused(reqs, stat);
+
 #if defined(AMREX_USE_MPI) && !defined(AMREX_DEBUG)
-    // We only test if no DEBUG because in DEBUG we check the status later.
-    // If Test is done here, the status check will fail.
-    int flag;
-    ParallelDescriptor::Test(fbd->recv_reqs, flag, fbd->recv_stat);
+    // Don't know why, but GNU captures reqs as Vector<int> unless directly
+    // capturing them like this. So, this avoids what I assume is a compiler bug.
+    Gpu::bg_stream().cpuSubmit( [=, &reqs, &stat] {
+
+        amrex::Print() << "FB_test begin" << std::endl;
+
+        // We only test if no DEBUG because in DEBUG we check the status later.
+        // If Test is done here, the status check will fail.
+        int flag;
+        ParallelDescriptor::Test(reqs, flag, stat);
+
+        amrex::Print() << "FB_test done" << std::endl;
+    });
 #endif
 }
 

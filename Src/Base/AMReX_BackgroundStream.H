@@ -3,6 +3,7 @@
 
 #include <AMReX_BackgroundThread.H>
 #include <AMReX_Config.H>
+#include <AMReX_GpuControl.H>
 
 #include <cuda.h>
 
@@ -47,6 +48,7 @@ public:
 
     void cpuSubmit (std::function<void()>&& f);
     void gpuSubmit (std::function<void()>&& f);
+    void gpuSubmit (std::function<void(amrex::gpuStream_t& s)>&& f);
 
     cudaStream_t& get_stream() { return gpu_stream; }
 

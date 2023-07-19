@@ -146,7 +146,7 @@ tagparfor_call_f (
 
 template <class TagType, class F>
 void
-ParallelFor_doit (Vector<TagType> const& tags, F && f)
+ParallelFor_doit (Vector<TagType> const& tags, F && f, bool background = false)
 {
     const int ntags = tags.size();
     if (ntags == 0) return;
@@ -184,56 +184,73 @@ ParallelFor_doit (Vector<TagType> const& tags, F && f)
 
     /* GPUSUBMIT THIS*/
 
-    amrex::launch(nblocks, nthreads, Gpu::gpuStream(),
-#ifdef AMREX_USE_SYCL
-    [=] AMREX_GPU_DEVICE (sycl::nd_item<1> const& item) noexcept
-    [[sycl::reqd_work_group_size(1,1,nthreads)]]
-    [[sycl::reqd_sub_group_size(Gpu::Device::warp_size)]]
-#else
-    [=] AMREX_GPU_DEVICE () noexcept
-#endif
-    {
-#ifdef AMREX_USE_SYCL
-        int g_tid = item.get_global_id(0);
-#else
-        int g_tid = blockDim.x*blockIdx.x + threadIdx.x;
-#endif
-        int g_wid = g_tid / Gpu::Device::warp_size;
-        if (g_wid >= ntotwarps) return;
+    auto parallelfor = [=](gpuStream_t& stream) {
 
-        int tag_id = amrex::bisect(d_nwarps, 0, ntags, g_wid);
-
-        int b_wid = g_wid - d_nwarps[tag_id]; // b_wid'th warp on this box
+        amrex::launch(nblocks, nthreads, stream,
 #ifdef AMREX_USE_SYCL
-        int lane = item.get_local_id(0) % Gpu::Device::warp_size;
+        [=] AMREX_GPU_DEVICE (sycl::nd_item<1> const& item) noexcept
+        [[sycl::reqd_work_group_size(1,1,nthreads)]]
+        [[sycl::reqd_sub_group_size(Gpu::Device::warp_size)]]
 #else
-        int lane = threadIdx.x % Gpu::Device::warp_size;
+        [=] AMREX_GPU_DEVICE () noexcept
 #endif
-        int icell = b_wid*Gpu::Device::warp_size + lane;
+        {
+#ifdef AMREX_USE_SYCL
+            int g_tid = item.get_global_id(0);
+#else
+            int g_tid = blockDim.x*blockIdx.x + threadIdx.x;
+#endif
+            int g_wid = g_tid / Gpu::Device::warp_size;
+            if (g_wid >= ntotwarps) return;
+
+            int tag_id = amrex::bisect(d_nwarps, 0, ntags, g_wid);
+
+            int b_wid = g_wid - d_nwarps[tag_id]; // b_wid'th warp on this box
 
 #ifdef AMREX_USE_SYCL
-        tagparfor_call_f(item, icell, d_tags[tag_id], f);
+            int lane = item.get_local_id(0) % Gpu::Device::warp_size;
 #else
-        tagparfor_call_f(      icell, d_tags[tag_id], f);
+            int lane = threadIdx.x % Gpu::Device::warp_size;
 #endif
-    });
+            int icell = b_wid*Gpu::Device::warp_size + lane;
 
-
-    /* Not needed */    
-    Gpu::streamSynchronize();
+#ifdef AMREX_USE_SYCL
+            tagparfor_call_f(item, icell, d_tags[tag_id], f);
+#else
+            tagparfor_call_f(      icell, d_tags[tag_id], f);
+#endif
+        });
+    };
 
     /* CPUSUBMIT THIS */
-    The_Pinned_Arena()->free(h_buffer);
-    The_Arena()->free(d_buffer);
+    if (background) {
+
+        Gpu::bg_stream().gpuSubmit( std::move(parallelfor) );
+
+
+        Gpu::bg_stream().cpuSubmit( [=] {
+            The_Pinned_Arena()->free(h_buffer);
+            The_Arena()->free(d_buffer);
+        });
+
+    } else {
+
+        gpuStream_t my_st = Gpu::gpuStream();
+        parallelfor(my_st);
+        Gpu::streamSynchronize();
+
+        The_Pinned_Arena()->free(h_buffer);
+        The_Arena()->free(d_buffer);
+    }
 
 }
 
-}
+} // namespace detail
 
 template <class TagType, class F>
 std::enable_if_t<std::is_same<std::decay_t<decltype(std::declval<TagType>().box())>,
                               Box>::value>
-ParallelFor (Vector<TagType> const& tags, int ncomp, F && f)
+ParallelFor (Vector<TagType> const& tags, int ncomp, F && f, bool background = false)
 {
     detail::ParallelFor_doit(tags,
         [=] AMREX_GPU_DEVICE (
@@ -247,12 +264,12 @@ ParallelFor (Vector<TagType> const& tags, int ncomp, F && f)
                     f(i,j,k,n,tag);
                 }
             }
-        });
+        }, background);
 }
 
 template <class TagType, class F>
 std::enable_if_t<std::is_same<std::decay_t<decltype(std::declval<TagType>().box())>, Box>::value>
-ParallelFor (Vector<TagType> const& tags, F && f)
+ParallelFor (Vector<TagType> const& tags, F && f, bool background = false)
 {
     detail::ParallelFor_doit(tags,
         [=] AMREX_GPU_DEVICE (
@@ -264,12 +281,12 @@ ParallelFor (Vector<TagType> const& tags, F && f)
             if (icell < ncells) {
                 f(i,j,k,tag);
             }
-        });
+        }, background);
 }
 
 template <class TagType, class F>
 std::enable_if_t<std::is_integral<std::decay_t<decltype(std::declval<TagType>().size())> >::value>
-ParallelFor (Vector<TagType> const& tags, F && f)
+ParallelFor (Vector<TagType> const& tags, F && f, bool background = false)
 {
     detail::ParallelFor_doit(tags,
         [=] AMREX_GPU_DEVICE (
@@ -281,7 +298,7 @@ ParallelFor (Vector<TagType> const& tags, F && f)
             if (icell < ncells) {
                 f(icell,tag);
             }
-        });
+        }, background);
 }
 
 #endif
