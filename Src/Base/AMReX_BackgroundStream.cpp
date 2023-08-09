@@ -9,7 +9,7 @@ namespace amrex {
 
 BackgroundStream::BackgroundStream ()
 {
-    AMREX_CUDA_SAFE_CALL(cudaStreamCreate(&gpu_stream)); 
+    AMREX_CUDA_SAFE_CALL(cudaStreamCreate(&gpu_stream));
 
     AMREX_CUDA_SAFE_CALL(cudaHostAlloc((void**) &hptr, sizeof(int), cudaHostAllocMapped));
     CU_CHECK(cuMemHostGetDevicePointer(&dptr, (void*) hptr, 0));
@@ -56,7 +56,6 @@ BackgroundStream::cpuSubmit (std::function<void()>&& f)
         Submit( [=] ()
         {
             AMREX_CUDA_SAFE_CALL(cudaEventSynchronize(events.front()));
-
             {
                 std::lock_guard<std::mutex> guard(e_mtx);
                 AMREX_CUDA_SAFE_CALL(cudaEventDestroy(events.front()));

@@ -56,10 +56,6 @@ public:
     void gpuSync ();
     void sync    ();
 
-    // Want to make sure all jobs finish on CPU and GPU. 
-    // Need a new one?
-//    void Finish (); // Not required. Call this if you want all jobs to finish.
-
 private:
 
     cudaStream_t gpu_stream;
