@@ -83,7 +83,7 @@ BackgroundStream::gpuSubmit (std::function<void()>&& f)
         });
 
        CU_CHECK(cuStreamWaitValue32_v2(gpu_stream, dptr, op_value, CU_STREAM_WAIT_VALUE_EQ));
-   } 
+   }
 
     // Is a lambda over the ParallelFor function for now. Will needs lots of alternatives if don't want this.
     // Also include error check?
@@ -121,7 +121,7 @@ BackgroundStream::gpuSubmit (std::function<void(amrex::gpuStream_t& s)>&& f)
 void
 BackgroundStream::cpuSync ()
 {
-    Finish(); 
+    Finish();
 
     if (previous == CPU) {
         previous = NONE;
