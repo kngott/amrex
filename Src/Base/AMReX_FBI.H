@@ -63,7 +63,28 @@ fab_to_fab (Vector<Array4CopyTag<T0, T1> > const& copy_tags, int scomp, int dcom
             if (icell < ncells) {
                 for (int n = 0; n < ncomp; ++n) {
                     f(&(tag.dfab(i,j,k,n+dcomp)),
-                      tag.sfab(i+tag.offset.x,j+tag.offset.y,k+tag.offset.z,n+scomp));
+                        tag.sfab(i+tag.offset.x,j+tag.offset.y,k+tag.offset.z,n+scomp));
+                }
+            }
+        }, background);
+}
+
+template <class T0, class T1, class F>
+void
+fab_to_fab_stream (Vector<Array4CopyTag<T0, T1> > const& copy_tags, int scomp, int dcomp, int ncomp,
+                   F && f, bool background = false)
+{
+    detail::ParallelFor_doit(copy_tags,
+        [=] AMREX_GPU_DEVICE (
+#ifdef AMREX_USE_SYCL
+            sycl::nd_item<1> const& /*item*/,
+#endif
+            int icell, int ncells, int i, int j, int k, Array4CopyTag<T0, T1> const tag) noexcept
+        {
+            if (icell < ncells) {
+                for (int n = 0; n < ncomp; ++n) {
+                    (*f)(&(tag.dfab(i,j,k,n+dcomp)),
+                        tag.sfab(i+tag.offset.x,j+tag.offset.y,k+tag.offset.z,n+scomp));
                 }
             }
         }, background);
@@ -271,6 +292,8 @@ template <class FAB>
 void
 FabArray<FAB>::FB_local_copy_gpu (const FB& TheFB, int scomp, int ncomp, bool background)
 {
+    BL_PROFILE("FB_local_copy_gpu");
+
     auto const& LocTags = *(TheFB.m_LocTags);
     int N_locs = LocTags.size();
     if (N_locs == 0) return;
@@ -484,7 +507,7 @@ FabArray<FAB>::FB_local_copy_cuda_graph_n (const FB& TheFB, int scomp, int ncomp
         }
     }
 
-    FillBoundary_test();
+//    FillBoundary_test();
 
     if ( !(TheFB.m_localCopy.ready()) )
     {

@@ -288,10 +288,23 @@ StartParallel (int* argc, char*** argv, MPI_Comm a_mpi_comm)
     if ( ! sflag) {
 
 #ifdef AMREX_MPI_THREAD_MULTIPLE
+//        int requested = MPI_THREAD_SERIALIZED;
+
         int requested = MPI_THREAD_MULTIPLE;
         int provided = -1;
 
         MPI_Init_thread(argc, argv, requested, &provided);
+
+        MPI_Query_thread(&provided);
+
+        if (provided < requested)
+        {
+            auto f = ParallelDescriptor::mpi_level_to_string;
+            std::cout << "MPI provided < requested: " << f(provided) << " < "
+                      << f(requested) << std::endl;;
+            std::abort();
+        }
+
 #else //
         MPI_Init(argc, argv);
 #endif
@@ -307,22 +320,6 @@ StartParallel (int* argc, char*** argv, MPI_Comm a_mpi_comm)
     // sometimes causes problems for amrex::UniqueString function.  So we call MPI_Wtime here.
     auto tfoo = MPI_Wtime();
     amrex::ignore_unused(tfoo);
-
-#ifdef AMREX_MPI_THREAD_MULTIPLE
-    if ( ! sflag) {  // we initialized
-        int requested = MPI_THREAD_MULTIPLE;
-        int provided = -1;
-        MPI_Query_thread(&provided);
-
-        if (provided < requested)
-        {
-            auto f = ParallelDescriptor::mpi_level_to_string;
-            std::cout << "MPI provided < requested: " << f(provided) << " < "
-                      << f(requested) << std::endl;;
-            std::abort();
-        }
-    }
-#endif
 
     ParallelContext::push(m_comm);
 

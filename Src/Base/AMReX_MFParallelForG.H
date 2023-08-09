@@ -75,7 +75,8 @@ namespace parfor_mf_detail {
 
 template <int MT, typename MF, typename F>
 std::enable_if_t<IsFabArray<MF>::value>
-ParallelFor (MF const& mf, IntVect const& nghost, int ncomp, IntVect const&, bool, F&& f)
+ParallelFor (MF const& mf, IntVect const& nghost, int ncomp, IntVect const&, bool, F&& f,
+                gpuStream_t const& stream = Gpu::gpuStream())
 {
     const auto& index_array = mf.IndexArray();
     const int nboxes = index_array.size();
@@ -99,7 +100,7 @@ ParallelFor (MF const& mf, IntVect const& nghost, int ncomp, IntVect const&, boo
 #if defined(AMREX_USE_CUDA) || defined(AMREX_USE_HIP)
 
         amrex::launch_global<MT>
-            <<<nblocks, MT, 0, Gpu::gpuStream()>>>
+            <<<nblocks, MT, 0, stream>>>
             ([=] AMREX_GPU_DEVICE () noexcept
              {
                  int ibox, icell;
@@ -113,7 +114,7 @@ ParallelFor (MF const& mf, IntVect const& nghost, int ncomp, IntVect const&, boo
 
 #elif defined(AMREX_USE_SYCL)
 
-        amrex::launch<MT>(nblocks, Gpu::gpuStream(),
+        amrex::launch<MT>(nblocks, stream,
              [=] AMREX_GPU_DEVICE (sycl::nd_item<1> const& item) noexcept
              {
                  int ibox, icell;
@@ -148,9 +149,9 @@ ParallelFor (MF const& mf, IntVect const& nghost, int ncomp, IntVect const&, boo
 
 template <typename MF, typename F>
 std::enable_if_t<IsFabArray<MF>::value>
-ParallelFor (MF const& mf, IntVect const& nghost, int ncomp, IntVect const& ts, bool dynamic, F&& f)
+ParallelFor (MF const& mf, IntVect const& nghost, int ncomp, IntVect const& ts, bool dynamic, F&& f, gpuStream_t stream = Gpu::gpuStream())
 {
-    ParallelFor<AMREX_GPU_MAX_THREADS>(mf, nghost, ncomp, ts, dynamic, std::forward<F>(f));
+    ParallelFor<AMREX_GPU_MAX_THREADS>(mf, nghost, ncomp, ts, dynamic, std::forward<F>(f), stream);
 }
 
 template <typename MF, typename F>

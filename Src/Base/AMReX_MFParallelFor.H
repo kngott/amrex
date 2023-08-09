@@ -144,9 +144,9 @@ ParallelFor (MF const& mf, IntVect const& ng, F&& f)
  */
 template <typename MF, typename F>
 std::enable_if_t<IsFabArray<MF>::value>
-ParallelFor (MF const& mf, IntVect const& ng, int ncomp, F&& f)
+ParallelFor (MF const& mf, IntVect const& ng, int ncomp, F&& f, gpuStream_t const& stream = Gpu::gpuStream())
 {
-    detail::ParallelFor(mf, ng, ncomp, FabArrayBase::mfiter_tile_size, false, std::forward<F>(f));
+    detail::ParallelFor(mf, ng, ncomp, FabArrayBase::mfiter_tile_size, false, std::forward<F>(f), stream);
 }
 
 /**

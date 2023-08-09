@@ -887,7 +887,8 @@ ParallelFor (Gpu::KernelInfo const&, T n, L&& f) noexcept
 
 template <int MT, typename L>
 std::enable_if_t<MaybeDeviceRunnable<L>::value>
-ParallelFor (Gpu::KernelInfo const&, Box const& box, L&& f) noexcept
+ParallelFor (Gpu::KernelInfo const&, Box const& box, L&& f,
+             gpuStream_t const& stream = Gpu::gpuStream()) noexcept
 {
     if (amrex::isEmpty(box)) return;
     int ncells = box.numPts();
@@ -896,7 +897,7 @@ ParallelFor (Gpu::KernelInfo const&, Box const& box, L&& f) noexcept
     const auto lenxy = len.x*len.y;
     const auto lenx = len.x;
     const auto ec = Gpu::makeExecutionConfig<MT>(ncells);
-    AMREX_LAUNCH_KERNEL(MT, ec.numBlocks, ec.numThreads, 0, Gpu::gpuStream(),
+    AMREX_LAUNCH_KERNEL(MT, ec.numBlocks, ec.numThreads, 0, stream,
     [=] AMREX_GPU_DEVICE () noexcept {
         for (int icell = blockDim.x*blockIdx.x+threadIdx.x, stride = blockDim.x*gridDim.x;
              icell < ncells; icell += stride)
@@ -915,7 +916,8 @@ ParallelFor (Gpu::KernelInfo const&, Box const& box, L&& f) noexcept
 
 template <int MT, typename T, typename L, typename M=std::enable_if_t<std::is_integral<T>::value> >
 std::enable_if_t<MaybeDeviceRunnable<L>::value>
-ParallelFor (Gpu::KernelInfo const&, Box const& box, T ncomp, L&& f) noexcept
+ParallelFor (Gpu::KernelInfo const&, Box const& box, T ncomp, L&& f,
+             gpuStream_t const& stream = Gpu::gpuStream()) noexcept
 {
     if (amrex::isEmpty(box)) return;
     int ncells = box.numPts();
@@ -924,7 +926,7 @@ ParallelFor (Gpu::KernelInfo const&, Box const& box, T ncomp, L&& f) noexcept
     const auto lenxy = len.x*len.y;
     const auto lenx = len.x;
     const auto ec = Gpu::makeExecutionConfig<MT>(ncells);
-    AMREX_LAUNCH_KERNEL(MT, ec.numBlocks, ec.numThreads, 0, Gpu::gpuStream(),
+    AMREX_LAUNCH_KERNEL(MT, ec.numBlocks, ec.numThreads, 0, stream,
     [=] AMREX_GPU_DEVICE () noexcept {
         for (int icell = blockDim.x*blockIdx.x+threadIdx.x, stride = blockDim.x*gridDim.x;
              icell < ncells; icell += stride) {
@@ -1464,9 +1466,9 @@ void ParallelFor (T n, L&& f) noexcept
 }
 
 template <typename L>
-void ParallelFor (Box const& box, L&& f) noexcept
+void ParallelFor (Box const& box, L&& f, gpuStream_t const& stream = Gpu::gpuStream()) noexcept
 {
-    ParallelFor<AMREX_GPU_MAX_THREADS>(Gpu::KernelInfo{}, box, std::forward<L>(f));
+    ParallelFor<AMREX_GPU_MAX_THREADS>(Gpu::KernelInfo{}, box, std::forward<L>(f), stream);
 }
 
 template <int MT, typename L>
@@ -1476,7 +1478,7 @@ void ParallelFor (Box const& box, L&& f) noexcept
 }
 
 template <typename T, typename L, typename M=std::enable_if_t<std::is_integral<T>::value> >
-void ParallelFor (Box const& box, T ncomp, L&& f) noexcept
+void ParallelFor (Box const& box, T ncomp, L&& f, gpuStream_t const& stream = Gpu::gpuStream()) noexcept
 {
     ParallelFor<AMREX_GPU_MAX_THREADS>(Gpu::KernelInfo{},box,ncomp,std::forward<L>(f));
 }

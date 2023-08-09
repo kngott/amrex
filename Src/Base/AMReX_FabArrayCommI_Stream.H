@@ -209,11 +209,6 @@ FabArray<FAB>::FillBoundary_finish_stream ()
 
             /* CPUSUBMIT THIS */
             Gpu::bg_stream().cpuSubmit( [&] {
-
-                amrex::Print() << "Waitall Start" << std::endl;
-                AMREX_GPU_ERROR_CHECK();
-                amrex::Print() << "Waitall A" << std::endl;
-
                 ParallelDescriptor::Waitall(fbd->recv_reqs, fbd->recv_stat);
 #ifdef AMREX_DEBUG
                 if (!CheckRcvStats(fbd->recv_stat, fbd->recv_size, fbd->tag))
@@ -221,9 +216,6 @@ FabArray<FAB>::FillBoundary_finish_stream ()
                     amrex::Abort("FillBoundary_finish failed with wrong message size");
                 }
 #endif
-                amrex::Print() << "Waitall A" << std::endl;
-                AMREX_GPU_ERROR_CHECK();
-                amrex::Print() << "Waitall End" << std::endl;
             });
         }
 
@@ -252,17 +244,6 @@ FabArray<FAB>::FillBoundary_finish_stream ()
             unpack_recv_buffer_cpu<BUF>(*this, fbd->scomp, fbd->ncomp, fbd->recv_data, fbd->recv_size,
                                         recv_cctc, FabArrayBase::COPY, is_thread_safe);
         }
-
-#if 0
-        if (fbd->the_recv_data)
-        {
-            /* CPUSUBMIT THIS */
-            Gpu::bg_stream().cpuSubmit( [=] {
-                amrex::The_Comms_Arena()->free(fbd->the_recv_data);
-                fbd->the_recv_data = nullptr;
-            });
-        }
-#endif
     }
 
     const auto N_snds = static_cast<int>(TheFB->m_SndTags->size());
@@ -276,48 +257,12 @@ FabArray<FAB>::FillBoundary_finish_stream ()
 
         if (N_snds > 0) {
             Vector<MPI_Status> stats(fbd->send_reqs.size());
-            amrex::Print() << " WaitS Start" << std::endl;
-            AMREX_GPU_ERROR_CHECK();
-            amrex::Print() << " WaitS A " << std::endl;
-
             ParallelDescriptor::Waitall(fbd->send_reqs, stats);
-
-            amrex::Print() << " WaitS B" << std::endl;
-            AMREX_GPU_ERROR_CHECK();
-            amrex::Print() << " WaitS Done" << std::endl;
-
             amrex::The_Comms_Arena()->free(fbd->the_send_data);
-            fbd->the_send_data = nullptr;
-
-            AMREX_GPU_ERROR_CHECK();
-            amrex::Print() << " WaitS Done" << std::endl;
-
         }
 
-        AMREX_GPU_ERROR_CHECK();
-        amrex::Print() << " Delete fbd Start" << std::endl;
-
         delete_fbd();
-
-        AMREX_GPU_ERROR_CHECK();
-        amrex::Print() << " Delete fbd End" << std::endl;
     });
-
-#if 0
-
-    const auto N_snds = static_cast<int>(TheFB->m_SndTags->size());
-    if (N_snds > 0) {
-
-        /* CPUSUBMIT THIS */
-        Vector<MPI_Status> stats(fbd->send_reqs.size());
-        ParallelDescriptor::Waitall(fbd->send_reqs, stats);
-        amrex::The_Comms_Arena()->free(fbd->the_send_data);
-        fbd->the_send_data = nullptr;
-    }
-
-    /* CPUSUBMIT THIS */
-    delete_fbd();
-#endif
 
 #endif
 }
@@ -527,15 +472,10 @@ FabArray<FAB>::FillBoundary_test_stream (Vector<MPI_Request>& reqs, Vector<MPI_S
     // Don't know why, but GNU captures reqs as Vector<int> unless directly
     // capturing them like this. So, this avoids what I assume is a compiler bug.
     Gpu::bg_stream().cpuSubmit( [=, &reqs, &stat] {
-
-        amrex::Print() << "FB_test begin" << std::endl;
-
         // We only test if no DEBUG because in DEBUG we check the status later.
         // If Test is done here, the status check will fail.
         int flag;
         ParallelDescriptor::Test(reqs, flag, stat);
-
-        amrex::Print() << "FB_test done" << std::endl;
     });
 #endif
 }

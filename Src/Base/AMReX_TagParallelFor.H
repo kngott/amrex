@@ -120,6 +120,7 @@ tagparfor_call_f (
     i += lo.x;
     j += lo.y;
     k += lo.z;
+
 #ifdef AMREX_USE_SYCL
     f(item, icell, ncells, i, j, k, tag);
 #else
@@ -148,6 +149,8 @@ template <class TagType, class F>
 void
 ParallelFor_doit (Vector<TagType> const& tags, F && f, bool background = false)
 {
+    BL_PROFILE("TagParallelFor_doit");
+
     const int ntags = tags.size();
     if (ntags == 0) return;
 
@@ -173,8 +176,13 @@ ParallelFor_doit (Vector<TagType> const& tags, F && f, bool background = false)
 
     std::memcpy(h_buffer, tags.data(), sizeof_tags);
     std::memcpy(h_buffer+offset_nwarps, nwarps.data(), sizeof_nwarps);
-    Gpu::htod_memcpy_async(d_buffer, h_buffer, total_buf_size);
-
+    if (background) {
+        AMREX_CUDA_SAFE_CALL(cudaMemcpyAsync(d_buffer, h_buffer, total_buf_size,
+                                             cudaMemcpyHostToDevice,
+                                             Gpu::bg_stream().get_stream()));
+    } else {
+        Gpu::htod_memcpy_async(d_buffer, h_buffer, total_buf_size);
+    }
     auto d_tags = reinterpret_cast<TagType*>(d_buffer);
     auto d_nwarps = reinterpret_cast<int*>(d_buffer+offset_nwarps);
 
@@ -183,10 +191,10 @@ ParallelFor_doit (Vector<TagType> const& tags, F && f, bool background = false)
     int nblocks = (ntotwarps + nwarps_per_block-1) / nwarps_per_block;
 
     /* GPUSUBMIT THIS*/
-
-    auto parallelfor = [=](gpuStream_t& stream) {
+    auto parallelfor = [=](gpuStream_t stream) {
 
         amrex::launch(nblocks, nthreads, stream,
+
 #ifdef AMREX_USE_SYCL
         [=] AMREX_GPU_DEVICE (sycl::nd_item<1> const& item) noexcept
         [[sycl::reqd_work_group_size(1,1,nthreads)]]
@@ -195,6 +203,7 @@ ParallelFor_doit (Vector<TagType> const& tags, F && f, bool background = false)
         [=] AMREX_GPU_DEVICE () noexcept
 #endif
         {
+
 #ifdef AMREX_USE_SYCL
             int g_tid = item.get_global_id(0);
 #else
@@ -224,9 +233,7 @@ ParallelFor_doit (Vector<TagType> const& tags, F && f, bool background = false)
 
     /* CPUSUBMIT THIS */
     if (background) {
-
         Gpu::bg_stream().gpuSubmit( std::move(parallelfor) );
-
 
         Gpu::bg_stream().cpuSubmit( [=] {
             The_Pinned_Arena()->free(h_buffer);
@@ -234,15 +241,12 @@ ParallelFor_doit (Vector<TagType> const& tags, F && f, bool background = false)
         });
 
     } else {
-
-        gpuStream_t my_st = Gpu::gpuStream();
-        parallelfor(my_st);
+        parallelfor(Gpu::gpuStream());
         Gpu::streamSynchronize();
 
         The_Pinned_Arena()->free(h_buffer);
         The_Arena()->free(d_buffer);
     }
-
 }
 
 } // namespace detail
