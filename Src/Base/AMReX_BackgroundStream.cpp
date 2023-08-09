@@ -51,8 +51,6 @@ BackgroundStream::cpuSubmit (std::function<void()>&& f)
             AMREX_CUDA_SAFE_CALL(cudaEventRecord(place_event, gpu_stream));
         }
 
-        cudaEvent_t& this_event = events.back();
-
         Submit( [=] ()
         {
             AMREX_CUDA_SAFE_CALL(cudaEventSynchronize(events.front()));
@@ -146,9 +144,17 @@ BackgroundStream::gpuSync ()
 void
 BackgroundStream::sync ()
 {
-    // Ordering?
-    cpuSync();
-    gpuSync();
+    // For now, do the last thing last.
+    // Gives time for other sync to complete and overlap work.
+    // Need both?
+
+    if (previous == CPU) {
+        gpuSync();
+        cpuSync();
+    } else {
+        cpuSync();
+        gpuSync();
+    }
 }
 
 
