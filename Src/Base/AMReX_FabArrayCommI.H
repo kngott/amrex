@@ -16,6 +16,9 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
     AMREX_ASSERT_WITH_MESSAGE(!fbd, "FillBoundary_nowait() called when comm operation already in progress.");
     AMREX_ASSERT(!enforce_periodicity_only || !override_sync);
 
+    amrex::Print() << " ======================================== " << std::endl;
+    amrex::Print() << "    Starting FillBoundary " << std::endl;
+
     bool work_to_do;
     if (enforce_periodicity_only) {
         work_to_do = period.isAnyPeriodic();
@@ -244,6 +247,9 @@ FabArray<FAB>::FillBoundary_finish ()
     fbd.reset();
 
 #endif
+
+    amrex::Print() << "    Ending FillBoundary " << std::endl;
+    amrex::Print() << " ======================================== " << std::endl;
 }
 
 // \cond CODEGEN
@@ -321,6 +327,9 @@ FabArray<FAB>::ParallelCopy_nowait (const FabArray<FAB>& src,
     BL_PROFILE("FabArray::ParallelCopy_nowait()");
 
     AMREX_ASSERT_WITH_MESSAGE(!pcd, "ParallelCopy_nowait() called when comm operation already in progress.");
+
+    amrex::Print() << " ======================================== " << std::endl;
+    amrex::Print() << "    Starting ParallelCopy " << std::endl;
 
     if (empty() || src.empty()) {
         return;
@@ -565,6 +574,9 @@ FabArray<FAB>::ParallelCopy_finish ()
     pcd.reset();
 
 #endif /*BL_USE_MPI*/
+
+    amrex::Print() << "    Ending ParallelCopy " << std::endl;
+    amrex::Print() << " ======================================== " << std::endl;
 }
 
 template <class FAB>

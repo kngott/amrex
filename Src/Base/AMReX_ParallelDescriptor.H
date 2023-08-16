@@ -704,6 +704,14 @@ Asend (const T* buf, size_t n, int dst_pid, int tag, MPI_Comm comm)
     BL_PROFILE_T_S("ParallelDescriptor::Asend(TsiiM)", T);
     BL_COMM_PROFILE(BLProfiler::AsendTsiiM, n * sizeof(T), dst_pid, tag);
 
+    if (IOProcessor()) {
+        int* sz = new int;
+        MPI_Datatype datatype = Mpi_typemap<T>::type();
+        MPI_Type_size(datatype, sz);
+        std::cout << "  - Performing Asend: " << n << " of size " << *sz << " = " << n*(*sz) << " to rank " << dst_pid << std::endl;
+        delete sz;
+    }
+
     MPI_Request req;
     BL_MPI_REQUIRE( MPI_Isend(const_cast<T*>(buf),
                               n,
@@ -754,6 +762,15 @@ Send (const T* buf, size_t n, int dst_pid, int tag, MPI_Comm comm)
     BL_COMM_PROFILE(BLProfiler::SendTsii, n * sizeof(T), dst_pid_world, tag);
 #endif
 
+    if (IOProcessor()) {
+        int* sz = new int;
+        MPI_Datatype datatype = Mpi_typemap<T>::type();
+        MPI_Type_size(datatype, sz);
+        std::cout << "  - Performing Send: " << n << " of size " << *sz << " = " << n*(*sz) << " to rank " << dst_pid << std::endl;
+        delete sz;
+    }
+
+
     BL_MPI_REQUIRE( MPI_Send(const_cast<T*>(buf),
                              n,
                              Mpi_typemap<T>::type(),
@@ -792,6 +809,15 @@ Arecv (T* buf, size_t n, int src_pid, int tag, MPI_Comm comm)
 
     BL_PROFILE_T_S("ParallelDescriptor::Arecv(TsiiM)", T);
     BL_COMM_PROFILE(BLProfiler::ArecvTsiiM, n * sizeof(T), src_pid, tag);
+
+
+    if (IOProcessor()) {
+        int* sz = new int;
+        MPI_Datatype datatype = Mpi_typemap<T>::type();
+        MPI_Type_size(datatype, sz);
+        std::cout << "  - Performing Arecv: " << n << " of size " << *sz << " = " << n*(*sz) << " from rank " << src_pid << std::endl;
+        delete sz;
+    }
 
     MPI_Request req;
     BL_MPI_REQUIRE( MPI_Irecv(buf,
@@ -833,6 +859,14 @@ Recv (T* buf, size_t n, int src_pid, int tag, MPI_Comm comm)
 
     BL_PROFILE_T_S("ParallelDescriptor::Recv(Tsii)", T);
     BL_COMM_PROFILE(BLProfiler::RecvTsii, BLProfiler::BeforeCall(), src_pid, tag);
+
+    if (IOProcessor()) {
+        int* sz = new int;
+        MPI_Datatype datatype = Mpi_typemap<T>::type();
+        MPI_Type_size(datatype, sz);
+        std::cout << "  - Performing Recv: " << n << " of size " << *sz << " = " << n*(*sz) << " to rank " << src_pid << std::endl;
+    delete sz;
+    }
 
     MPI_Status stat;
     BL_MPI_REQUIRE( MPI_Recv(buf,
@@ -880,6 +914,14 @@ ParallelDescriptor::Bcast (T*     t,
     BL_PROFILE_T_S("ParallelDescriptor::Bcast(Tsi)", T);
     BL_COMM_PROFILE(BLProfiler::BCastTsi, BLProfiler::BeforeCall(), root, BLProfiler::NoTag());
 
+    if (IOProcessor()) {
+        int* sz = new int;
+        MPI_Datatype datatype = Mpi_typemap<T>::type();
+        MPI_Type_size(datatype, sz);
+        std::cout << "  - Performing Bcast: " << n << " of size " << *sz << " = " << n*(*sz) << std::endl;
+        delete sz;
+    }
+
     BL_MPI_REQUIRE( MPI_Bcast(t,
                               n,
                               Mpi_typemap<T>::type(),
@@ -906,6 +948,14 @@ ParallelDescriptor::Bcast (T*     t,
     BL_PROFILE_T_S("ParallelDescriptor::Bcast(Tsi)", T);
     BL_COMM_PROFILE(BLProfiler::BCastTsi, BLProfiler::BeforeCall(), root, BLProfiler::NoTag());
 
+    if (IOProcessor()) {
+        int* sz = new int;
+        MPI_Datatype datatype = Mpi_typemap<T>::type();
+        MPI_Type_size(datatype, sz);
+        std::cout << "  - Performing Bcast: " << n << " of size " << *sz << " = " << n*(*sz) << std::endl;
+        delete sz;
+    }
+
     BL_MPI_REQUIRE( MPI_Bcast(t,
                               n,
                               Mpi_typemap<T>::type(),
@@ -928,6 +978,14 @@ ParallelDescriptor::Gather (const T* t,
     BL_ASSERT(n  < static_cast<size_t>(std::numeric_limits<int>::max()));
     BL_ASSERT(n1 < static_cast<size_t>(std::numeric_limits<int>::max()));
 
+    if (IOProcessor()) {
+        int* sz = new int;
+        MPI_Datatype datatype = Mpi_typemap<T>::type();
+        MPI_Type_size(datatype, sz);
+        std::cout << "  - Performing Gather: " << n << " of size " << *sz << " = " << n*(*sz) << std::endl;
+        delete sz;
+    }
+
     BL_MPI_REQUIRE( MPI_Gather(const_cast<T*>(t),
                                n,
                                Mpi_typemap<T>::type(),
@@ -945,6 +1003,14 @@ ParallelDescriptor::Gather (const T& t, int root)
 {
     BL_PROFILE_T_S("ParallelDescriptor::Gather(Ti)", T);
     BL_COMM_PROFILE(BLProfiler::GatherTi, BLProfiler::BeforeCall(), root, BLProfiler::NoTag());
+
+    if (IOProcessor()) {
+        int* sz = new int;
+        MPI_Datatype datatype = Mpi_typemap<T>::type();
+        MPI_Type_size(datatype, sz);
+        std::cout << "  - Performing Gather: 1 of size " << *sz << " = " << *sz << std::endl;
+        delete sz;
+    }
 
     std::vector<T> resl;
     if ( root == MyProc() ) { resl.resize(NProcs()); }
@@ -968,6 +1034,14 @@ ParallelDescriptor::Gatherv (const T* send, int sc,
 {
     BL_PROFILE_T_S("ParallelDescriptor::Gatherv(Ti)", T);
     BL_COMM_PROFILE(BLProfiler::Gatherv,  BLProfiler::BeforeCall(), root, BLProfiler::NoTag());
+
+    if (IOProcessor()) {
+        int* sz = new int;
+        MPI_Datatype datatype = Mpi_typemap<T>::type();
+        MPI_Type_size(datatype, sz);
+        std::cout << "  - Performing Gather: " << sc << " of size " << *sz << " = " << sc*(*sz) << std::endl;
+        delete sz;
+    }
 
     MPI_Gatherv(send, sc, ParallelDescriptor::Mpi_typemap<T>::type(),
                 recv, rc.data(), disp.data(), ParallelDescriptor::Mpi_typemap<T>::type(),
@@ -1031,6 +1105,15 @@ ParallelDescriptor::GatherLayoutDataToVector (const LayoutData<T>& sendbuf,
     std::partial_sum(recvcount.begin(), recvcount.end()-1, disp.begin()+1);
     Vector<T> new_index_to_T(sendbuf.size());
 
+    if (IOProcessor()) {
+        int* sz = new int;
+        MPI_Datatype datatype = Mpi_typemap<T>::type();
+        MPI_Type_size(datatype, sz);
+        std::cout << "  - Performing Gatherv (LayoutData): " << T_to_send.size() <<
+                          " of size " << *sz << " = " << T_to_send.size()*(*sz) << std::endl;
+        delete sz;
+    }
+
     MPI_Gatherv(T_to_send.data(), T_to_send.size(),
                 ParallelDescriptor::Mpi_typemap<T>::type(),
                 new_index_to_T.data(), recvcount.data(), disp.data(),
@@ -1067,6 +1150,14 @@ ParallelDescriptor::Scatter (T*        t,
 {
     BL_PROFILE_T_S("ParallelDescriptor::Scatter(TsT1si)", T);
     BL_COMM_PROFILE(BLProfiler::ScatterTsT1si,  BLProfiler::BeforeCall(), root, BLProfiler::NoTag());
+
+    if (IOProcessor()) {
+        int* sz = new int;
+        MPI_Datatype datatype = Mpi_typemap<T>::type();
+        MPI_Type_size(datatype, sz);
+        std::cout << "  - Performing Scatter: " << n << " of size " << *sz << " = " << n*(*sz) << std::endl;
+        delete sz;
+    }
 
     BL_MPI_REQUIRE( MPI_Scatter(const_cast<T1*>(t1),
                                 n1,
@@ -1242,6 +1333,14 @@ void DoAllReduce (T* r, MPI_Op op, int cnt)
 
     BL_ASSERT(cnt > 0);
 
+    if (IOProcessor()) {
+        int* sz = new int;
+        MPI_Datatype datatype = Mpi_typemap<T>::type();
+        MPI_Type_size(datatype, sz);
+        std::cout << "  - Performing AllReduce: " << cnt << " of size " << *sz << " = " << cnt*(*sz) << std::endl;
+        delete sz;
+    }
+
     BL_MPI_REQUIRE( MPI_Allreduce(MPI_IN_PLACE, r, cnt,
                                   Mpi_typemap<T>::type(), op,
                                   Communicator()) );
@@ -1255,6 +1354,14 @@ void DoReduce (T* r, MPI_Op op, int cnt, int cpu)
 #endif
 
     BL_ASSERT(cnt > 0);
+
+    if (IOProcessor()) {
+        int* sz = new int;
+        MPI_Datatype datatype = Mpi_typemap<T>::type();
+        MPI_Type_size(datatype, sz);
+        std::cout << "  - Performing AllReduce: " << cnt << " of size " << *sz << " = " << cnt*(*sz) << std::endl;
+        delete sz;
+    }
 
     if (MyProc() == cpu) {
         BL_MPI_REQUIRE( MPI_Reduce(MPI_IN_PLACE, r, cnt,

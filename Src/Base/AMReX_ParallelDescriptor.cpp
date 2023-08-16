@@ -965,6 +965,14 @@ Gather (Real const* sendbuf, int nsend, Real* recvbuf, int root)
 
     MPI_Datatype typ = Mpi_typemap<Real>::type();
 
+    if (IOProcessor()) {
+        int* sz = new int;
+        MPI_Type_size(typ, sz);
+        std::cout << "  - Performing Bcast: " << nsend << " of size " << *sz << " = " << nsend*(*sz) << std::endl;
+        delete sz;
+    }
+
+
     BL_MPI_REQUIRE( MPI_Gather(sendbuf,
                                nsend,
                                typ,
@@ -1134,6 +1142,13 @@ Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm comm)
 
     BL_PROFILE_S("ParallelDescriptor::Bcast(viMiM)");
     BL_COMM_PROFILE(BLProfiler::BCastTsi, BLProfiler::BeforeCall(), root, BLProfiler::NoTag());
+
+    if (IOProcessor()) {
+        int* sz = new int;
+        MPI_Type_size(datatype, sz);
+        std::cout << "  - Performing Bcast: " << count << " of size " << *sz << " = " << count*(*sz) << std::endl;
+        delete sz;
+    }
 
     BL_MPI_REQUIRE( MPI_Bcast(buf,
                               count,
@@ -1652,6 +1667,8 @@ Asend<char> (const char* buf, size_t n, int pid, int tag, MPI_Comm comm)
     BL_PROFILE_T_S("ParallelDescriptor::Asend(TsiiM)", char);
     BL_COMM_PROFILE(BLProfiler::AsendTsiiM, n * sizeof(char), pid, tag);
 
+    amrex::Print() << "  - Performing Asend: " << n << "to rank" << pid << std::endl;
+
     MPI_Request req;
     Message msg;
     const int comm_data_type = ParallelDescriptor::select_comm_data_type(n);
@@ -1698,6 +1715,8 @@ Send<char> (const char* buf, size_t n, int pid, int tag, MPI_Comm comm)
     BL_PROFILE_T_S("ParallelDescriptor::Send(Tsii)", char);
     BL_COMM_PROFILE(BLProfiler::SendTsii, n * sizeof(char), pid, tag);
 
+    amrex::Print() << "  - Performing Send: " << n << "to rank" << pid << std::endl;
+
     const int comm_data_type = ParallelDescriptor::select_comm_data_type(n);
     if (comm_data_type == 1) {
         BL_MPI_REQUIRE( MPI_Send(const_cast<char*>(buf),
@@ -1738,6 +1757,8 @@ Arecv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm)
 {
     BL_PROFILE_T_S("ParallelDescriptor::Arecv(TsiiM)", char);
     BL_COMM_PROFILE(BLProfiler::ArecvTsiiM, n * sizeof(char), pid, tag);
+
+    amrex::Print() << "  - Performing Arecv: " << n << "to rank" << pid << std::endl;
 
     MPI_Request req;
     Message msg;
@@ -1782,6 +1803,8 @@ Recv<char> (char* buf, size_t n, int pid, int tag, MPI_Comm comm)
 {
     BL_PROFILE_T_S("ParallelDescriptor::Recv(Tsii)", char);
     BL_COMM_PROFILE(BLProfiler::RecvTsii, BLProfiler::BeforeCall(), pid, tag);
+
+    amrex::Print() << "  - Performing Recv: " << n << "to rank" << pid << std::endl;
 
     MPI_Status stat;
     Message msg;
