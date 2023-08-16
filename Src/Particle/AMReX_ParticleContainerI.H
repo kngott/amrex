@@ -1070,8 +1070,8 @@ ParticleContainer_impl<ParticleType, NArrayReal, NArrayInt, Allocator>
 {
     BL_PROFILE_SYNC_START_TIMED("SyncBeforeComms: Redist");
 
-    amrex::Print() " ***************************************** " << std::endl;
-    amrex::Print() "    Starting Particle Redistribute " << std::endl;
+    amrex::Print() << " ***************************************** " << std::endl;
+    amrex::Print() << "    Starting Particle Redistribute " << std::endl;
 
 #ifdef AMREX_USE_GPU
     if ( Gpu::inLaunchRegion() )
@@ -1086,8 +1086,8 @@ ParticleContainer_impl<ParticleType, NArrayReal, NArrayInt, Allocator>
     RedistributeCPU(lev_min, lev_max, nGrow, local, remove_negative);
 #endif
 
-    amrex::Print() "    Ending Particle Redistribute " << std::endl;
-    amrex::Print() " ***************************************** " << std::endl;
+    amrex::Print() << "    Ending Particle Redistribute " << std::endl;
+    amrex::Print() << " ***************************************** " << std::endl;
 
     BL_PROFILE_SYNC_STOP();
 }
