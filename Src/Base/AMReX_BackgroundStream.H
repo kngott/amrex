@@ -5,7 +5,9 @@
 #include <AMReX_Config.H>
 #include <AMReX_GpuControl.H>
 
+#ifdef AMREX_USE_CUDA
 #include <cuda.h>
+#endif
 
 #include <algorithm>
 #include <condition_variable>
