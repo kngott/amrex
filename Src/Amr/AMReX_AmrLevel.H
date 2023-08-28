@@ -234,6 +234,14 @@ public:
     const DistributionMapping& DistributionMap () const noexcept { return dmap; }
     //
     const FabFactory<FArrayBox>& Factory () const noexcept { return *m_factory; }
+    //
+#ifdef AMREX_USE_EB
+    const EBFArrayBoxFactory&
+    EBFactory () const noexcept {
+        return static_cast<amrex::EBFArrayBoxFactory const&>(*m_factory);
+    }
+#endif
+
     //! Number of grids at this level.
     int numGrids () const noexcept { return static_cast<int>(grids.size()); }
     //! Number of states at this level.
@@ -654,6 +662,7 @@ void AmrLevel::storeRKCoarseData (int state_type, Real time, Real dt,
                                   MultiFab const& S_old,
                                   Array<MultiFab,order> const& rkk)
 {
+    BL_PROFILE("AmrLevel::storeRKCoarseData()");
     if (level == parent->finestLevel()) { return; }
 
     const StateDescriptor& desc = AmrLevel::desc_lst[state_type];

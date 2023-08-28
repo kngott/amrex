@@ -152,7 +152,7 @@ ParallelFor_doit (Vector<TagType> const& tags, F && f, bool background = false)
     BL_PROFILE("TagParallelFor_doit");
 
     const int ntags = tags.size();
-    if (ntags == 0) return;
+    if (ntags == 0) { return; }
 
     int ntotwarps = 0;
     Vector<int> nwarps;

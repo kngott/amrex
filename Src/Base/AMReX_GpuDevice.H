@@ -29,6 +29,7 @@ using gpuDeviceProp_t = cudaDeviceProp;
 #elif defined(AMREX_USE_SYCL)
     struct gpuDeviceProp_t {
         std::string name;
+        std::string vendor; // SYCL only (inferred for CUDA and HIP)
         std::size_t totalGlobalMem;
         std::size_t sharedMemPerBlock;
         int multiProcessorCount;
@@ -145,6 +146,20 @@ public:
     static int devicePropMinor () noexcept { return device_prop.minor; }
 #endif
 
+    static std::string deviceVendor() noexcept
+    {
+#if defined(AMREX_USE_HIP) && defined(__HIP_PLATFORM_AMD__)
+        return std::string("AMD");
+#elif defined(AMREX_USE_CUDA) || (defined(AMREX_USE_HIP) && defined(__HIP_PLATFORM_NVIDIA__))
+        // Using HIP on NVIDIA GPUs isn't currently supported by AMReX
+        return std::string("NVIDIA");
+#elif defined(AMREX_USE_SYCL)
+        return device_prop.vendor;
+#else
+        return std::string("Unknown");
+#endif
+    }
+
     static std::size_t freeMemAvailable ();
     static void profilerStart ();
     static void profilerStop ();
@@ -249,7 +264,7 @@ streamSynchronizeAll () noexcept
 inline void
 htod_memcpy_async (void* p_d, const void* p_h, const std::size_t sz) noexcept
 {
-    if (sz == 0) return;
+    if (sz == 0) { return; }
 #ifdef AMREX_USE_SYCL
     auto& q = Device::streamQueue();
     q.submit([&] (sycl::handler& h) { h.memcpy(p_d, p_h, sz); });
@@ -263,7 +278,7 @@ htod_memcpy_async (void* p_d, const void* p_h, const std::size_t sz) noexcept
 inline void
 dtoh_memcpy_async (void* p_h, const void* p_d, const std::size_t sz) noexcept
 {
-    if (sz == 0) return;
+    if (sz == 0) { return; }
 #ifdef AMREX_USE_SYCL
     auto& q = Device::streamQueue();
     q.submit([&] (sycl::handler& h) { h.memcpy(p_h, p_d, sz); });
@@ -277,7 +292,7 @@ dtoh_memcpy_async (void* p_h, const void* p_d, const std::size_t sz) noexcept
 inline void
 dtod_memcpy_async (void* p_d_dst, const void* p_d_src, const std::size_t sz) noexcept
 {
-    if (sz == 0) return;
+    if (sz == 0) { return; }
 #ifdef AMREX_USE_SYCL
     auto& q = Device::streamQueue();
     q.submit([&] (sycl::handler& h) { h.memcpy(p_d_dst, p_d_src, sz); });
@@ -291,7 +306,7 @@ dtod_memcpy_async (void* p_d_dst, const void* p_d_src, const std::size_t sz) noe
 inline void
 htod_memcpy (void* p_d, const void* p_h, const std::size_t sz) noexcept
 {
-    if (sz == 0) return;
+    if (sz == 0) { return; }
     htod_memcpy_async(p_d, p_h, sz);
     Gpu::streamSynchronize();
 }
@@ -299,7 +314,7 @@ htod_memcpy (void* p_d, const void* p_h, const std::size_t sz) noexcept
 inline void
 dtoh_memcpy (void* p_h, const void* p_d, const std::size_t sz) noexcept
 {
-    if (sz == 0) return;
+    if (sz == 0) { return; }
     dtoh_memcpy_async(p_h, p_d, sz);
     Gpu::streamSynchronize();
 }
@@ -307,7 +322,7 @@ dtoh_memcpy (void* p_h, const void* p_d, const std::size_t sz) noexcept
 inline void
 dtod_memcpy (void* p_d_dst, const void* p_d_src, const std::size_t sz) noexcept
 {
-    if (sz == 0) return;
+    if (sz == 0) { return; }
     dtod_memcpy_async(p_d_dst, p_d_src, sz);
     Gpu::streamSynchronize();
 }
