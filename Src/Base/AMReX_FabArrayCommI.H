@@ -49,7 +49,6 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
             else
 #endif
             {
-                BL_PROFILE("Locals()");
                 FB_local_copy_gpu(TheFB, scomp, ncomp);
             }
         }
@@ -89,7 +88,6 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
     //
 
     if (N_rcvs > 0) {
-        BL_PROFILE("PostRcvs()");
         PostRcvs<BUF>(*TheFB.m_RcvTags, fbd->the_recv_data,
                       fbd->recv_data, fbd->recv_size, fbd->recv_from, fbd->recv_reqs,
                       ncomp, SeqNum);
@@ -108,8 +106,6 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
 
     if (N_snds > 0)
     {
-        BL_PROFILE("PreparePackPostSnds()");
-
         PrepareSendBuffers<BUF>(*TheFB.m_SndTags, the_send_data, send_data, send_size, send_rank,
                            send_reqs, send_cctc, ncomp);
 
@@ -153,7 +149,6 @@ FabArray<FAB>::FBEP_nowait (int scomp, int ncomp, const IntVect& nghost,
             else
 #endif
             {
-                BL_PROFILE("Locals()");
                 FB_local_copy_gpu(TheFB, scomp, ncomp);
             }
         }
@@ -204,7 +199,7 @@ FabArray<FAB>::FillBoundary_finish ()
         int actual_n_rcvs = N_rcvs - std::count(fbd->recv_data.begin(), fbd->recv_data.end(), nullptr);
 
         if (actual_n_rcvs > 0) {
-            BL_PROFILE("Waitall(Recvs)");
+            double time = amrex::second();
 
             ParallelDescriptor::Waitall(fbd->recv_reqs, fbd->recv_stat);
 #ifdef AMREX_DEBUG
@@ -213,6 +208,8 @@ FabArray<FAB>::FillBoundary_finish ()
                 amrex::Abort("FillBoundary_finish failed with wrong message size");
             }
 #endif
+
+            amrex::Print() << "    Waitall time: " << amrex::second() - time << std::endl;
         }
 
         bool is_thread_safe = TheFB->m_threadsafe_rcv;
@@ -230,7 +227,6 @@ FabArray<FAB>::FillBoundary_finish ()
             else
 #endif
             {
-                BL_PROFILE("Unpack");
                 unpack_recv_buffer_gpu<BUF>(*this, fbd->scomp, fbd->ncomp, fbd->recv_data, fbd->recv_size,
                                             recv_cctc, FabArrayBase::COPY, is_thread_safe);
             }
@@ -718,6 +714,8 @@ FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
                          Vector<MPI_Request>&       send_reqs,
                          int                        SeqNum)
 {
+    double time = amrex::second();
+
     MPI_Comm comm = ParallelContext::CommunicatorSub();
 
     const auto N_snds = static_cast<int>(send_reqs.size());
@@ -729,6 +727,8 @@ FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
                 (send_data[j], send_size[j], rank, SeqNum, comm).req();
         }
     }
+
+    amrex::Print() << "    PostSnds time: " << amrex::second() - time << std::endl;
 }
 
 template <class FAB>

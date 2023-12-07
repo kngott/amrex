@@ -1480,7 +1480,7 @@ void ParallelFor (Box const& box, L&& f) noexcept
 template <typename T, typename L, typename M=std::enable_if_t<std::is_integral<T>::value> >
 void ParallelFor (Box const& box, T ncomp, L&& f, gpuStream_t const& stream = Gpu::gpuStream()) noexcept
 {
-    ParallelFor<AMREX_GPU_MAX_THREADS>(Gpu::KernelInfo{},box,ncomp,std::forward<L>(f));
+    ParallelFor<AMREX_GPU_MAX_THREADS>(Gpu::KernelInfo{},box,ncomp,std::forward<L>(f), stream);
 }
 
 template <int MT, typename T, typename L, typename M=std::enable_if_t<std::is_integral<T>::value> >

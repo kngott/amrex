@@ -88,8 +88,9 @@ ParallelFor (MF const& mf, IntVect const& nghost, int ncomp, IntVect const&, boo
         amrex::ParallelFor(b, ncomp, [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
         {
             parfor_mf_detail::call_f(f, 0, i, j, k, n);
-        });
+        }, stream);
     } else {
+
         auto const& parforinfo = mf.getParForInfo(nghost,MT);
         auto par_for_blocks = parforinfo.getBlocks();
         const int nblocks = par_for_blocks.first[nboxes];
@@ -149,7 +150,7 @@ ParallelFor (MF const& mf, IntVect const& nghost, int ncomp, IntVect const&, boo
 
 template <typename MF, typename F>
 std::enable_if_t<IsFabArray<MF>::value>
-ParallelFor (MF const& mf, IntVect const& nghost, int ncomp, IntVect const& ts, bool dynamic, F&& f, gpuStream_t stream = Gpu::gpuStream())
+ParallelFor (MF const& mf, IntVect const& nghost, int ncomp, IntVect const& ts, bool dynamic, F&& f, gpuStream_t const stream = Gpu::gpuStream())
 {
     ParallelFor<AMREX_GPU_MAX_THREADS>(mf, nghost, ncomp, ts, dynamic, std::forward<F>(f), stream);
 }

@@ -89,8 +89,6 @@ FabArray<FAB>::FBEP_nowait_stream (int scomp, int ncomp, const IntVect& nghost,
     //
 
     if (N_rcvs > 0) {
-        BL_PROFILE("PostRcvs()");
-
         PostRcvs_stream<BUF>(*TheFB.m_RcvTags, fbd->the_recv_data,
                              fbd->recv_data, fbd->recv_size, fbd->recv_from, fbd->recv_reqs,
                              ncomp, SeqNum);
@@ -109,8 +107,6 @@ FabArray<FAB>::FBEP_nowait_stream (int scomp, int ncomp, const IntVect& nghost,
 
     if (N_snds > 0)
     {
-        BL_PROFILE("PreparePackPostSnds()");
-
         PrepareSendBuffers_stream<BUF>(*TheFB.m_SndTags, the_send_data, send_data, send_size, send_rank,
                                        send_reqs, send_cctc, ncomp);
 
@@ -144,9 +140,6 @@ FabArray<FAB>::FBEP_nowait_stream (int scomp, int ncomp, const IntVect& nghost,
     //
     if (N_locs > 0)
     {
-        BL_PROFILE("Locals()");
-
-
 #ifdef AMREX_USE_GPU
         if (Gpu::inLaunchRegion())
         {
@@ -207,8 +200,9 @@ FabArray<FAB>::FillBoundary_finish_stream ()
         int actual_n_rcvs = N_rcvs - std::count(fbd->recv_data.begin(), fbd->recv_data.end(), nullptr);
         if (actual_n_rcvs > 0) {
 
-            /* CPUSUBMIT THIS */
             Gpu::bg_stream().cpuSubmit( [&] {
+                double time = amrex::second();
+
                 ParallelDescriptor::Waitall(fbd->recv_reqs, fbd->recv_stat);
 #ifdef AMREX_DEBUG
                 if (!CheckRcvStats(fbd->recv_stat, fbd->recv_size, fbd->tag))
@@ -216,6 +210,7 @@ FabArray<FAB>::FillBoundary_finish_stream ()
                     amrex::Abort("FillBoundary_finish failed with wrong message size");
                 }
 #endif
+                amrex::Print() << "    Waitall time: " << amrex::second() - time << std::endl;
             });
         }
 
@@ -250,6 +245,8 @@ FabArray<FAB>::FillBoundary_finish_stream ()
 
     Gpu::bg_stream().cpuSubmit( [&, N_snds, N_rcvs] {
 
+        double time = amrex::second();
+
         if ((N_rcvs > 0) && (fbd->the_recv_data)) {
             amrex::The_Comms_Arena()->free(fbd->the_recv_data);
             fbd->the_recv_data = nullptr;
@@ -262,6 +259,8 @@ FabArray<FAB>::FillBoundary_finish_stream ()
         }
 
         delete_fbd();
+
+        amrex::Print() << "    Cleanup time: " << amrex::second() - time << std::endl;
     });
 
 #endif
@@ -364,6 +363,8 @@ FabArray<FAB>::PostSnds_stream (Vector<char*> const&       send_data,
     // (This is the last place those vectors are used.)
     Gpu::bg_stream().cpuSubmit( [&, send_size, send_rank] {
 
+        double time = amrex::second();
+
         const auto N_snds = static_cast<int>(send_reqs.size());
         MPI_Comm comm = ParallelContext::CommunicatorSub();
 
@@ -375,6 +376,8 @@ FabArray<FAB>::PostSnds_stream (Vector<char*> const&       send_data,
                     (send_data[j], send_size[j], rank, SeqNum, comm).req();
             }
         }
+
+        amrex::Print() << "    PostSnds time: " << amrex::second() - time << std::endl;
     });
 }
 
@@ -389,7 +392,7 @@ TheFaArenaPointer FabArray<FAB>::PostRcvs_stream (const MapOfCopyComTagContainer
                           int                                    SeqNum) const
 {
     char* pointer = nullptr;
-    PostRcvs(RcvTags, pointer, recv_data, recv_size, recv_from, recv_reqs, ncomp, SeqNum);
+    PostRcvs_stream(RcvTags, pointer, recv_data, recv_size, recv_from, recv_reqs, ncomp, SeqNum);
     return TheFaArenaPointer(pointer);
 }
 

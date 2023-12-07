@@ -25,7 +25,7 @@ BackgroundStream::~BackgroundStream ()
     AMREX_CUDA_SAFE_CALL(cudaStreamDestroy(gpu_stream));
     AMREX_CUDA_SAFE_CALL(cudaFreeHost((void*) hptr));
 }
-
+/*
 void CUDART_CB amrex_elixir_delete (void* p)
 {
     auto p_pa = reinterpret_cast<Vector<std::pair<void*,Arena*> >*>(p);
@@ -34,16 +34,18 @@ void CUDART_CB amrex_elixir_delete (void* p)
     }
     delete p_pa;
 }
-
+*/
+#ifdef AMREX_BGSTREAM_EVENTS
 void
 BackgroundStream::cpuSubmit (std::function<void()>&& f)
 {
     BL_PROFILE("BGS::cpuSubmit");
 
     if (previous == GPU) {
+        BL_PROFILE("BGS:gpuSubmit(previous==GPU)");
 
         {
-            BL_PROFILE("BGS:cpuSubmit(GPU, prep)");
+            BL_PROFILE("BGS:cpuSubmit(CUDA Events)");
             std::lock_guard<std::mutex> guard(e_mtx);
 
             cudaEvent_t& place_event = events.emplace();
@@ -69,10 +71,46 @@ BackgroundStream::cpuSubmit (std::function<void()>&& f)
     previous = CPU;
 }
 
+#else
+
+void
+BackgroundStream::cpuSubmit (std::function<void()>&& f)
+{
+    BL_PROFILE("BGS::cpuSubmit");
+
+    if (previous == GPU) {
+        BL_PROFILE("BGS:gpuSubmit(previous==GPU)");
+
+        op_value++;
+
+        CU_CHECK(cuStreamWriteValue32_v2(gpu_stream, dptr, op_value, CU_STREAM_WRITE_VALUE_DEFAULT));
+
+        int my_value = op_value;
+        Submit( [=] ()
+        {
+            // Poll here for value to change. Better option?
+            while(*hptr < my_value) {
+                amrex::Sleep(poll_sleep);
+            }
+
+            f();
+        });
+    } else {
+        Submit( std::move(f) );
+    }
+
+    previous = CPU;
+}
+
+#endif
+
 void
 BackgroundStream::gpuSubmit (std::function<void()>&& f)
 {
+    BL_PROFILE("BGS::gpuSubmit");
+
     if (previous == CPU) {
+        BL_PROFILE("BGS:gpuSubmit(previous==CPU)");
 
         op_value++;
 
@@ -108,8 +146,8 @@ BackgroundStream::gpuSubmit (std::function<void(amrex::gpuStream_t& s)>&& f)
            (*hptr) = my_value;
         });
 
-       CU_CHECK(cuStreamWaitValue32_v2(gpu_stream, dptr, op_value, CU_STREAM_WAIT_VALUE_EQ));
-   }
+        CU_CHECK(cuStreamWaitValue32_v2(gpu_stream, dptr, op_value, CU_STREAM_WAIT_VALUE_EQ));
+    }
 
     // Is a lambda over the ParallelFor function for now. Will needs lots of alternatives if don't want this.
     // Also include error check?

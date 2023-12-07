@@ -69,9 +69,13 @@ private:
     CUdeviceptr dptr;
     volatile int* hptr;
 
+#ifdef AMREX_BGSTREAM_EVENTS
     std::queue<cudaEvent_t> events;
 
     std::mutex e_mtx;
+#else
+    double poll_sleep = 0;
+#endif
 };
 
 }
