@@ -45,7 +45,13 @@ enum parser_f1_t {  // Built-in functions with one argument
     PARSER_COMP_ELLINT_2
 };
 
-static constexpr std::string_view parser_f1_s[] =
+static
+#if defined(__INTEL_COMPILER) && defined(__EDG__)
+    const
+#else
+    constexpr
+#endif
+std::string_view parser_f1_s[] =
 {
     "sqrt",
     "exp",
@@ -88,7 +94,13 @@ enum parser_f2_t {  // Built-in functions with two arguments
     PARSER_FMOD
 };
 
-static constexpr std::string_view parser_f2_s[] =
+static
+#if defined(__INTEL_COMPILER) && defined(__EDG__)
+    const
+#else
+    constexpr
+#endif
+std::string_view parser_f2_s[] =
 {
     "pow",
     "atan2",
@@ -111,7 +123,13 @@ enum parser_f3_t { // functions with three arguments
     PARSER_IF
 };
 
-static constexpr std::string_view parser_f3_s[] =
+static
+#if defined(__INTEL_COMPILER) && defined(__EDG__)
+    const
+#else
+    constexpr
+#endif
+std::string_view parser_f3_s[] =
 {
     "if"
 };
@@ -130,7 +148,13 @@ enum parser_node_t {
     PARSER_LIST
 };
 
-static constexpr std::string_view parser_node_s[] =
+static
+#if defined(__INTEL_COMPILER) && defined(__EDG__)
+    const
+#else
+    constexpr
+#endif
+std::string_view parser_node_s[] =
 {
     "number",
     "symbol",
@@ -326,7 +350,7 @@ template <typename T>
 AMREX_GPU_HOST_DEVICE AMREX_NO_INLINE
 T parser_math_comp_ellint_1 (T a)
 {
-#if defined(__GNUC__) && !defined(__clang__) && !defined(__CUDA_ARCH__)
+#if defined(__GNUC__) && !defined(__clang__) && !defined(__CUDA_ARCH__) && !defined(__NVCOMPILER)
     return std::comp_ellint_1(a);
 #else
     amrex::ignore_unused(a);
@@ -339,7 +363,7 @@ template <typename T>
 AMREX_GPU_HOST_DEVICE AMREX_NO_INLINE
 T parser_math_comp_ellint_2 (T a)
 {
-#if defined(__GNUC__) && !defined(__clang__) && !defined(__CUDA_ARCH__)
+#if defined(__GNUC__) && !defined(__clang__) && !defined(__CUDA_ARCH__) && !defined(__NVCOMPILER)
     return std::comp_ellint_2(a);
 #else
     amrex::ignore_unused(a);

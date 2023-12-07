@@ -2205,7 +2205,8 @@ Amr::coarseTimeStep (Real stop_time)
                << " DT = "   << dt_level[0] << '\n';
     }
     if (record_run_info_terse && ParallelDescriptor::IOProcessor()) {
-        runlog_terse << level_steps[0] << " " << cumtime << " " << dt_level[0] << '\n';
+        runlog_terse << level_steps[0] << " " << cumtime << " " << dt_level[0];
+        runlog_terse << std::endl; // Make sure we flush!
     }
 
     int check_test = 0;
@@ -3084,7 +3085,7 @@ Amr::bldFineLevels (Real strt_time)
     {
         bool grids_the_same;
 
-        const int MaxCnt = 4;
+        const int MaxCnt = std::max(4, max_level+1);
 
         int count = 0;
 

@@ -62,6 +62,8 @@ public:
     const Geometry& Geom () const noexcept { return m_geom; }
     IndexSpace const* getEBIndexSpace () const noexcept { return m_parent; }
 
+    IntVect const& nGrowVect () const noexcept { return m_ngrow; }
+
     void write_to_chkpt_file (const std::string& fname, bool extend_domain_face, int max_grid_size) const;
 
     bool hasEBInfo () const noexcept { return m_has_eb_info; }
@@ -425,7 +427,7 @@ GShopLevel<G>::define_fine (G const& gshop, const Geometry& geom,
                             small_volfrac, geom, extend_domain_face, cover_multiple_cuts,
                             nsm, nmc);
 
-                // Becasue it is used in a synchronous reduction kernel in
+                // Because it is used in a synchronous reduction kernel in
                 // build_cells, we do not need to worry about M2's lifetime.
                 // But we still need to use Elixir to extend the life of
                 // cellflagtmp.

@@ -1055,18 +1055,42 @@ printCell (FabArray<FAB> const& mf, const IntVect& cell, int comp = -1,
     {
         const Box& bx = amrex::grow(mfi.validbox(), ng);
         if (bx.contains(cell)) {
+            int n = (comp >= 0) ? 1 : mf.nComp();
+            auto const& fab = mf.const_array(mfi);
+            Gpu::PinnedVector<typename FAB::value_type> pv(n);
+            auto* dp = pv.data();
+            auto f = [=] AMREX_GPU_HOST_DEVICE ()
+                {
+                    if (comp >= 0) {
+                        *dp = fab(cell, comp);
+                    } else {
+                        for (int i = 0; i < n; ++i) {
+                            dp[i] = fab(cell,i);
+                        }
+                    }
+                };
+
+#ifdef AMREX_USE_GPU
+            if (mf.arena()->isManaged() || mf.arena()->isDevice()) {
+                amrex::single_task(f);
+                Gpu::streamSynchronize();
+            } else
+#endif
+            {
+                f();
+            }
+
             if (comp >= 0) {
                 amrex::AllPrint().SetPrecision(17) << " At cell " << cell << " in Box " << bx
-                                                   << ": " << mf[mfi](cell, comp) << std::endl;
+                                                   << ": " << *dp << std::endl;
             } else {
                 std::ostringstream ss;
                 ss.precision(17);
-                const int ncomp = mf.nComp();
-                for (int i = 0; i < ncomp-1; ++i)
+                for (int i = 0; i < n-1; ++i)
                 {
-                    ss << mf[mfi](cell,i) << ", ";
+                    ss << dp[i] << ", ";
                 }
-                ss << mf[mfi](cell,ncomp-1);
+                ss << dp[n-1];
                 amrex::AllPrint() << " At cell " << cell << " in Box " << bx
                                   << ": " << ss.str() << std::endl;
             }
@@ -1079,7 +1103,7 @@ template <class FAB,
 void
 Subtract (FabArray<FAB>& dst, FabArray<FAB> const& src, int srccomp, int dstcomp, int numcomp, int nghost)
 {
-    Subtract(dst,src,srccomp,dstcomp,numcomp,nghost);
+    Subtract(dst,src,srccomp,dstcomp,numcomp,IntVect(nghost));
 }
 
 template <class FAB,
@@ -1523,7 +1547,7 @@ indexFromValue (FabArray<FAB> const& mf, int comp, IntVect const& nghost,
  * \param ycomp  starting component of y
  * \param ncomp  number of components
  * \param nghost number of ghost cells
- * \param local  If true, MPI communciation is skipped.
+ * \param local  If true, MPI communication is skipped.
  */
 template <typename FAB, std::enable_if_t<IsBaseFab<FAB>::value,int> FOO = 0>
 typename FAB::value_type

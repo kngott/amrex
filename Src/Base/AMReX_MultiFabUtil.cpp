@@ -308,9 +308,6 @@ namespace amrex
 
 // *************************************************************************************************************
 
-    // Average fine cell-based MultiFab onto crse cell-centered MultiFab.
-    // We do NOT assume that the coarse layout is a coarsened version of the fine layout.
-    // This version DOES use volume-weighting.
     void average_down (const MultiFab& S_fine, MultiFab& S_crse,
                        const Geometry& fgeom, const Geometry& cgeom,
                        int scomp, int ncomp, int rr)
@@ -335,7 +332,8 @@ namespace amrex
         amrex::average_down(S_fine, S_crse, scomp, ncomp, ratio);
 #else
 
-        AMREX_ASSERT(S_crse.nComp() == S_fine.nComp());
+        AMREX_ASSERT(S_crse.nComp() == S_fine.nComp() &&
+                     S_fine.is_cell_centered() && S_crse.is_cell_centered());
 
         //
         // Coarsen() the fine stuff on processors owning the fine data.
@@ -476,7 +474,7 @@ namespace amrex
         auto tmptype = type;
         tmptype.set(dir);
         if (dir >= AMREX_SPACEDIM || !tmptype.nodeCentered()) {
-            amrex::Abort("average_down_edges: not face index type");
+            amrex::Abort("average_down_edges: not edge index type");
         }
         const int ncomp = crse.nComp();
         if (isMFIterSafe(fine, crse))

@@ -130,7 +130,7 @@ public:
      *
      * This functions must be called, and must be called before other bc
      * functions. This version is for single-component solve or when all the
-     * compoents have the same BC types.
+     * components have the same BC types.
      *
      * \param lobc lower boundaries
      * \param hibc upper boundaries
@@ -262,7 +262,7 @@ public:
     virtual void restriction (int amrlev, int cmglev, MF& crse, MF& fine) const = 0;
 
     /**
-     * \brief Add interpolated coarse MG levle data to fine MG level data
+     * \brief Add interpolated coarse MG level data to fine MG level data
      *
      * \param amrlev AMR level
      * \param fmglev fine MG level
@@ -287,7 +287,7 @@ public:
      * \param famrlev fine AMR level
      * \param fine    fine level data
      * \param crse    coarse level data
-     * \parame nghost number of ghost cells
+     * \param nghost number of ghost cells
      */
     virtual void interpolationAmr (int famrlev, MF& fine, const MF& crse,
                                    IntVect const& nghost) const = 0;
@@ -355,7 +355,7 @@ public:
      * \param resid        residual
      * \param x            unknown in the residual-correction form
      * \param b            RHS in the residual-correction form
-     * \param bc_mode      Is the BC homegeneous or inhomogeneous?
+     * \param bc_mode      Is the BC homogeneous or inhomogeneous?
      * \param crse_bc_data optional argument providing BC at coarse/fine boundary.
      */
     virtual void correctionResidual (int amrlev, int mglev, MF& resid, MF& x, const MF& b,
@@ -406,7 +406,7 @@ public:
     //! This is needed for our nodal projection solver
     virtual void unimposeNeumannBC (int /*amrlev*/, MF& /*rhs*/) const {}
 
-    //! Extra terms introduced when we treate inhomogeneous Nuemann BC as homogeneous.
+    //! Extra terms introduced when we treat inhomogeneous Nuemann BC as homogeneous.
     virtual void applyInhomogNeumannTerm (int /*amrlev*/, MF& /*rhs*/) const {}
 
     //! for overset solver only
@@ -488,6 +488,22 @@ public:
 
     [[nodiscard]] bool isMFIterSafe (int amrlev, int mglev1, int mglev2) const;
 
+    //! Return the number of AMR levels
+    [[nodiscard]] int NAMRLevels () const noexcept { return m_num_amr_levels; }
+
+    //! Return the number of MG levels at given AMR level
+    [[nodiscard]] int NMGLevels (int amrlev) const noexcept { return m_num_mg_levels[amrlev]; }
+
+    [[nodiscard]] const Geometry& Geom (int amr_lev, int mglev=0) const noexcept { return m_geom[amr_lev][mglev]; }
+
+    // BC
+    Vector<Array<BCType, AMREX_SPACEDIM> > m_lobc;
+    Vector<Array<BCType, AMREX_SPACEDIM> > m_hibc;
+    // Need to save the original copy because we change the BC type to
+    // Neumann for inhomogeneous Neumann and Robin.
+    Vector<Array<BCType, AMREX_SPACEDIM> > m_lobc_orig;
+    Vector<Array<BCType, AMREX_SPACEDIM> > m_hibc_orig;
+
 protected:
 
     static constexpr int mg_coarsen_ratio = 2;
@@ -544,14 +560,6 @@ protected:
     };
     std::unique_ptr<CommContainer> m_raii_comm;
 
-    // BC
-    Vector<Array<BCType, AMREX_SPACEDIM> > m_lobc;
-    Vector<Array<BCType, AMREX_SPACEDIM> > m_hibc;
-    // Need to save the original copy because we change the BC type to
-    // Neumann for inhomogeneous Neumann and Robin.
-    Vector<Array<BCType, AMREX_SPACEDIM> > m_lobc_orig;
-    Vector<Array<BCType, AMREX_SPACEDIM> > m_hibc_orig;
-
     Array<Real, AMREX_SPACEDIM> m_domain_bloc_lo {{AMREX_D_DECL(0._rt,0._rt,0._rt)}};
     Array<Real, AMREX_SPACEDIM> m_domain_bloc_hi {{AMREX_D_DECL(0._rt,0._rt,0._rt)}};
 
@@ -561,19 +569,11 @@ protected:
     const MF* m_coarse_data_for_bc = nullptr;
     MF m_coarse_data_for_bc_raii;
 
-    //! Return the number of AMR levels
-    [[nodiscard]] int NAMRLevels () const noexcept { return m_num_amr_levels; }
-
-    //! Return the number of MG levels at given AMR level
-    [[nodiscard]] int NMGLevels (int amrlev) const noexcept { return m_num_mg_levels[amrlev]; }
-
     //! Return AMR refinement ratios
     [[nodiscard]] const Vector<int>& AMRRefRatio () const noexcept { return m_amr_ref_ratio; }
 
     //! Return AMR refinement ratio at given AMR level
     [[nodiscard]] int AMRRefRatio (int amr_lev) const noexcept { return m_amr_ref_ratio[amr_lev]; }
-
-    [[nodiscard]] const Geometry& Geom (int amr_lev, int mglev=0) const noexcept { return m_geom[amr_lev][mglev]; }
 
     [[nodiscard]] FabFactory<FAB> const* Factory (int amr_lev, int mglev=0) const noexcept {
         return m_factory[amr_lev][mglev].get();

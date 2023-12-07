@@ -1143,7 +1143,7 @@ InitRandom (Long                    icount,
                 const auto& src_tile = kv.second;
 
                 auto& dst_tile = GetParticles(host_lev)[std::make_pair(grid,tile)];
-                auto old_size = dst_tile.GetArrayOfStructs().size();
+                auto old_size = dst_tile.size();
                 auto new_size = old_size;
                 if constexpr(!ParticleType::is_soa_particle)
                 {
@@ -1286,7 +1286,7 @@ InitRandom (Long                    icount,
                 const auto& src_tile = kv.second;
 
                 auto& dst_tile = GetParticles(host_lev)[std::make_pair(grid,tile)];
-                auto old_size = dst_tile.GetArrayOfStructs().size();
+                auto old_size = dst_tile.size();
                 auto new_size = old_size;
                 if constexpr(!ParticleType::is_soa_particle)
                 {
@@ -1380,9 +1380,11 @@ ParticleContainer_impl<ParticleType, NArrayReal, NArrayInt, Allocator, CellAssig
         for (Long jcnt = 0; jcnt < icount_per_box; jcnt++) {
         for (Long kcnt = 0; kcnt < icount_per_box; kcnt++)
         {
-            p.pos(0) = static_cast<ParticleReal>(grid_box.lo(0) + (dist(mt) + double(icnt)) / double(icount_per_box) * grid_box.length(0));
-            p.pos(1) = static_cast<ParticleReal>(grid_box.lo(1) + (dist(mt) + double(jcnt)) / double(icount_per_box) * grid_box.length(1));
-            p.pos(2) = static_cast<ParticleReal>(grid_box.lo(2) + (dist(mt) + double(kcnt)) / double(icount_per_box) * grid_box.length(2));
+            AMREX_D_TERM(
+                p.pos(0) = static_cast<ParticleReal>(grid_box.lo(0) + (dist(mt) + double(icnt)) / double(icount_per_box) * grid_box.length(0));,
+                p.pos(1) = static_cast<ParticleReal>(grid_box.lo(1) + (dist(mt) + double(jcnt)) / double(icount_per_box) * grid_box.length(1));,
+                p.pos(2) = static_cast<ParticleReal>(grid_box.lo(2) + (dist(mt) + double(kcnt)) / double(icount_per_box) * grid_box.length(2));
+            );
 
             for (int i = 0; i < AMREX_SPACEDIM; i++) {
                 AMREX_ASSERT(p.pos(i) < grid_box.hi(i));
