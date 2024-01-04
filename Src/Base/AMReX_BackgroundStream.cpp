@@ -25,53 +25,6 @@ BackgroundStream::~BackgroundStream ()
     AMREX_CUDA_SAFE_CALL(cudaStreamDestroy(gpu_stream));
     AMREX_CUDA_SAFE_CALL(cudaFreeHost((void*) hptr));
 }
-/*
-void CUDART_CB amrex_elixir_delete (void* p)
-{
-    auto p_pa = reinterpret_cast<Vector<std::pair<void*,Arena*> >*>(p);
-    for (auto const& pa : *p_pa) {
-        pa.second->free(pa.first);
-    }
-    delete p_pa;
-}
-*/
-#ifdef AMREX_BGSTREAM_EVENTS
-void
-BackgroundStream::cpuSubmit (std::function<void()>&& f)
-{
-    BL_PROFILE("BGS::cpuSubmit");
-
-    if (previous == GPU) {
-        BL_PROFILE("BGS:gpuSubmit(previous==GPU)");
-
-        {
-            BL_PROFILE("BGS:cpuSubmit(CUDA Events)");
-            std::lock_guard<std::mutex> guard(e_mtx);
-
-            cudaEvent_t& place_event = events.emplace();
-            AMREX_CUDA_SAFE_CALL(cudaEventCreateWithFlags(&place_event, cudaEventBlockingSync | cudaEventDisableTiming));
-            AMREX_CUDA_SAFE_CALL(cudaEventRecord(place_event, gpu_stream));
-        }
-
-        Submit( [=] ()
-        {
-            AMREX_CUDA_SAFE_CALL(cudaEventSynchronize(events.front()));
-            {
-                std::lock_guard<std::mutex> guard(e_mtx);
-                AMREX_CUDA_SAFE_CALL(cudaEventDestroy(events.front()));
-                events.pop();
-            }
-
-            f();
-        });
-    } else {
-        Submit( std::move(f) );
-    }
-
-    previous = CPU;
-}
-
-#else
 
 void
 BackgroundStream::cpuSubmit (std::function<void()>&& f)
@@ -79,17 +32,15 @@ BackgroundStream::cpuSubmit (std::function<void()>&& f)
     BL_PROFILE("BGS::cpuSubmit");
 
     if (previous == GPU) {
-        BL_PROFILE("BGS:gpuSubmit(previous==GPU)");
-
         op_value++;
 
         CU_CHECK(cuStreamWriteValue32_v2(gpu_stream, dptr, op_value, CU_STREAM_WRITE_VALUE_DEFAULT));
 
-        int my_value = op_value;
+        const int my_value = op_value;
         Submit( [=] ()
         {
             // Poll here for value to change. Better option?
-            while(*hptr < my_value) {
+            while(*hptr != my_value) {
                 amrex::Sleep(poll_sleep);
             }
 
@@ -102,32 +53,59 @@ BackgroundStream::cpuSubmit (std::function<void()>&& f)
     previous = CPU;
 }
 
-#endif
-
 void
-BackgroundStream::gpuSubmit (std::function<void()>&& f)
+BackgroundStream::cpuSubmitwithDependency (std::function<void()>&& f, BackgroundStream& dep)
 {
-    BL_PROFILE("BGS::gpuSubmit");
+    BL_PROFILE("BGS::cpuSubmitwithDependency");
 
-    if (previous == CPU) {
-        BL_PROFILE("BGS:gpuSubmit(previous==CPU)");
+    auto dep_prev = dep.get_previous();
+
+    if (dep_prev == GPU) {
+        amrex::Print() << " --- CPU(GPU) " << std::endl;
 
         op_value++;
 
-        int my_value = op_value;
+        CU_CHECK(cuStreamWriteValue32_v2(dep.get_stream(), dptr, op_value, CU_STREAM_WRITE_VALUE_DEFAULT));
+
+        const int my_value = op_value;
         Submit( [=] ()
+        {
+            // Poll here for value to change. Better option?
+            while(*hptr != my_value) {
+                amrex::Sleep(poll_sleep);
+            }
+
+            f();
+        });
+
+    } else if ((dep_prev == CPU) && (&dep != this)) {
+
+        amrex::Print() << " --- CPU(CPU) " << std::endl;
+
+        op_value++;
+
+        const int my_value = op_value;
+
+        dep.Submit( [=] ()
         {
            (*hptr) = my_value;
         });
 
-       CU_CHECK(cuStreamWaitValue32_v2(gpu_stream, dptr, op_value, CU_STREAM_WAIT_VALUE_EQ));
-   }
+        Submit( [=] ()
+        {
+            // Poll here for value to change. Better option?
+            while(*hptr != my_value) {
+                amrex::Sleep(poll_sleep);
+            }
 
-    // Is a lambda over the ParallelFor function for now. Will needs lots of alternatives if don't want this.
-    // Also include error check?
-    f();
+            f();
+        });
 
-    previous = GPU;
+    } else {
+        Submit( std::move(f) );
+    }
+
+    previous = CPU;
 }
 
 void
@@ -140,7 +118,7 @@ BackgroundStream::gpuSubmit (std::function<void(amrex::gpuStream_t& s)>&& f)
 
         op_value++;
 
-        int my_value = op_value;
+        const int my_value = op_value;
         Submit( [=] ()
         {
            (*hptr) = my_value;
@@ -149,8 +127,47 @@ BackgroundStream::gpuSubmit (std::function<void(amrex::gpuStream_t& s)>&& f)
         CU_CHECK(cuStreamWaitValue32_v2(gpu_stream, dptr, op_value, CU_STREAM_WAIT_VALUE_EQ));
     }
 
-    // Is a lambda over the ParallelFor function for now. Will needs lots of alternatives if don't want this.
-    // Also include error check?
+    // Is a lambda over the ParallelFor function for now. Will needs lots of alternatives to make it a direct GPU kernel launch.
+    // This version moves any launch prep to here. Any problems?
+    f( get_stream() );
+
+    previous = GPU;
+}
+
+void
+BackgroundStream::gpuSubmitwithDependency (std::function<void(amrex::gpuStream_t& s)>&& f, BackgroundStream& dep)
+{
+    BL_PROFILE("BGS::gpuSubmit");
+
+    auto dep_prev = dep.get_previous();
+
+    if (dep_prev == CPU) {
+        BL_PROFILE("BGS::gpuSubmit(CPU)");
+
+        amrex::Print() << " --- GPU(CPU) " << std::endl;
+
+        op_value++;
+
+        const int my_value = op_value;
+        dep.Submit( [=] ()
+        {
+           (*hptr) = my_value;
+        });
+
+        CU_CHECK(cuStreamWaitValue32_v2(gpu_stream, dptr, op_value, CU_STREAM_WAIT_VALUE_EQ));
+
+    } else if ((dep_prev == GPU) && (&dep != this)) {
+        amrex::Print() << " --- GPU(GPU) " << std::endl;
+
+        op_value++;
+
+        CU_CHECK(cuStreamWriteValue32_v2(dep.get_stream(), dptr, op_value, CU_STREAM_WRITE_VALUE_DEFAULT));
+
+        CU_CHECK(cuStreamWaitValue32_v2(gpu_stream, dptr, op_value, CU_STREAM_WAIT_VALUE_EQ));
+
+    }
+    // Is a lambda over the ParallelFor function for now. Will needs lots of alternatives to make it a direct GPU kernel launch.
+    // This version moves any launch prep to here. Any problems?
     f( get_stream() );
 
     previous = GPU;
@@ -169,7 +186,7 @@ BackgroundStream::cpuSync ()
 void
 BackgroundStream::gpuSync ()
 {
-    // Need a streamSync for a passed stream
+    // Need an AMReX streamSync for a passed stream? e.g:
     // amrex::Gpu::streamSynchronize(gpu_stream);
 
     AMREX_CUDA_SAFE_CALL(cudaStreamSynchronize(gpu_stream));
@@ -183,8 +200,9 @@ void
 BackgroundStream::sync ()
 {
     // For now, do the last thing last.
-    // Gives time for other sync to complete and overlap work.
-    // Need both?
+    // Gives time for other sync to complete while work is completed.
+
+    // Need both? Or just the last one?
 
     if (previous == CPU) {
         gpuSync();

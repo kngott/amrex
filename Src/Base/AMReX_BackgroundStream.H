@@ -41,6 +41,8 @@ class BackgroundStream
     public BackgroundThread
 {
 public:
+    enum func_type { NONE, CPU, GPU };
+
     BackgroundStream ();
     ~BackgroundStream ();
     BackgroundStream (BackgroundStream const&) = delete;
@@ -49,10 +51,17 @@ public:
     BackgroundStream& operator= (BackgroundStream &&) = delete;
 
     void cpuSubmit (std::function<void()>&& f);
-    void gpuSubmit (std::function<void()>&& f);
     void gpuSubmit (std::function<void(amrex::gpuStream_t& s)>&& f);
 
+    void cpuSubmitwithDependency (std::function<void()>&& f,
+                                      BackgroundStream& dep);
+    void gpuSubmitwithDependency (std::function<void(amrex::gpuStream_t& s)>&& f,
+                                      BackgroundStream& dep);
+
     cudaStream_t& get_stream() { return gpu_stream; }
+    func_type get_previous() { return previous; }
+
+    void setSleep (double &seconds) { poll_sleep = seconds; }
 
     void cpuSync ();
     void gpuSync ();
@@ -62,20 +71,13 @@ private:
 
     cudaStream_t gpu_stream;
 
-    enum func_type { NONE, CPU, GPU };
     func_type previous = NONE;
 
     int op_value = 0;
     CUdeviceptr dptr;
     volatile int* hptr;
 
-#ifdef AMREX_BGSTREAM_EVENTS
-    std::queue<cudaEvent_t> events;
-
-    std::mutex e_mtx;
-#else
     double poll_sleep = 0;
-#endif
 };
 
 }
