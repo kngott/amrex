@@ -16,7 +16,7 @@ FabArray<FAB>::FBEP_nowait_stream (int scomp, int ncomp, const IntVect& nghost,
 
     AMREX_ASSERT(!enforce_periodicity_only || !override_sync);
 
-    // If no work is done, fbdq.front()->TheFB = nullptr
+    // If no work is done, *TheFB in the corresponding fbd = nullptr
     std::unique_ptr<FBData<FAB>>& fbd = new_fbd();
     amrex::ignore_unused(fbd);
 
@@ -201,16 +201,14 @@ FabArray<FAB>::FillBoundary_finish_stream ()
         if (actual_n_rcvs > 0) {
 
             Gpu::bg_stream().cpuSubmit( [&] {
-                double time = amrex::second();
-
                 ParallelDescriptor::Waitall(fbd->recv_reqs, fbd->recv_stat);
+
 #ifdef AMREX_DEBUG
                 if (!CheckRcvStats(fbd->recv_stat, fbd->recv_size, fbd->tag))
                 {
                     amrex::Abort("FillBoundary_finish failed with wrong message size");
                 }
 #endif
-                amrex::Print() << "    Waitall time: " << amrex::second() - time << std::endl;
             });
         }
 
@@ -245,8 +243,6 @@ FabArray<FAB>::FillBoundary_finish_stream ()
 
     Gpu::bg_stream().cpuSubmit( [&, N_snds, N_rcvs] {
 
-        double time = amrex::second();
-
         if ((N_rcvs > 0) && (fbd->the_recv_data)) {
             amrex::The_Comms_Arena()->free(fbd->the_recv_data);
             fbd->the_recv_data = nullptr;
@@ -254,13 +250,13 @@ FabArray<FAB>::FillBoundary_finish_stream ()
 
         if (N_snds > 0) {
             Vector<MPI_Status> stats(fbd->send_reqs.size());
+
             ParallelDescriptor::Waitall(fbd->send_reqs, stats);
             amrex::The_Comms_Arena()->free(fbd->the_send_data);
         }
 
         delete_fbd();
 
-        amrex::Print() << "    Cleanup time: " << amrex::second() - time << std::endl;
     });
 
 #endif
@@ -362,9 +358,6 @@ FabArray<FAB>::PostSnds_stream (Vector<char*> const&       send_data,
     // Copy of send_size and send_rank unnecessary. Move &/or transfer ownership?
     // (This is the last place those vectors are used.)
     Gpu::bg_stream().cpuSubmit( [&, send_size, send_rank] {
-
-        double time = amrex::second();
-
         const auto N_snds = static_cast<int>(send_reqs.size());
         MPI_Comm comm = ParallelContext::CommunicatorSub();
 
@@ -376,8 +369,6 @@ FabArray<FAB>::PostSnds_stream (Vector<char*> const&       send_data,
                     (send_data[j], send_size[j], rank, SeqNum, comm).req();
             }
         }
-
-        amrex::Print() << "    PostSnds time: " << amrex::second() - time << std::endl;
     });
 }
 

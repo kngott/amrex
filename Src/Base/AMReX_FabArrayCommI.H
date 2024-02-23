@@ -199,8 +199,6 @@ FabArray<FAB>::FillBoundary_finish ()
         int actual_n_rcvs = N_rcvs - std::count(fbd->recv_data.begin(), fbd->recv_data.end(), nullptr);
 
         if (actual_n_rcvs > 0) {
-            double time = amrex::second();
-
             ParallelDescriptor::Waitall(fbd->recv_reqs, fbd->recv_stat);
 #ifdef AMREX_DEBUG
             if (!CheckRcvStats(fbd->recv_stat, fbd->recv_size, fbd->tag))
@@ -208,8 +206,6 @@ FabArray<FAB>::FillBoundary_finish ()
                 amrex::Abort("FillBoundary_finish failed with wrong message size");
             }
 #endif
-
-            amrex::Print() << "    Waitall time: " << amrex::second() - time << std::endl;
         }
 
         bool is_thread_safe = TheFB->m_threadsafe_rcv;
@@ -714,8 +710,6 @@ FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
                          Vector<MPI_Request>&       send_reqs,
                          int                        SeqNum)
 {
-    double time = amrex::second();
-
     MPI_Comm comm = ParallelContext::CommunicatorSub();
 
     const auto N_snds = static_cast<int>(send_reqs.size());
@@ -727,8 +721,6 @@ FabArray<FAB>::PostSnds (Vector<char*> const&       send_data,
                 (send_data[j], send_size[j], rank, SeqNum, comm).req();
         }
     }
-
-    amrex::Print() << "    PostSnds time: " << amrex::second() - time << std::endl;
 }
 
 template <class FAB>

@@ -60,7 +60,7 @@ public:
 #if defined(AMREX_USE_GPU)
     static gpuStream_t gpuStream () noexcept { return gpu_stream[OpenMP::get_thread_num()]; }
 
-    static BackgroundStream& bg_stream () { return bgs; }
+    static BackgroundStream& bg_stream (int i=0) { return *(bgs[i]); }
 #ifdef AMREX_USE_CUDA
     /** for backward compatibility */
     static cudaStream_t cudaStream () noexcept { return gpu_stream[OpenMP::get_thread_num()]; }
@@ -74,6 +74,7 @@ public:
     static int numGpuStreams () noexcept {
         return inSingleStreamRegion() ? 1 : max_gpu_streams;
     }
+    static int numBGStreams () noexcept { return num_bg_streams; }
 
     static void setStreamIndex (int idx) noexcept;
     static void resetStreamIndex () noexcept { setStreamIndex(0); }
@@ -197,6 +198,7 @@ private:
     static AMREX_EXPORT int num_device_partners;
     static AMREX_EXPORT int verbose;
     static AMREX_EXPORT int max_gpu_streams;
+    static AMREX_EXPORT int num_bg_streams;
 
 #ifdef AMREX_USE_GPU
     static AMREX_EXPORT dim3 numThreadsMin;
@@ -206,7 +208,7 @@ private:
     // The non-owning gpu_stream is used to store the current stream that will be used.
     // gpu_stream is a vector so that it's thread safe to write to it.
     static AMREX_EXPORT Vector<gpuStream_t> gpu_stream; // The size of this is omp_max_threads
-    static AMREX_EXPORT BackgroundStream bgs;
+    static AMREX_EXPORT Vector<BackgroundStream*> bgs;
     static AMREX_EXPORT gpuDeviceProp_t device_prop;
     static AMREX_EXPORT int memory_pools_supported;
     static AMREX_EXPORT unsigned int max_blocks_per_launch;
@@ -228,9 +230,9 @@ gpuStream () noexcept
 }
 
 inline BackgroundStream&
-bg_stream () noexcept
+bg_stream (int i=0) noexcept
 {
-    return Device::bg_stream();
+    return Device::bg_stream(i);
 }
 
 #endif
@@ -239,6 +241,12 @@ inline int
 numGpuStreams () noexcept
 {
     return Device::numGpuStreams();
+}
+
+inline int
+numBGStreams () noexcept
+{
+    return Device::numBGStreams();
 }
 
 inline void

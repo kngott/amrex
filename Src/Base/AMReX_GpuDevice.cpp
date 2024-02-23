@@ -65,6 +65,7 @@ int Device::max_gpu_streams = 4;
 #else
 int Device::max_gpu_streams = 1;
 #endif
+int Device::num_bg_streams = 2;
 
 #ifdef AMREX_USE_GPU
 dim3 Device::numThreadsMin      = dim3(1, 1, 1);
@@ -72,11 +73,11 @@ dim3 Device::numThreadsOverride = dim3(0, 0, 0);
 dim3 Device::numBlocksOverride  = dim3(0, 0, 0);
 unsigned int Device::max_blocks_per_launch = 2560;
 
-BackgroundStream    Device::bgs;
-Vector<gpuStream_t> Device::gpu_stream_pool;
-Vector<gpuStream_t> Device::gpu_stream;
-gpuDeviceProp_t     Device::device_prop;
-int                 Device::memory_pools_supported = 0;
+Vector<BackgroundStream*> Device::bgs;
+Vector<gpuStream_t>       Device::gpu_stream_pool;
+Vector<gpuStream_t>       Device::gpu_stream;
+gpuDeviceProp_t           Device::device_prop;
+int                       Device::memory_pools_supported = 0;
 
 constexpr int Device::warp_size;
 
@@ -137,6 +138,13 @@ Device::Initialize ()
     ppamrex.queryAdd("max_gpu_streams", max_gpu_streams);
     max_gpu_streams = std::min(max_gpu_streams, AMREX_GPU_MAX_STREAMS);
     max_gpu_streams = std::max(max_gpu_streams, 1);
+
+    ppamrex.queryAdd("max_bg_streams", num_bg_streams);
+    bgs.resize(num_bg_streams);
+    // To avoid/minimize potential errors.
+    for (auto& s : bgs) {
+        s = new BackgroundStream();
+    }
 
     ParmParse pp("device");
 
@@ -336,6 +344,11 @@ Device::Finalize ()
     }
 #endif
 
+    // To avoid/minimize potential errors.
+    for (auto& s : bgs) {
+        s->sync();
+        delete s;
+    }
     gpu_stream.clear();
 
 #ifdef AMREX_USE_ACC

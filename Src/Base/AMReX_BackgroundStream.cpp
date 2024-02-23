@@ -61,8 +61,6 @@ BackgroundStream::cpuSubmitwithDependency (std::function<void()>&& f, Background
     auto dep_prev = dep.get_previous();
 
     if (dep_prev == GPU) {
-        amrex::Print() << " --- CPU(GPU) " << std::endl;
-
         op_value++;
 
         CU_CHECK(cuStreamWriteValue32_v2(dep.get_stream(), dptr, op_value, CU_STREAM_WRITE_VALUE_DEFAULT));
@@ -79,8 +77,8 @@ BackgroundStream::cpuSubmitwithDependency (std::function<void()>&& f, Background
         });
 
     } else if ((dep_prev == CPU) && (&dep != this)) {
-
-        amrex::Print() << " --- CPU(CPU) " << std::endl;
+        // This is CPU -> CPU, so can use other methods,
+        //      i.e. triggering rather than polling.
 
         op_value++;
 
@@ -144,8 +142,6 @@ BackgroundStream::gpuSubmitwithDependency (std::function<void(amrex::gpuStream_t
     if (dep_prev == CPU) {
         BL_PROFILE("BGS::gpuSubmit(CPU)");
 
-        amrex::Print() << " --- GPU(CPU) " << std::endl;
-
         op_value++;
 
         const int my_value = op_value;
@@ -157,8 +153,6 @@ BackgroundStream::gpuSubmitwithDependency (std::function<void(amrex::gpuStream_t
         CU_CHECK(cuStreamWaitValue32_v2(gpu_stream, dptr, op_value, CU_STREAM_WAIT_VALUE_EQ));
 
     } else if ((dep_prev == GPU) && (&dep != this)) {
-        amrex::Print() << " --- GPU(GPU) " << std::endl;
-
         op_value++;
 
         CU_CHECK(cuStreamWriteValue32_v2(dep.get_stream(), dptr, op_value, CU_STREAM_WRITE_VALUE_DEFAULT));

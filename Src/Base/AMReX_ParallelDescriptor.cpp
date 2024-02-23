@@ -293,8 +293,6 @@ StartParallel (int* argc, char*** argv, MPI_Comm a_mpi_comm)
     if ( ! sflag) {
 
 #ifdef AMREX_MPI_THREAD_MULTIPLE
-//        int requested = MPI_THREAD_SERIALIZED;
-
         int requested = MPI_THREAD_MULTIPLE;
         int provided = -1;
 

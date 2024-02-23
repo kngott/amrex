@@ -233,34 +233,19 @@ ParallelFor_doit (Vector<TagType> const& tags, F && f, bool background = false)
 
     /* CPUSUBMIT THIS */
     if (background) {
-        double* time = new double;
-        *time = 0;
-
-        Gpu::bg_stream().cpuSubmit( [=] {
-            *time = amrex::second();
-        });
-
         Gpu::bg_stream().gpuSubmit( std::move(parallelfor) );
 
         Gpu::bg_stream().cpuSubmit( [=] {
             The_Pinned_Arena()->free(h_buffer);
             The_Arena()->free(d_buffer);
-
-            amrex::Print() << "    TagParallelS time: " << amrex::second() - *time << std::endl;
-
-            delete time;
         });
 
     } else {
-        double time = amrex::second();
-
         parallelfor(Gpu::gpuStream());
         Gpu::streamSynchronize();
 
         The_Pinned_Arena()->free(h_buffer);
         The_Arena()->free(d_buffer);
-
-        amrex::Print() << "    TagParallel time: " << amrex::second() - time << std::endl;
     }
 }
 
