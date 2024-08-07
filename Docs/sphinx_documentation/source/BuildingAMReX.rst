@@ -33,7 +33,8 @@ list of important variables.
    +=================+=====================================+====================+
    | AMREX_HOME      | Path to amrex                       | environment        |
    +-----------------+-------------------------------------+--------------------+
-   | COMP            | gnu, cray, ibm, intel, llvm, or pgi | none               |
+   | COMP            | gnu, cray, ibm, intel, intel-llvm,  |                    |
+   |                 | intel-classic, llvm, or pgi         | none               |
    +-----------------+-------------------------------------+--------------------+
    | CXXSTD          | C++ standard (``c++17``, ``c++20``) | compiler default,  |
    |                 |                                     | at least ``c++17`` |
@@ -56,7 +57,7 @@ list of important variables.
    +-----------------+-------------------------------------+--------------------+
    | USE_HIP         | TRUE or FALSE                       | FALSE              |
    +-----------------+-------------------------------------+--------------------+
-   | USE_DPCPP       | TRUE or FALSE                       | FALSE              |
+   | USE_SYCL        | TRUE or FALSE                       | FALSE              |
    +-----------------+-------------------------------------+--------------------+
    | USE_RPATH       | TRUE or FALSE                       | FALSE              |
    +-----------------+-------------------------------------+--------------------+
@@ -119,10 +120,10 @@ default in CI and add slight debugging, e.g., initializing default values in FAB
 An advanced variable, ``MPI_THREAD_MULTIPLE``, can be set to TRUE to initialize
 MPI with support for concurrent MPI calls from multiple threads.
 
-Variables ``USE_CUDA``, ``USE_HIP`` and ``USE_DPCPP`` are used for
+Variables ``USE_CUDA``, ``USE_HIP`` and ``USE_SYCL`` are used for
 targeting Nvidia, AMD and Intel GPUs, respectively.  At most one of
 the three can be TRUE.
-For HIP and DPC++/SYCL builds, we do only test against C++17 builds at the moment.
+For HIP and SYCL builds, we do only test against C++17 builds at the moment.
 
 The variable ``USE_RPATH`` controls the link mechanism to dependent libraries.
 If enabled, the library path at link time will be saved as a
@@ -434,9 +435,9 @@ The list of available options is reported in the :ref:`table <tab:cmakevar>` bel
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
    | CMAKE_CXX_FLAGS              |  User-defined C++ flags                         |                         | user-defined          |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
-   | CMAKE_CXX_STANDARD           |  C++ standard                                   | compiler/14             | 14, 17, 20            |
+   | CMAKE_CXX_STANDARD           |  C++ standard                                   | compiler/17             | 17, 20                |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
-   | AMReX_SPACEDIM               |  Dimension of AMReX build                       | 3                       | 1, 2, 3               |
+   | AMReX_SPACEDIM               |  Dimension of AMReX build                       | 3 ``;``-separated list  | "1;2;3"               |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
    | USE_XSDK_DEFAULTS            |  Use xSDK defaults settings                     | NO                      | YES, NO               |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
@@ -468,7 +469,7 @@ The list of available options is reported in the :ref:`table <tab:cmakevar>` bel
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
    | AMReX_EB                     |  Build Embedded Boundary support                | NO                      | YES, NO               |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
-   | AMReX_PARTICLES              |  Build particle classes                         | NO                      | YES, NO               |
+   | AMReX_PARTICLES              |  Build particle classes                         | YES                     | YES, NO               |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
    | AMReX_PARTICLES_PRECISION    |  Set reals precision in particle classes        | Same as AMReX_PRECISION | DOUBLE, SINGLE        |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
@@ -501,11 +502,13 @@ The list of available options is reported in the :ref:`table <tab:cmakevar>` bel
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
    | AMReX_EXPORT_DYNAMIC         |  Enable backtrace on macOS                      | NO (unless Darwin)      | YES, NO               |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
-   | AMReX_SENSEI                 |  Enable the SENSEI in situ infrastucture        | NO                      | YES, NO               |
+   | AMReX_SENSEI                 |  Enable the SENSEI in situ infrastructure       | NO                      | YES, NO               |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
    | AMReX_NO_SENSEI_AMR_INST     |  Disables the instrumentation in amrex::Amr     | NO                      | YES, NO               |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
    | AMReX_CONDUIT                |  Enable Conduit support                         | NO                      | YES, NO               |
+   +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
+   | AMReX_CATALYST               |  Enable Catalyst support                        | NO                      | YES, NO               |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
    | AMReX_ASCENT                 |  Enable Ascent support                          | NO                      | YES, NO               |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
@@ -523,11 +526,22 @@ The list of available options is reported in the :ref:`table <tab:cmakevar>` bel
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
    | AMReX_ENABLE_TESTS           |  Enable CTest suite                             | NO                      | YES, NO               |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
+   | AMReX_TEST_TYPE              |  Test type -- affects the number of tests       | All                     | All, Small            |
+   +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
    | AMReX_DIFFERENT_COMPILER     |  Allow an app to use a different compiler       | NO                      | YES, NO               |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
    | AMReX_INSTALL                |  Generate Install Targets                       | YES                     | YES, NO               |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
    | AMReX_PROBINIT               |  Enable support for probin file                 | Platform dependent      | YES, NO               |
+   +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
+   | AMReX_FLATTEN_FOR            |  Enable flattening of ParallelFor and similar   | NO                      | YES, NO               |
+   |                              |  functions for host code                        |                         |                       |
+   +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
+   | AMReX_COMPILER_DEFAULT_INLINE|  Use default inline behavior of compiler,       | NO for GCC              | YES, NO               |
+   |                              |  so far relevant for GCC Only                   | YES otherwise           |                       |
+   +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
+   | AMReX_INLINE_LIMIT           |  Inline limit. Relevant only when               | 43210                   | Non-negative number   |
+   |                              |  AMReX_COMPILER_DEFAULT_INLINE is NO.           |                         |                       |
    +------------------------------+-------------------------------------------------+-------------------------+-----------------------+
 .. raw:: latex
 
@@ -588,7 +602,6 @@ the following line in the appropriate CMakeLists.txt file:
 
     target_link_libraries( <your-target-name> PUBLIC AMReX::<amrex-target-name> )
 
-
 In the above snippet, ``<amrex-target-name>`` is any of the targets listed in the table below.
 
 .. raw:: latex
@@ -602,7 +615,13 @@ In the above snippet, ``<amrex-target-name>`` is any of the targets listed in th
    +-----------------------+-------------------------------------------------+
    | Target name           | Description                                     |
    +=======================+=================================================+
-   | amrex                 |  AMReX library                                  |
+   | amrex_1d              |  AMReX library in 1D                            |
+   +-----------------------+-------------------------------------------------+
+   | amrex_2d              |  AMReX library in 2D                            |
+   +-----------------------+-------------------------------------------------+
+   | amrex_3d              |  AMReX library in 3D                            |
+   +-----------------------+-------------------------------------------------+
+   | amrex                 |  AMReX library (alias, points to last dim)      |
    +-----------------------+-------------------------------------------------+
    | Flags_CXX             |  C++ flags preset (interface)                   |
    +-----------------------+-------------------------------------------------+
@@ -711,7 +730,7 @@ As an example, consider the following CMake code:
 ::
 
     find_package(AMReX REQUIRED 3D EB)
-    target_link_libraries( Foo PUBLIC AMReX::amrex )
+    target_link_libraries(Foo PUBLIC AMReX::amrex_3d)
 
 The code in the snippet above checks whether an AMReX installation with 3D and Embedded Boundary support
 is available on the system. If so, AMReX is linked to target ``Foo`` and AMReX flags preset is used
@@ -730,7 +749,7 @@ You can tell CMake to look for the AMReX library in non-standard paths by settin
 ``AMReX_ROOT`` to point to the AMReX installation directory or by adding
 ``-DAMReX_ROOT=<path/to/amrex/installation/directory>`` to the ``cmake`` invocation.
 More details on ``find_package`` can be found
-`here <https://cmake.org/cmake/help/v3.17/command/find_package.html>`_.
+`here <https://cmake.org/cmake/help/v3.25/command/find_package.html>`_.
 
 .. _sec:build:windows:
 
@@ -743,7 +762,7 @@ We do not officially support AMReX on Windows, and many of us do not have access
 machines.  However, we believe there are no fundamental issues for it to work on Windows.
 
 (1) AMReX mostly uses standard C++17.
-We run continous integration tests on Windows with MSVC and Clang compilers.
+We run continuous integration tests on Windows with MSVC and Clang compilers.
 
 (2) We use POSIX signal handling when floating point exceptions, segmentation faults, etc. happen.
 This capability is not supported on Windows.

@@ -38,9 +38,6 @@ IParser::define (std::string const& func_body)
     }
 }
 
-IParser::~IParser ()
-{}
-
 IParser::Data::~Data ()
 {
     m_expression.clear();
@@ -57,7 +54,7 @@ IParser::operator bool () const
 }
 
 void
-IParser::setConstant (std::string const& name, int c)
+IParser::setConstant (std::string const& name, long long c)
 {
     if (m_data && m_data->m_iparser) {
         iparser_setconst(m_data->m_iparser, name.c_str(), c);
@@ -68,7 +65,7 @@ void
 IParser::registerVariables (Vector<std::string> const& vars)
 {
     if (m_data && m_data->m_iparser) {
-        m_data->m_nvars = vars.size();
+        m_data->m_nvars = static_cast<int>(vars.size());
         for (int i = 0; i < m_data->m_nvars; ++i) {
             iparser_regvar(m_data->m_iparser, vars[i].c_str(), i);
         }

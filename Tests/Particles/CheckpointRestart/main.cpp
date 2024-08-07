@@ -3,6 +3,8 @@
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_Particles.H>
 
+#include <cstdio>
+
 using namespace amrex;
 
 void set_grids_nested (Vector<Box>& domains,
@@ -22,7 +24,7 @@ void test ()
     const int nghost = 0;
     int ncells, max_grid_size, ncomp, nlevs, nppc;
     int restart_check = 0, nplotfile = 1, nparticlefile = 1;
-    std::string directory = "";
+    std::string directory;
 
     ParmParse pp;
     pp.get("ncells", ncells);
@@ -35,7 +37,7 @@ void test ()
     pp.query("restart_check", restart_check);
     pp.query("directory", directory);
 
-    if (directory != "" && directory.back() != '/') {
+    if (!directory.empty() && directory.back() != '/') {
         // Include separator if one was not provided
         directory += "/";
     }
@@ -53,9 +55,7 @@ void test ()
     }
 
     // This sets the boundary conditions to be doubly or triply periodic
-    int is_per[AMREX_SPACEDIM];
-    for (int i = 0; i < AMREX_SPACEDIM; i++)
-        is_per[i] = 1;
+    int is_per[] = {AMREX_D_DECL(1,1,1)};
 
     // This defines a Geometry object for each level
     Vector<Geometry> geom(nlevs);
@@ -86,9 +86,9 @@ void test ()
 
     char fname[512];
     for (int ts = 0; ts < nplotfile; ts++) {
-        sprintf(fname, "%splt%05d", directory.c_str(), ts);
+        std::snprintf(fname, sizeof fname, "%splt%05d", directory.c_str(), ts);
 
-        amrex::Print() << "Writing plot file [" << fname << "] ..." << std::endl;
+        amrex::Print() << "Writing plot file [" << fname << "] ..." << '\n';
 
         WriteMultiLevelPlotfile(fname, nlevs, amrex::GetVecOfConstPtrs(mf),
                                 varnames, geom, time, level_steps, ref_ratio);
@@ -102,7 +102,7 @@ void test ()
     constexpr int NArrayReal  = 8;
     constexpr int NArrayInt   = 3;
 
-    typedef ParticleContainer<NStructReal, NStructInt, NArrayReal, NArrayInt> MyPC;
+    using MyPC = ParticleContainer<NStructReal, NStructInt, NArrayReal, NArrayInt>;
     MyPC myPC(geom, dmap, ba, ref_ratio);
     myPC.SetVerbose(false);
 
@@ -115,24 +115,26 @@ void test ()
                                     {14, 15, 16}};
 
     if (nparticlefile > 0) {
-        amrex::Print() << "Init particles ..." << std::endl;
+        amrex::Print() << "Init particles ..." << '\n';
 
         myPC.InitRandom(num_particles, iseed, pdata, serialize);
 
         amrex::Print() << " done \n";
 
         Vector<std::string> particle_realnames;
-        for (int i = 0; i < NStructReal + NArrayReal; ++i)
+        for (int i = 0; i < NStructReal + NArrayReal; ++i) {
             particle_realnames.push_back("particle_real_component_" + std::to_string(i));
+        }
 
         Vector<std::string> particle_intnames;
-        for (int i = 0; i < NStructInt + NArrayInt; ++i)
+        for (int i = 0; i < NStructInt + NArrayInt; ++i) {
             particle_intnames.push_back("particle_int_component_" + std::to_string(i));
+        }
 
         for (int ts = 0; ts < nparticlefile; ts++) {
-            sprintf(fname, "%splt%05d", directory.c_str(), ts);
+            std::snprintf(fname, sizeof fname, "%splt%05d", directory.c_str(), ts);
 
-            amrex::Print() << "Writing particle file [" << fname << "] ..." << std::endl;
+            amrex::Print() << "Writing particle file [" << fname << "] ..." << '\n';
 
             myPC.Checkpoint(fname, "particle0", false, particle_realnames, particle_intnames);
 
@@ -146,7 +148,7 @@ void test ()
     if (restart_check && nparticlefile > 0)
     {
         MyPC newPC(geom, dmap, ba, ref_ratio);
-        sprintf(directory_path, "%s%s", directory.c_str(), "plt00000");
+        std::snprintf(directory_path, sizeof directory_path, "%s%s", directory.c_str(), "plt00000");
         newPC.Restart(directory_path, "particle0");
 
         using PType = typename MyPC::SuperParticleType;
@@ -194,8 +196,9 @@ void set_grids_nested (Vector<Box>& domains,
     domains[0].setBig(domain_hi);
 
     ref_ratio.resize(nlevs-1);
-    for (int lev = 1; lev < nlevs; lev++)
+    for (int lev = 1; lev < nlevs; lev++) {
         ref_ratio[lev-1] = IntVect(AMREX_D_DECL(2, 2, 2));
+    }
 
     grids.resize(nlevs);
     grids[0].define(domains[0]);

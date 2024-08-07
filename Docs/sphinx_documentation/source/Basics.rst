@@ -224,17 +224,17 @@ file is a series of
 definitions in the form of ``prefix.name = value value ....`` For each line,
 text after # are comments. Here is an example inputs file.
 
-    .. highlight:: python
+.. highlight:: python
 
-    ::
+::
 
-        nsteps    = 100               # integer
-        nsteps    = 1000              # nsteps appears a second time
-        dt        = 0.03              # floating point number
-        ncells    = 128 64 32         # a list of 3 ints
-        xrange    = -0.5 0.5          # a list of 2 reals
-        title     = "Three Kingdoms"  # a string
-        hydro.cfl = 0.8               # with prefix, hydro
+    nsteps    = 100               # integer
+    nsteps    = 1000              # nsteps appears a second time
+    dt        = 0.03              # floating point number
+    ncells    = 128 64 32         # a list of 3 ints
+    xrange    = -0.5 0.5          # a list of 2 reals
+    title     = "Three Kingdoms"  # a string
+    hydro.cfl = 0.8               # with prefix, hydro
 
 The following code shows how to use :cpp:`ParmParse` to get/query the values.
 
@@ -274,6 +274,150 @@ by default returns the last one. The difference between :cpp:`query` and
 :cpp:`get` should also be noted. It is a runtime error if :cpp:`get` fails to
 get the value, whereas :cpp:`query` returns an error code without generating a
 runtime error that will abort the run.
+
+Math Expressions
+----------------
+
+.. versionadded:: 24.08
+   Math expression support in :cpp:`ParmParse`.
+
+:cpp:`ParmParse` supports math expressions for integers and floating point
+numbers. For example,
+
+.. highlight:: python
+
+::
+
+    # three numbers. whitespaces inside `""` are okay.
+    f = 3+4  99  "5 + 6"
+
+    # two numbers. `\` is for continuation
+    g = 3.1+4.1 \
+        5.0+6.6
+
+    # two numbers unless using [query|get]WithParser
+    w = 1 -2
+
+    my_constants.alpha = 5.
+    amrex.c = c
+
+    # must use [query|get]WithParser
+    amrex.foo = sin( pi/2 ) + alpha + -amrex.c**2/c^2
+
+    # either [query|get] or [query|get]WithParser is okay
+    amrex.bar = sin(pi/2)+alpha+-amrex.c**2/c^2
+
+    geom.prob_lo = 2*sin(pi/4)/sqrt(2)  sin(pi/2)+cos(pi/2)  -(sin(pi*3/2)+cos(pi*3/2))
+
+    # three numbers. `\` is for continuation
+    geom.prob_hi =  "2*sin(pi/4)/sqrt(2)" \
+                    "sin(pi/2) + cos(pi/2)" \
+                    -(sin(pi*3/2)+cos(pi*3/2))
+
+can be processed by
+
+.. highlight:: c++
+
+::
+
+    {
+        ParmParse::SetParserPrefix("physical_constants");
+        ParmParse pp("physical_constants");
+        pp.add("c", 299792458.);
+        pp.add("pi", 3.14159265358979323846);
+    }
+    {
+        ParmParse pp;
+
+        double f0 = -1;
+        pp.query("f", f0);
+        std::cout << " double f = " << f0 << '\n';
+
+        std::vector<int> f;
+        pp.queryarr("f", f);
+        std::cout << " int f[3] = {" << f[0] << ", " << f[1] << ", "
+                  << f[2] << "}\n";
+
+        std::vector<double> g;
+        pp.queryarr("g", g);
+        std::cout << " double g[] = " << g[0] << " " << g[1] << '\n';
+
+        double w;
+        pp.query("w", w);
+        std::cout << " w = " << w << " with query\n";
+        pp.queryWithParser("w", w);
+        std::cout << " w = " << w << " with queryParser\n";
+    }
+    {
+        ParmParse pp("amrex", "my_constants");
+        double foo = -1, bar;
+        pp.getWithParser("foo", foo);
+        pp.get("bar", bar);
+        std::cout << " foo = " << foo << ", bar = " << bar << '\n';
+    }
+    {
+        ParmParse pp;
+        std::array<double,3> prob_lo, prob_hi;
+        pp.get("geom.prob_lo", prob_lo);
+        pp.get("geom.prob_hi", prob_hi);
+        std::cout << " double prob_lo[] = {" << prob_lo[0] << ", "
+                  << prob_lo[1] << ", " << prob_lo[2] << "}\n"
+                  << " double prob_hi[] = {" << prob_hi[0] << ", "
+                  << prob_hi[1] << ", " << prob_hi[2] << "}\n";
+    }
+
+The results will be
+
+.. highlight:: console
+
+::
+
+    double f = 7
+    int f[3] = {7, 99, 11}
+    double g[] = 7.2 11.6
+    w = 1 with query
+    w = -1 with queryParser
+    foo = 5, bar = 5
+    double prob_lo[] = {1, 1, 1}
+    double prob_hi[] = {1, 1, 1}
+
+Note that the empty spaces are significant for math expressions unless they
+are inside a pair of ``"`` or explicitly parsed by
+:cpp:`ParmParse::queryWithParser` or :cpp:`ParmParse::getWithParser`. If the
+expression contains another variable, it will be looked up by
+:cpp:`ParmParse`. :cpp:`ParmParse`'s constructor accepts an optional second
+argument, ``parser_prefix``. When a variable in a math expression is being
+looked up, it will first try to find it by using the exact name of the
+variable. If this attempt fails and the :cpp:`ParmParse` object has a
+non-empty non-static member ``parser_prefix``, it will try again, this time
+looking up the variable by prefixing its name with the value of
+``parser_prefix`` followed by a ``.``. If this attempt also fails and the
+:cpp:`ParmParse` class has a non-empty static member ``ParserPrefix`` (which
+can be set by :cpp:`ParmParse::SetParserPrefix`), it will try again, this
+time looking up the variable by prefixing its name with the value of
+``ParserPrefix`` followed by a ``.``.
+
+The variables in :cpp:`ParmParse` math expressions are not evaluated until
+they are referenced. If a variable is defined multiple times, the last
+occurrence will override previous ones even if it appears after the variable
+has been referenced. This behavior is demonstrated in the following example.
+
+.. highlight:: python
+
+::
+
+    foo.a = 1
+    foo.b = foo.a
+    foo.a = 2
+
+will become
+
+.. highlight:: python
+
+::
+
+    foo.a = 2
+    foo.b = 2
 
 Overriding Parameters with Command-Line Arguments
 -------------------------------------------------
@@ -380,7 +524,7 @@ They are briefly introduced in the table below.
    |                                           |        | after the executable.                     |
    +-------------------------------------------+--------+-------------------------------------------+
    | ``amrex:get_command_argument(int n)``     | String | Returns the n-th argument after           |
-   |                                           |        | the exectuable.                           |
+   |                                           |        | the executable.                           |
    +-------------------------------------------+--------+-------------------------------------------+
 
 
@@ -394,13 +538,15 @@ Parser
 AMReX provides a parser in ``AMReX_Parser.H`` that can be used at runtime to evaluate mathematical
 expressions given in the form of string.  It supports ``+``, ``-``, ``*``,
 ``/``, ``**`` (power), ``^`` (power), ``sqrt``, ``exp``, ``log``, ``log10``,
-``sin``, ``cos``, ``tan``, ``asin``, ``acos``, ``atan``, ``sinh``, ``cosh``,
-``tanh``, ``abs``, ``floor``, ``ceil`` and ``fmod``.  The minimum and maximum of two
+``sin``, ``cos``, ``tan``, ``asin``, ``acos``, ``atan``, ``atan2``, ``sinh``, ``cosh``,
+``tanh``, ``asinh``, ``acosh``, ``atanh``, ``abs``, ``floor``, ``ceil``, ``fmod``,
+and ``erf``. The minimum and maximum of two
 numbers can be computed with ``min`` and ``max``, respectively.  It supports
 the Heaviside step function, ``heaviside(x1,x2)`` that gives ``0``, ``x2``,
 ``1``, for ``x1 < 0``, ``x1 = 0`` and ``x1 > 0``, respectively.
-It also supports the Bessel function of the first kind of order ``n``
-``jn(n,x)``.
+It supports the Bessel function of the first kind of order ``n``
+``jn(n,x)``. Complete elliptic integrals of the first and second kind, ``comp_ellint_1`` and ``comp_ellint_2``,
+are supported only for gcc and CPUs.
 There is ``if(a,b,c)`` that gives ``b`` or ``c`` depending on the value of
 ``a``.  A number of comparison operators are supported, including ``<``,
 ``>``, ``==``, ``!=``, ``<=``, and ``>=``.  The Boolean results from
@@ -451,7 +597,14 @@ Besides :cpp:`amrex::Parser` for floating point numbers, AMReX also provides
 similarity, but floating point number specific functions (e.g., ``sqrt``,
 ``sin``, etc.) are not supported in ``IParser``.  In addition to ``/`` whose
 result truncates towards zero, the integer parser also supports ``//`` whose
-result truncates towards negative infinity.
+result truncates towards negative infinity. Single quotes ``'`` are allowed
+as a separator for :cpp:`IParser` numbers just like C++ integer
+literals. Additionally, a floating point like number with a positive
+exponent may be accepted as an integer if it is reasonable to do so. For
+example, it's okay to have ``1.234e3``, but ``1.234e2`` is an error.
+
+  .. versionadded:: 24.08
+     Support for ``'`` and ``e`` in :cpp:`IParser` integers.
 
 .. _sec:basics:initialize:
 
@@ -910,7 +1063,7 @@ an :cpp:`int` pointer or array specifying periodicity. If a :cpp:`RealBox` is no
 given in the first constructor, AMReX  will construct one based on :cpp:`ParmParse` parameters,
 ``geometry.prob_lo`` / ``geometry.prob_hi`` / ``geometry.prob_extent``,
 where each of the parameter is an array of ``AMREX_SPACEDIM`` real numbers.
-See the section on :ref:`sec:inputs:pd` for more details about how to specify these.
+See the section on :ref:`sec:inputs:geom` for more details about how to specify these.
 
 The argument for coordinate system is an integer type with
 valid values being 0 (Cartesian), or 1 (cylindrical), or 2 (spherical). If it
@@ -1940,7 +2093,8 @@ tiling flag is on. One can change the default size using :cpp:`ParmParse`
    | | FArrayBoxes.                                      |                                                      |
    +-----------------------------------------------------+------------------------------------------------------+
 
-Dynamic tiling, which runs one box per OpenMP thread, is also available.
+Dynamic tiling, which runs one box per OpenMP thread, either with or without
+tiling the box, is also available.
 This is useful when the underlying work cannot benefit from thread
 parallelization.  Dynamic tiling is implemented using the :cpp:`MFItInfo`
 object and requires the :cpp:`MFIter` loop to be defined in an OpenMP
@@ -1979,9 +2133,13 @@ Dynamic tiling also allows explicit definition of a tile size:
           ...
       }
 
-Usually :cpp:`MFIter` is used for accessing multiple MultiFabs like the second
-example, in which two MultiFabs, :cpp:`U` and :cpp:`F`, use :cpp:`MFIter` via
-:cpp:`operator[]`. These different MultiFabs may have different BoxArrays. For
+Note that :cpp:`EnableTiling()`, with no argument, will use the default tile size.
+
+Usually :cpp:`MFIter` is used for accessing multiple MultiFabs, like
+the second example in the previous section on :ref:`sec:basics:mfiter:notiling`
+in which two MultiFabs, :cpp:`U` and :cpp:`F`, use :cpp:`MFIter` via
+:cpp:`array()` and :cpp:`const_array()` functions. These different MultiFabs
+may have different BoxArrays. For
 example, :cpp:`U` might be cell-centered, whereas :cpp:`F` might be nodal in
 :math:`x`-direction and cell in other directions. The :cpp:`MFIter::validbox`
 and :cpp:`tilebox` functions return Boxes of the same type as the
@@ -2029,8 +2187,8 @@ multi-threaded codes race conditions could occur.
    |                        |e|                          |                        |f|                           |
    +-----------------------------------------------------+------------------------------------------------------+
    | | Example of cell-centered grown tile boxes. As     | | Example of face type grown tile boxes. As          |
-   | | indicated by symbols, there are 8 tiles and four  | | indicated by symbols, there are 8 tiles and four   |
-   | | in each grid in this example. Tiles from the      | | in each grid in this example. Tiles from the       |
+   | | indicated by symbols and colors, there are 4      | | indicated by symbols and colors, there are 4 tiles |
+   | | tiles per grid in this example. Tiles from the    | | per grid in this example. Tiles from the           |
    | | same grid do not overlap. But tiles from          | | same grid do not overlap even though they          |
    | | different grids may overlap.                      | | have face index type.                              |
    |                                                     |                                                      |
@@ -2535,11 +2693,26 @@ The basic idea behind physical boundary conditions is as follows:
 
        ext_dir
            "External Dirichlet". It is the user's responsibility to write a routine
-           to fill ghost cells (more details below).
+           to fill ghost cells (more details below). The boundary location
+           is on the domain face even when the data inside the domain are
+           cell-centered.
+
+       ext_dir_cc
+           "External Dirichlet". It is the user's responsibility to write a routine
+           to fill ghost cells (more details below). The boundary location
+           is at the cell center of ghost cells outside the domain.
 
        foextrap
            "First Order Extrapolation"
            First order extrapolation from last cell in interior.
+
+       hoextrap
+           "High Order Extrapolation". The boundary location is on the domain
+           face even when the data inside the domain are cell-centered.
+
+       hoextrapcc
+           "High Order Extrapolation" The boundary location is at the cell
+           center of ghost cells outside the domain.
 
        reflect_even
            Reflection from interior cells with sign
@@ -2614,13 +2787,125 @@ to fill the ghost cells on each grid.
         physbcf(mf, 0, mf.nComp(), mf.nGrowVector(), time, 0);
     }
 
+
+Masks
+=====
+
+Given an index :cpp:`(i,j,k)`, we often need to know its relationship with
+other points and levels (e.g., whether this point on a coarse level is
+covered by a fine level, whether this ghost point is outside coarse/fine
+boundary, etc.).  AMReX provides various functions for creating masks for
+this type of purposes.
+
+Owner Mask
+----------
+
+AMReX supports various index types such as face, edge and node, besides cell
+centered type.  For non-cell types, two boxes could overlap.  For example, a
+nodal index :cpp:`(i,j,k)` could exist in more than one :cpp:`FArrayBox` of
+a nodal :cpp:`MultiFab`.  AMReX provides a function to create an owner mask,
+where the owner is the grid with the lowest grid number containing the data.
+This has a number of use cases.  The nodal data for the same nodal point on
+different :cpp:`FArrayBox`\ es may be out of sync.  We can use
+:cpp:`MultiFab::OverrideSync` and an owner mask to sync up the data with
+owners overriding non-owners.
+
+.. highlight:: c++
+
+::
+
+    MultiFab mf(...); // non-cell-centered
+    auto mask = amrex::OwnerMask(mf, geom.periodicity());
+    mf.OverrideSync(*mask, geom.periodicity());
+
+To compute the dot product of two nodal :cpp:`MultiFab`\ s, we can use a
+mask to avoid double counting.
+
+.. highlight:: c++
+
+::
+
+    MultiFab mf1(...);
+    MultiFab mf2(...);
+    auto mask = amrex::OwnerMask(mf1, geom.periodicity());
+    Real result = MultiFab::Dot(*mask, mf1, 0, mf2, 0, 1, 0);
+
+Overlap Mask
+------------
+
+For the synchronization example mentioned previously, maybe instead of
+overriding, we want to do averaging.  This can be achieved with an overlap
+mask indicating how many duplicates are in each point.  The code below shows
+how the :cpp:`MultiFab::AverageSync` function is implemented in AMReX.
+
+.. highlight:: c++
+
+::
+
+    MultiFab mf(...); // non-cell-centered
+    auto mask = mf.OverlapMask(geom.periodicity());
+    mask->invert(1.0, 0, 1);
+    mf.WeightedSync(*mask, geom.periodicity());
+
+Point Mask
+----------
+
+The :cpp:`FabArray` class has a member function :cpp:`BuildMask` that can be
+used to set masks indicating the type of points (e.g., valid, outside the
+domain, etc.).  For example,
+
+.. highlight:: c++
+
+::
+
+    iMultiFab mask(ba, dm, 1, nghost);
+    int a = 10; // ghost points covered by valid points
+    int b = 11; // ghost points not covered by valid points
+    int c = 12; // outside physical domain
+    int d = 13; // interior points (i.e., valid points)
+    mask.BuildMask(geom.Domain(), geom.periodicity(), a, b, c, d);
+
+Fine Mask
+---------
+
+AMReX provides a number of :cpp:`makeFineMask` functions that can be useful
+for multi-level AMR calculations.  For example, we may want to compute the
+infinity norm on a coarse AMR level without including data from cells
+covered by fine level grids.
+
+.. highlight:: c++
+
+::
+
+    int coarse_value = 1;
+    int fine_value = 0;
+    iMultiFab mask = makeFineMask(coarse_mf, fine_boxarray, refine_ratio,
+                                  coarse_value, fine_value);
+    Real result = coarse_mf.norminf(mask);
+
 Memory Allocation
 =================
 
-Some constructors of :cpp:`MultiFab`, :cpp:`FArrayBox`, etc. can take
-an :cpp:`Arena` argument for memory allocation.  This is usually not
-important for CPU codes, but very important for GPU codes.  We will
-present more details in :ref:`sec:gpu:memory` in Chapter GPU.
+Some constructors of :cpp:`MultiFab`, :cpp:`FArrayBox`, etc. can take an
+:cpp:`Arena` argument for memory allocation.  Some constructors of
+:cpp:`MultiFab` can take an optional argument :cpp:`MFInfo`, which can be
+used to set the arena.  This is usually not important for CPU codes, but
+very important for GPU codes.  We will present more details about memory
+arenas in :ref:`sec:gpu:memory` in Chapter GPU.
+
+Every :cpp:`FArrayBox` in a :cpp:`MultiFab` has a contiguous chunk of memory
+for floating point data, whereas by default :cpp:`MultiFab` as a collection
+of multiple :cpp:`FArrayBox`\ s does not store all floating point data in
+contiguous chunk of memory. This behavior can be changed for all
+:cpp:`MultiFab`\ s with the :cpp:`ParmParse` parameter,
+``amrex.mf.alloc_single_chunk=1``, or for a specific :cpp:`MultiFab` by
+passing a :cpp:`MFInfo` object (e.g.,
+``MFInfo().SetAllocSingleChunk(true)``) to the constructor. One can call
+:cpp:`MultiFab::singleChunkPtr()` to obtain a pointer to the single chunk
+memory. Note that the function returns a null pointer if the :cpp:`MultiFab`
+does not use a single contiguous chunk of memory. One can also call
+:cpp:`MultiFab::singleChunkSize()` to obtain the size in bytes of the single
+chunk memory.
 
 AMReX has a Fortran module, :fortran:`amrex_mempool_module` that can be used to
 allocate memory for Fortran pointers. The reason that such a module exists in
@@ -2699,3 +2984,6 @@ Backtrace files are produced by AMReX signal handler by default when
 segfault occurs or ``Abort`` is called.  If the application does not
 want AMReX to handle this, ``ParmParse`` parameter
 `amrex.signal_handling=0` can be used to disable it.
+
+See :ref:`sec:gpu:assertion` for considerations on using these functions in
+GPU-enabled code.

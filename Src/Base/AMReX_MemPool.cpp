@@ -1,3 +1,4 @@
+#include <AMReX_BLProfiler.H>
 #include <AMReX_CArena.H>
 #include <AMReX_MemPool.H>
 #include <AMReX_Vector.H>
@@ -21,13 +22,8 @@ using namespace amrex;
 
 namespace
 {
-    static Vector<std::unique_ptr<CArena> > the_memory_pool;
-#if defined(AMREX_TESTING) || defined(AMREX_DEBUG)
-    static int init_snan = 1;
-#else
-    static int init_snan = 0;
-#endif
-    static bool initialized = false;
+    Vector<std::unique_ptr<CArena> > the_memory_pool;
+    bool initialized = false;
 }
 
 extern "C" {
@@ -36,10 +32,9 @@ void amrex_mempool_init ()
 {
     if (!initialized)
     {
-        initialized = true;
+        BL_PROFILE("amrex_mempool_init()");
 
-        ParmParse pp("fab");
-        pp.queryAdd("init_snan", init_snan);
+        initialized = true;
 
         int nthreads = OpenMP::get_max_threads();
 
@@ -99,38 +94,19 @@ void amrex_mempool_get_stats (int& mp_min, int& mp_max, int& mp_tot) // min, max
     hsu_max = std::max(hsu, hsu_max);
     hsu_tot += hsu;
   }
-  mp_min = hsu_min/(1024*1024);
-  mp_max = hsu_max/(1024*1024);
-  mp_tot = hsu_tot/(1024*1024);
+  mp_min = static_cast<int>(hsu_min/(1024*1024));
+  mp_max = static_cast<int>(hsu_max/(1024*1024));
+  mp_tot = static_cast<int>(hsu_tot/(1024*1024));
 }
 
 void amrex_real_array_init (Real* p, size_t nelems)
 {
-    if (init_snan) amrex_array_init_snan(p, nelems);
+    if (amrex::InitSNaN()) { amrex_array_init_snan(p, nelems); }
 }
 
 void amrex_array_init_snan (Real* p, size_t nelems)
 {
-#ifdef BL_USE_DOUBLE
-
-#ifdef UINT64_MAX
-    const uint64_t snan = UINT64_C(0x7ff0000080000001);
-    static_assert(sizeof(double) == sizeof(uint64_t), "MemPool: sizeof double != sizeof uint64_t");
-    for (size_t i = 0; i < nelems; ++i) {
-        std::memcpy(p++, &snan, sizeof(double));
-    }
-#endif
-
-#else
-
-#ifdef UINT32_MAX
-    const uint32_t snan = UINT32_C(0x7fa00000);
-    static_assert(sizeof(float) == sizeof(uint32_t), "MemPool: sizeof float != sizeof uint32_t");
-    for (size_t i = 0; i < nelems; ++i) {
-        std::memcpy(p++, &snan, sizeof(float));
-    }
-#endif
-
-#endif
+    amrex::fill_snan<RunOn::Host>(p, nelems);
 }
+
 }

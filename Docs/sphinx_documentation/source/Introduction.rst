@@ -16,9 +16,8 @@ Key features of AMReX include:
    - Support for particles
    - Support for embedded boundary (cut cell) representations of complex geometries
    - Parallelization via flat MPI, OpenMP, hybrid MPI/OpenMP, hybrid
-     MPI/(CUDA or HIP or DPC++), or MPI/MPI
+     MPI/(CUDA or HIP or SYCL), or MPI/MPI
    - Parallel I/O
    - Plotfile format supported by AmrVis, VisIt, ParaView, and yt.
 
-AMReX is developed at LBNL, NREL, and ANL as part of the Block-Structured AMR
-Co-Design Center in DOE's Exascale Computing Project.
+AMReX is developed at LBNL.

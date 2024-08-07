@@ -23,11 +23,13 @@ endmacro ()
 #
 set(AMReX_SPACEDIM_VALUES 1 2 3)
 set(AMReX_SPACEDIM 3 CACHE STRING "Dimension of AMReX build: <1,2,3>")
-set_property(CACHE AMReX_SPACEDIM PROPERTY STRINGS ${AMReX_SPACEDIM_VALUES})
-if(NOT AMReX_SPACEDIM IN_LIST AMReX_SPACEDIM_VALUES)
-   message(FATAL_ERROR "AMReX_SPACEDIM=${AMReX_SPACEDIM} is not allowed."
-      " Must be one of ${AMReX_SPACEDIM_VALUES}")
-endif()
+list(REMOVE_DUPLICATES AMReX_SPACEDIM)
+foreach(D IN LISTS AMReX_SPACEDIM)
+    if(NOT D IN_LIST AMReX_SPACEDIM_VALUES)
+       message(FATAL_ERROR "AMReX_SPACEDIM=${D} is not allowed."
+          " Must be one of ${AMReX_SPACEDIM_VALUES}")
+    endif()
+endforeach()
 message( STATUS "Building AMReX with AMReX_SPACEDIM = ${AMReX_SPACEDIM}")
 
 #
@@ -57,7 +59,7 @@ print_option( USE_XSDK_DEFAULTS )
 # Defaults:
 #   CMake: static
 #   xSDK: shared
-# Precendence of user options:
+# Precedence of user options:
 #   AMReX_BUILD_SHARED_LIBS > BUILD_SHARED_LIBS > USE_XSDK_DEFAULTS
 #   default:    unset              unset               OFF
 #
@@ -129,61 +131,97 @@ endif ()
 
 if (NOT AMReX_GPU_BACKEND STREQUAL NONE)
    message( STATUS "   AMReX_GPU_BACKEND = ${AMReX_GPU_BACKEND}")
+
+   # We might set different default for different GPUs in the future.
+   set(AMReX_GPU_MAX_THREADS_DEFAULT "256")
+   set(AMReX_GPU_MAX_THREADS ${AMReX_GPU_MAX_THREADS_DEFAULT} CACHE STRING
+       "Maximum number of GPU threads per block" )
+   message( STATUS "   AMReX_GPU_MAX_THREADS = ${AMReX_GPU_MAX_THREADS}")
 endif ()
 
 # Legacy variables for internal use only
 if (AMReX_GPU_BACKEND STREQUAL SYCL)
-   set(AMReX_DPCPP ON )
+   set(AMReX_SYCL  ON )
    set(AMReX_CUDA  OFF)
    set(AMReX_HIP   OFF)
 elseif (AMReX_GPU_BACKEND STREQUAL CUDA)
-   set(AMReX_DPCPP OFF)
+   set(AMReX_SYCL  OFF)
    set(AMReX_CUDA  ON )
    set(AMReX_HIP   OFF)
 elseif (AMReX_GPU_BACKEND STREQUAL HIP)
-   set(AMReX_DPCPP OFF)
+   set(AMReX_SYCL  OFF)
    set(AMReX_CUDA  OFF)
    set(AMReX_HIP   ON )
 else ()
-   set(AMReX_DPCPP OFF)
+   set(AMReX_SYCL  OFF)
    set(AMReX_CUDA  OFF)
    set(AMReX_HIP   OFF)
 endif ()
 
 # --- SYCL ---
-if (AMReX_DPCPP)
-   set(_valid_dpcpp_compiler_ids Clang IntelClang IntelDPCPP IntelLLVM)
-   if (NOT (CMAKE_CXX_COMPILER_ID IN_LIST _valid_dpcpp_compiler_ids) )
+if (AMReX_SYCL)
+   set(_valid_sycl_compiler_ids Clang IntelClang IntelDPCPP IntelLLVM)
+   if (NOT (CMAKE_CXX_COMPILER_ID IN_LIST _valid_sycl_compiler_ids) )
       message(WARNING "\nAMReX_GPU_BACKEND=${AMReX_GPU_BACKEND} is tested with "
-         "DPCPP. Verify '${CMAKE_CXX_COMPILER_ID}' is correct and potentially "
+         "Intel oneAPI. Verify '${CMAKE_CXX_COMPILER_ID}' is correct and potentially "
          "set CMAKE_CXX_COMPILER=icpx.")
    endif ()
-   unset(_valid_dpcpp_compiler_ids)
+   unset(_valid_sycl_compiler_ids)
+
+   set(AMReX_SYCL_SUB_GROUP_SIZE_DEFAULT 32)
+   set(AMReX_SYCL_SUB_GROUP_SIZE_VALUES 16 32 64)
+   set(AMReX_SYCL_SUB_GROUP_SIZE ${AMReX_SYCL_SUB_GROUP_SIZE_DEFAULT} CACHE STRING
+       "SYCL sub-group size")
+   if (NOT AMReX_SYCL_SUB_GROUP_SIZE IN_LIST AMReX_SYCL_SUB_GROUP_SIZE_VALUES)
+      message(FATAL_ERROR "AMReX_SYCL_SUB_GROUP_SIZE=${AMReX_SYCL_SUB_GROUP_SIZE} not supported."
+              " Must be one of ${AMReX_SYCL_SUB_GROUP_SIZE_VALUES}")
+   endif()
+   mark_as_advanced(AMReX_SYCL_SUB_GROUP_SIZE)
 endif ()
 
-cmake_dependent_option( AMReX_DPCPP_AOT  "Enable DPCPP ahead-of-time compilation (WIP)"  OFF
+cmake_dependent_option( AMReX_SYCL_AOT  "Enable SYCL ahead-of-time compilation (WIP)"  OFF
    "AMReX_GPU_BACKEND STREQUAL SYCL" OFF)
-print_option( AMReX_DPCPP_AOT )
+print_option( AMReX_SYCL_AOT )
 
-cmake_dependent_option( AMReX_DPCPP_SPLIT_KERNEL "Enable DPCPP kernel splitting"  ON
+cmake_dependent_option( AMReX_SYCL_SPLIT_KERNEL "Enable SYCL kernel splitting"  ON
    "AMReX_GPU_BACKEND STREQUAL SYCL" OFF)
-print_option(  AMReX_DPCPP_SPLIT_KERNEL )
+print_option(  AMReX_SYCL_SPLIT_KERNEL )
 
-cmake_dependent_option( AMReX_DPCPP_ONEDPL "Enable DPCPP's oneDPL algorithms"  OFF
+cmake_dependent_option( AMReX_SYCL_ONEDPL "Enable Intel's oneDPL algorithms"  OFF
    "AMReX_GPU_BACKEND STREQUAL SYCL" OFF)
-print_option(  AMReX_DPCPP_ONEDPL )
+print_option(  AMReX_SYCL_ONEDPL )
 
-if (AMReX_DPCPP)
+if (AMReX_SYCL)
    set(AMReX_INTEL_ARCH_DEFAULT "IGNORE")
    if (DEFINED ENV{AMREX_INTEL_ARCH})
       set(AMReX_INTEL_ARCH_DEFAULT "$ENV{AMREX_INTEL_ARCH}")
    endif()
 
    set(AMReX_INTEL_ARCH ${AMReX_INTEL_ARCH_DEFAULT} CACHE STRING
-      "INTEL GPU architecture (Must be provided if AMReX_GPU_BACKEND=SYCL and AMReX_DPCPP_AOT=ON)")
+      "INTEL GPU architecture (Must be provided if AMReX_GPU_BACKEND=SYCL and AMReX_SYCL_AOT=ON)")
 
-   if (AMReX_DPCPP_AOT AND NOT AMReX_INTEL_ARCH)
-      message(FATAL_ERROR "\nMust specify AMReX_INTEL_ARCH if AMReX_GPU_BACKEND=SYCL and AMReX_DPCPP_AOT=ON\n")
+   if (AMReX_SYCL_AOT AND NOT AMReX_INTEL_ARCH)
+      message(FATAL_ERROR "\nMust specify AMReX_INTEL_ARCH if AMReX_GPU_BACKEND=SYCL and AMReX_SYCL_AOT=ON\n")
+   endif()
+
+   if (AMReX_SYCL_AOT)
+      set(AMReX_SYCL_AOT_GRF_MODE_VALUES Default Large AutoLarge)
+      set(AMReX_SYCL_AOT_GRF_MODE Default CACHE STRING "SYCL AOT General Register File Mode")
+      set_property(CACHE AMReX_SYCL_AOT_GRF_MODE PROPERTY STRINGS ${AMReX_SYCL_AOT_GRF_MODE_VALUES})
+      if (NOT AMReX_SYCL_AOT_GRF_MODE IN_LIST AMReX_SYCL_AOT_GRF_MODE_VALUES)
+         message(FATAL_ERROR "AMReX_SYCL_AOT_GRF_MODE (${AMReX_SYCL_AOT_GRF_MODE}) must be one of ${AMReX_SYCL_AOT_GRF_MODE_VALUES}")
+      endif()
+   endif()
+
+   set(AMReX_PARALLEL_LINK_JOBS_DEFAULT 1)
+   if (DEFINED ENV{AMREX_PARALLEL_LINK_JOBS})
+      set(AMReX_PARALLEL_LINK_JOBS_DEFAULT "$ENV{AMREX_PARALLEL_LINK_JOBS}")
+   endif()
+   set(AMReX_PARALLEL_LINK_JOBS ${AMReX_PARALLEL_LINK_JOBS_DEFAULT}
+       CACHE STRING "SYCL max parallel link jobs")
+   if (NOT AMReX_PARALLEL_LINK_JOBS GREATER_EQUAL 1 OR
+       NOT AMReX_PARALLEL_LINK_JOBS MATCHES "^[1-9][0-9]*$")
+      message(FATAL_ERROR "AMReX_PARALLEL_LINK_JOBS (${AMReX_PARALLEL_LINK_JOBS}) must be a positive integer")
    endif()
 endif ()
 
@@ -200,14 +238,6 @@ if (AMReX_HIP)
    if (NOT AMReX_AMD_ARCH)
       message(FATAL_ERROR "\nMust specify AMReX_AMD_ARCH if AMReX_GPU_BACKEND=HIP\n")
    endif ()
-endif ()
-
-if (AMReX_CUDA OR AMReX_HIP)
-   set(GPUS_PER_SOCKET "IGNORE" CACHE STRING "Number of GPUs per socket" )
-   print_option(GPUS_PER_SOCKET)
-
-   set(GPUS_PER_NODE "IGNORE" CACHE STRING "Number of GPUs per node" )
-   print_option(GPUS_PER_NODE)
 endif ()
 
 #
@@ -244,8 +274,7 @@ print_option( AMReX_OMP )
 option( AMReX_AMRLEVEL  "Build AmrLevel class" ON )
 print_option( AMReX_AMRLEVEL )
 
-cmake_dependent_option( AMReX_EB "Build with Embedded Boundary support" OFF
-   "NOT AMReX_SPACEDIM EQUAL 1" OFF )
+option( AMReX_EB "Build with Embedded Boundary support" OFF)
 print_option(AMReX_EB)
 
 cmake_dependent_option( AMReX_FORTRAN_INTERFACES "Build Fortran API" OFF
@@ -255,11 +284,10 @@ print_option(AMReX_FORTRAN_INTERFACES)
 option( AMReX_LINEAR_SOLVERS  "Build AMReX Linear solvers" ON )
 print_option( AMReX_LINEAR_SOLVERS )
 
-cmake_dependent_option( AMReX_AMRDATA "Build data services" OFF
-   "AMReX_FORTRAN" OFF )
+option( AMReX_AMRDATA "Build data services" OFF )
 print_option( AMReX_AMRDATA )
 
-option( AMReX_PARTICLES "Build particle classes" OFF)
+option( AMReX_PARTICLES "Build particle classes" ON)
 print_option( AMReX_PARTICLES )
 
 if (AMReX_PARTICLES)
@@ -291,6 +319,11 @@ print_option( AMReX_NO_SENSEI_AMR_INST )
 # Conduit (requires CONDUIT_DIR)
 option( AMReX_CONDUIT "Enable Conduit support" OFF )
 print_option( AMReX_CONDUIT )
+
+# Catalyst
+cmake_dependent_option( AMReX_CATALYST "Enable Catalyst support" OFF 
+   "AMReX_CONDUIT" OFF )
+print_option( AMReX_CATALYST )
 
 # Ascent
 cmake_dependent_option( AMReX_ASCENT "Enable Ascent support" OFF
@@ -340,6 +373,20 @@ print_option( AMReX_IPO )
 option(AMReX_FPE "Enable Floating Point Exceptions checks" OFF)
 print_option( AMReX_FPE )
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+   option(AMReX_COMPILER_DEFAULT_INLINE "Use compiler default inline behavior" OFF)
+   set(AMReX_INLINE_LIMIT 43210 CACHE STRING "Inline limit")
+   if (NOT AMReX_COMPILER_DEFAULT_INLINE)
+      if (AMReX_INLINE_LIMIT LESS 0)
+         message(FATAL_ERROR "AMReX_INLINE_LIMIT, if set, must be non-negative")
+      endif()
+      message(STATUS "   AMReX_INLINE_LIMIT = ${AMReX_INLINE_LIMIT}")
+   endif ()
+else ()
+   set(AMReX_COMPILER_DEFAULT_INLINE ON)
+endif ()
+
+
 if ( "${CMAKE_BUILD_TYPE}" MATCHES "Debug" )
    option( AMReX_ASSERTIONS "Enable assertions" ON)
 else ()
@@ -347,6 +394,9 @@ else ()
 endif ()
 
 print_option( AMReX_ASSERTIONS )
+
+option( AMReX_FLATTEN_FOR "Enable flattening of ParallelFor and other similar functions" OFF)
+print_option( AMReX_FLATTEN_FOR )
 
 option(AMReX_BOUND_CHECK  "Enable bound checking in Array4 class" OFF)
 print_option( AMReX_BOUND_CHECK )
@@ -426,3 +476,30 @@ else ()
        "AMReX_AMRLEVEL" OFF)
 endif ()
 print_option(AMReX_PROBINIT)
+
+
+#
+# Static code analysis  ===============================================
+#
+option(AMReX_CLANG_TIDY "Enable clang-tidy analysis" OFF)
+print_option(AMReX_CLANG_TIDY)
+cmake_dependent_option(AMReX_CLANG_TIDY_WERROR "Treat clang-tidy warnings as errors" OFF
+   "AMReX_CLANG_TIDY" OFF)
+print_option(AMReX_CLANG_TIDY_WERROR)
+
+#
+# Tests  =============================================================
+#
+option(AMReX_ENABLE_TESTS "Enable CTest suite for AMReX" NO)
+print_option(AMReX_ENABLE_TESTS)
+set(AMReX_TEST_TYPE_VALUES "All;Small")
+set(AMReX_TEST_TYPE All CACHE STRING "Type of AMReX Tests: <All,Small>")
+set_property(CACHE AMReX_TEST_TYPE PROPERTY STRINGS ${AMReX_TEST_TYPE_VALUES})
+if (NOT AMReX_TEST_TYPE IN_LIST AMReX_TEST_TYPE_VALUES)
+   message(FATAL_ERROR "AMReX_TEST_TYPE=${AMReX_TEST_TYPE} is not allowed."
+                       " Must be one of ${AMReX_TEST_TYPE_VALUES}.")
+endif()
+if (AMReX_ENABLE_TESTS)
+   message(STATUS "   AMReX_TEST_TYPE = ${AMReX_TEST_TYPE}")
+endif()
+
