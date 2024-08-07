@@ -338,7 +338,7 @@ void Graph::appendEdgeWeight(const std::string& edge_name,
 
 void Graph::clear()
 {
-    // Leave m_rank, for matching re-use.
+    // Leave m_rank, for matching reuse.
 
     m_assembled = false;
     m_n_count = 0;
@@ -379,7 +379,7 @@ Graph::assemble()
         const NodeList& nl = full_graph.m_nodes[i];
 
         const FabArrayBase& fab = nl.m_fab;
-        LayoutData<double> lod(fab.boxArray(), fab.DistributionMap());
+        LayoutData<double> lad(fab.boxArray(), fab.DistributionMap());
 
         for (unsigned int w=0; w<nl.m_wgts.size() ; ++w)
         {
@@ -391,11 +391,11 @@ Graph::assemble()
                 for (MFIter mfi(fab); mfi.isValid(); ++mfi)
                 {
                     // Assuming tiling is off.
-                    lod[mfi] = wgt.m_weights[mfi.LocalIndex()];
+                    lad[mfi] = wgt.m_weights[mfi.LocalIndex()];
                 }
 
                 Vector<double> collection(fab.size(), 0.0);
-                ParallelDescriptor::GatherLayoutDataToVector<double>(lod, collection, m_rank);
+                ParallelDescriptor::GatherLayoutDataToVector<double>(lad, collection, m_rank);
 
                 if (is_writer) { full_wgt.m_weights = collection; }
             }

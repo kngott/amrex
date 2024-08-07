@@ -316,7 +316,7 @@ namespace amrex
                             const std::size_t buffer_type = 0)
         {
             // If SumBoundary wouldn't be completed, don't create the edge list.
-            //      (interpretted as: the comm doesn't happen, so don't add a list).
+            //      (interpreted as: the comm doesn't happen, so don't add a list).
             if ( fab.nGrowVect() == IntVect::TheZeroVector()
               && fab.boxArray().ixType().cellCentered() )  { return; }
 
@@ -351,7 +351,7 @@ namespace amrex
                                     const Periodicity& period)
         {
             // If EnforcePeriodicity wouldn't be completed, don't create the edge list.
-            //      (interpretted as: the comm doesn't happen, so don't add a list).
+            //      (interpreted as: the comm doesn't happen, so don't add a list).
             if ( period.isAnyPeriodic() )
             {
                 if (not_present(nodes, m_nodes)) { addFab(fab, nodes); }
@@ -378,7 +378,7 @@ namespace amrex
                               const iMultiFab& /*msk*/, const Periodicity& period = Periodicity::NonPeriodic())
         {
             // If OverrideSync wouldn't be completed, don't create the edge list.
-            //      (interpretted as: the comm doesn't happen, so don't add a list).
+            //      (interpreted as: the comm doesn't happen, so don't add a list).
             if (fab.ixType().cellCentered()) { return; }
 
             if (not_present(nodes, m_nodes)) { addFab(fab, nodes); }
