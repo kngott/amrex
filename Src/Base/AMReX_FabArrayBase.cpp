@@ -690,6 +690,8 @@ FabArrayBase::define_fb_metadata (CommMetaData& cmd, const IntVect& nghost,
     for (int i = 0; i < nlocal; ++i)
     {
         const int ksnd = imap[i];
+        if (MyProc != dm[ksnd]) { continue; }  // When using teams, filter to local only.
+
         const Box& vbx = ba[ksnd];
         const Box& vbx_ng1  = amrex::grow(vbx,1);
 
@@ -703,26 +705,26 @@ FabArrayBase::define_fb_metadata (CommMetaData& cmd, const IntVect& nghost,
                 const Box& bx       = is.second;
                 const int dst_owner = dm[krcv];
 
-                if (ParallelDescriptor::sameTeam(dst_owner)) {
-                    continue;  // local copy will be dealt with later
-                } else if (MyProc == dm[ksnd]) {
-                    BoxList bl = amrex::boxDiff(bx, ba[krcv]);
-                    if (multi_ghost)
+                // Team copies (including local) are dealt with in the recv loop later.
+                if (ParallelDescriptor::sameTeam(dst_owner)) { continue; }
+
+                BoxList bl = amrex::boxDiff(bx, ba[krcv]);
+                if (multi_ghost)
+                {
+                    // In the case where ngrow>1, augment the send/rcv box list
+                    // with boxes for overlapping ghost nodes.
+                    const Box& ba_krcv   = amrex::grow(ba[krcv],1);
+                    const Box& dst_bx_ng = amrex::grow(ba[krcv],nghost) & (vbx_ng1 + pit);
+                    const BoxList &bltmp = ba.complementIn(dst_bx_ng,period);
+                    for (auto const& btmp : bltmp)
                     {
-                        // In the case where ngrow>1, augment the send/rcv box list
-                        // with boxes for overlapping ghost nodes.
-                        const Box& ba_krcv   = amrex::grow(ba[krcv],1);
-                        const Box& dst_bx_ng = amrex::grow(ba[krcv],nghost) & (vbx_ng1 + pit);
-                        const BoxList &bltmp = ba.complementIn(dst_bx_ng,period);
-                        for (auto const& btmp : bltmp)
-                        {
-                            bl.join(amrex::boxDiff(btmp,ba_krcv));
-                        }
-                        bl.simplify();
+                        bl.join(amrex::boxDiff(btmp,ba_krcv));
                     }
-                    for (auto const& lit : bl) {
-                        send_tags[dst_owner].emplace_back(lit, lit-pit, krcv, ksnd);
-                    }
+                    bl.simplify();
+                }
+
+                for (auto const& lit : bl) {
+                    send_tags[dst_owner].emplace_back(lit, lit-pit, krcv, ksnd);
                 }
             }
         }
@@ -783,6 +785,7 @@ FabArrayBase::define_fb_metadata (CommMetaData& cmd, const IntVect& nghost,
                     }
                     bl.simplify();
                 }
+
                 for (auto const& blbx : bl)
                 {
                     if (ParallelDescriptor::sameTeam(src_owner)) { // local copy
@@ -834,17 +837,18 @@ FabArrayBase::define_fb_metadata (CommMetaData& cmd, const IntVect& nghost,
             // We need to fix the order so that the send and recv processes match.
             std::sort(cctv.begin(), cctv.end());
 
-            std::vector<CopyComTag> cctv_tags_cross;
-            cctv_tags_cross.reserve(cctv.size());
+            if (cross) {
 
-            for (auto const& tag : cctv)
-            {
-                const Box& bx = tag.dbox;
-                const IntVect& d2s = tag.sbox.smallEnd() - tag.dbox.smallEnd();
+                std::vector<CopyComTag> cctv_tags_cross;
+                cctv_tags_cross.reserve(cctv.size());
 
-                std::vector<Box> boxes;
-                if (cross) {
+                for (auto const& tag : cctv)
+                {
+                    const Box& bx = tag.dbox;
                     const Box& dstvbx = ba[tag.dstIndex];
+                    const IntVect& d2s = tag.sbox.smallEnd() - tag.dbox.smallEnd();
+                    std::vector<Box> boxes;
+
                     for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
                     {
                         Box lo = dstvbx;
@@ -863,25 +867,17 @@ FabArrayBase::define_fb_metadata (CommMetaData& cmd, const IntVect& nghost,
                             boxes.push_back(hi);
                         }
                     }
-                } else {
-                    boxes.push_back(bx);
-                }
 
-                if (!boxes.empty())
-                {
-                    for (auto const& cross_box : boxes)
+                    if (!boxes.empty())
                     {
-                        if (cross)
+                        for (auto const& cross_box : boxes)
                         {
                             cctv_tags_cross.emplace_back(cross_box, cross_box+d2s,
                                                          tag.dstIndex, tag.srcIndex);
                         }
+                        cctv.swap(cctv_tags_cross);
                     }
                 }
-            }
-
-            if (!cctv_tags_cross.empty()) {
-                cctv.swap(cctv_tags_cross);
             }
         }
     }
